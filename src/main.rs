@@ -26,7 +26,7 @@ struct InstantVec {
 
 named!(instant_vec <InstantVec>, ws!(do_parse!(
 	name: metric_name >>
-	labels: opt!(do_parse!(
+	labels: opt!(complete!(do_parse!(
 		char!('{') >>
 		labels: ws!(separated_list!(char!(','), do_parse!(
 			name: label_name >>
@@ -36,7 +36,7 @@ named!(instant_vec <InstantVec>, ws!(do_parse!(
 		))) >>
 		char!('}') >>
 		(labels)
-	)) >>
+	))) >>
 	(InstantVec { name, labels: labels.unwrap_or(vec![]) })
 )));
 
@@ -130,5 +130,7 @@ named!(string <String>, alt!(
 ));
 
 fn main() {
+	print!("{:?}\n", instant_vec("foo".as_bytes()));
+	print!("{:?}\n", instant_vec("foo {  }".as_bytes()));
 	print!("{:?}\n", instant_vec("foo { bar = 'baz', quux !~ 'xyzzy', lorem = `ipsum \\n dolor \"sit amet\"` }".as_bytes()));
 }
