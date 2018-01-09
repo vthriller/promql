@@ -119,8 +119,16 @@ named!(string <String>, alt!(
 		char!('\'') >>
 		(s.into_iter().collect())
 	)
+	|
+	do_parse!(
+		// raw string literals, where "backslashes have no special meaning"
+		char!('`') >>
+		s: map_res!(is_not!("`"), |s: &[u8]| String::from_utf8(s.to_vec())) >>
+		char!('`') >>
+		(s)
+	)
 ));
 
 fn main() {
-	print!("{:?}\n", instant_vec("foo { bar = 'baz', quux !~ 'xyzzy' }".as_bytes()));
+	print!("{:?}\n", instant_vec("foo { bar = 'baz', quux !~ 'xyzzy', lorem = `ipsum \\n dolor \"sit amet\"` }".as_bytes()));
 }
