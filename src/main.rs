@@ -24,9 +24,8 @@ struct InstantVec {
 	labels: Vec<LabelMatch>
 }
 
-named!(instant_vec <InstantVec>, ws!(do_parse!(
-	name: opt!(metric_name) >>
-	labels: opt!(complete!(do_parse!(
+named!(label_set <Vec<LabelMatch>>,
+	do_parse!(
 		char!('{') >>
 		labels: ws!(separated_list!(char!(','), do_parse!(
 			name: label_name >>
@@ -36,7 +35,12 @@ named!(instant_vec <InstantVec>, ws!(do_parse!(
 		))) >>
 		char!('}') >>
 		(labels)
-	))) >>
+	)
+);
+
+named!(instant_vec <InstantVec>, ws!(do_parse!(
+	name: opt!(metric_name) >>
+	labels: opt!(complete!(label_set)) >>
 	(InstantVec { name, labels: labels.unwrap_or(vec![]) })
 )));
 
