@@ -20,12 +20,12 @@ struct LabelMatch {
 
 #[derive(Debug)]
 struct InstantVec {
-	name: String,
+	name: Option<String>,
 	labels: Vec<LabelMatch>
 }
 
 named!(instant_vec <InstantVec>, ws!(do_parse!(
-	name: metric_name >>
+	name: opt!(metric_name) >>
 	labels: opt!(complete!(do_parse!(
 		char!('{') >>
 		labels: ws!(separated_list!(char!(','), do_parse!(
@@ -133,4 +133,6 @@ fn main() {
 	print!("{:?}\n", instant_vec("foo".as_bytes()));
 	print!("{:?}\n", instant_vec("foo {  }".as_bytes()));
 	print!("{:?}\n", instant_vec("foo { bar = 'baz', quux !~ 'xyzzy', lorem = `ipsum \\n dolor \"sit amet\"` }".as_bytes()));
+	print!("{:?}\n", instant_vec("{lorem=~\"ipsum\"}".as_bytes()));
+	print!("{:?}\n", instant_vec("{}".as_bytes())); // should be invalid
 }
