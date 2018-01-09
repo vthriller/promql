@@ -77,7 +77,7 @@ named!(label_op <Op>, alt!(
 ));
 
 // > Label values may contain any Unicode characters.
-// > PromQL follows the same escaping rules as Go.
+// > PromQL follows the same [escaping rules as Go](https://golang.org/ref/spec#String_literals).
 
 /* TODO
 \OOO (oct)
