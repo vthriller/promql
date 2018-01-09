@@ -24,21 +24,21 @@ struct InstantVec {
 	labels: Vec<LabelMatch>
 }
 
-named!(instant_vec <InstantVec>, do_parse!(
+named!(instant_vec <InstantVec>, ws!(do_parse!(
 	name: metric_name >>
 	labels: opt!(do_parse!(
 		char!('{') >>
-		labels: separated_list!(char!(','), do_parse!(
+		labels: ws!(separated_list!(char!(','), do_parse!(
 			name: label_name >>
 			op: label_op >>
 			value: string >>
 			(LabelMatch { name, op, value })
-		)) >>
+		))) >>
 		char!('}') >>
 		(labels)
 	)) >>
 	(InstantVec { name, labels: labels.unwrap_or(vec![]) })
-));
+)));
 
 // > The metric name … must match the regex [a-zA-Z_:][a-zA-Z0-9_:]*.
 // > Label names … must match the regex [a-zA-Z_][a-zA-Z0-9_]*. Label names beginning with __ are reserved for internal use.
@@ -122,5 +122,5 @@ named!(string <String>, alt!(
 ));
 
 fn main() {
-	print!("{:?}\n", instant_vec("foo{bar='baz'}".as_bytes()));
+	print!("{:?}\n", instant_vec("foo { bar = 'baz', quux !~ 'xyzzy' }".as_bytes()));
 }
