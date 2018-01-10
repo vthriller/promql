@@ -29,6 +29,11 @@ pub enum Node {
 	Operator(Box<Node>, Op, Box<Node>),
 	InstantVector(Vec<LabelMatch>),
 }
+impl Node {
+	fn operator(x: Node, op: Op, y: Node) -> Node {
+		Node::Operator(Box::new(x), op, Box::new(y))
+	}
+}
 
 // ^ is right-associative, so we can actually keep it simple and recursive
 named!(power <Node>, ws!(do_parse!(
@@ -40,7 +45,7 @@ named!(power <Node>, ws!(do_parse!(
 	))) >>
 	( match y {
 		None => x,
-		Some(y) => Node::Operator(Box::new(x), Op::Pow, Box::new(y)),
+		Some(y) => Node::operator(x, Op::Pow, y),
 	} )
 )));
 
@@ -58,7 +63,7 @@ macro_rules! left_op {
 			({
 				let mut x = x;
 				for (op, y) in ops {
-					x = Node::Operator(Box::new(x), op, Box::new(y));
+					x = Node::operator(x, op, y);
 				}
 				x
 			})
