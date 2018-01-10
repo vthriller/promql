@@ -35,9 +35,20 @@ impl Node {
 	}
 }
 
+named!(atom <Node>, ws!(alt!(
+	map!(instant_vec, Node::InstantVector)
+	|
+	do_parse!(
+		char!('(') >>
+		x: expression >>
+		char!(')') >>
+		(x)
+	)
+)));
+
 // ^ is right-associative, so we can actually keep it simple and recursive
 named!(power <Node>, ws!(do_parse!(
-	x: map!(instant_vec, Node::InstantVector) >>
+	x: atom >>
 	y: opt!(complete!(do_parse!(
 		tag!("^") >>
 		y: power >>
