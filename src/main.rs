@@ -31,4 +31,5 @@ fn main() {
 
 	show(expr::expression, "foo > bar > baz and quux < xyzzy");
 	show(expr::expression, "foo + bar - baz <= quux + xyzzy");
+	show(expr::expression, "foo + bar % baz");
 }

@@ -2,6 +2,10 @@ use vec::{instant_vec, LabelMatch};
 
 #[derive(Debug)]
 pub enum Op {
+	Mul, // *
+	Div, // /
+	Mod, // %
+
 	Plus, // +
 	Minus, // -
 
@@ -61,7 +65,13 @@ macro_rules! left_op {
 	); );
 }
 
-left_op!(plus_minus, map!(instant_vec, Node::InstantVector), alt!(
+left_op!(mul_div_mod, map!(instant_vec, Node::InstantVector), alt!(
+	  tag!("*") => { |_| Op::Mul }
+	| tag!("/") => { |_| Op::Div }
+	| tag!("%") => { |_| Op::Mod }
+));
+
+left_op!(plus_minus, mul_div_mod, alt!(
 	  tag!("+") => { |_| Op::Plus }
 	| tag!("-") => { |_| Op::Minus }
 ));
