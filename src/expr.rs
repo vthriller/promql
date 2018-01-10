@@ -2,6 +2,8 @@ use vec::{instant_vec, LabelMatch};
 
 #[derive(Debug)]
 pub enum Op {
+	Pow, // ^
+
 	Mul, // *
 	Div, // /
 	Mod, // %
@@ -27,6 +29,20 @@ pub enum Node {
 	Operator(Box<Node>, Op, Box<Node>),
 	InstantVector(Vec<LabelMatch>),
 }
+
+// ^ is right-associative, so we can actually keep it simple and recursive
+named!(power <Node>, ws!(do_parse!(
+	x: map!(instant_vec, Node::InstantVector) >>
+	y: opt!(complete!(do_parse!(
+		tag!("^") >>
+		y: power >>
+		(y)
+	))) >>
+	( match y {
+		None => x,
+		Some(y) => Node::Operator(Box::new(x), Op::Pow, Box::new(y)),
+	} )
+)));
 
 // foo op bar op baz → Node[Node[foo op bar] op baz]
 macro_rules! left_op {
@@ -65,7 +81,7 @@ macro_rules! left_op {
 	); );
 }
 
-left_op!(mul_div_mod, map!(instant_vec, Node::InstantVector), alt!(
+left_op!(mul_div_mod, power, alt!(
 	  tag!("*") => { |_| Op::Mul }
 	| tag!("/") => { |_| Op::Div }
 	| tag!("%") => { |_| Op::Mod }
