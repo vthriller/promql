@@ -5,7 +5,7 @@ use nom::{alpha, alphanumeric, IResult};
 use std::fmt::Debug;
 
 #[derive(Debug)]
-enum Op {
+enum LabelMatchOp {
 	Eq, // =
 	Ne, // !=
 	REq, // =~
@@ -15,7 +15,7 @@ enum Op {
 #[derive(Debug)]
 struct LabelMatch {
 	name: String,
-	op: Op,
+	op: LabelMatchOp,
 	value: String,
 }
 
@@ -40,7 +40,7 @@ named!(instant_vec <Vec<LabelMatch>>, map_res!(ws!(do_parse!(
 		let mut ret = match name {
 			Some(name) => vec![ LabelMatch{
 				name: "__name__".to_string(),
-				op: Op::Eq,
+				op: LabelMatchOp::Eq,
 				value: name,
 			} ],
 			None => vec![],
@@ -84,11 +84,11 @@ named!(label_name <String>, do_parse!(
 	})
 ));
 
-named!(label_op <Op>, alt!(
-	  tag!("=~") => { |_| Op::REq }
-	| tag!("!~") => { |_| Op::RNe }
-	| tag!("=")  => { |_| Op::Eq  } // should come after =~
-	| tag!("!=") => { |_| Op::Ne  }
+named!(label_op <LabelMatchOp>, alt!(
+	  tag!("=~") => { |_| LabelMatchOp::REq }
+	| tag!("!~") => { |_| LabelMatchOp::RNe }
+	| tag!("=")  => { |_| LabelMatchOp::Eq  } // should come after =~
+	| tag!("!=") => { |_| LabelMatchOp::Ne  }
 ));
 
 // > Label values may contain any Unicode characters.
