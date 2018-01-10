@@ -19,12 +19,6 @@ struct LabelMatch {
 	value: String,
 }
 
-#[derive(Debug)]
-struct InstantVec {
-	name: Option<String>,
-	labels: Vec<LabelMatch>
-}
-
 named!(label_set <Vec<LabelMatch>>,
 	do_parse!(
 		char!('{') >>
@@ -39,10 +33,23 @@ named!(label_set <Vec<LabelMatch>>,
 	)
 );
 
-named!(instant_vec <InstantVec>, ws!(do_parse!(
+named!(instant_vec <Vec<LabelMatch>>, ws!(do_parse!(
 	name: opt!(metric_name) >>
 	labels: opt!(complete!(label_set)) >>
-	(InstantVec { name, labels: labels.unwrap_or(vec![]) })
+	({
+		let mut ret = match name {
+			Some(name) => vec![ LabelMatch{
+				name: "__name__".to_string(),
+				op: Op::Eq,
+				value: name,
+			} ],
+			None => vec![],
+		};
+		if let Some(labels) = labels {
+			ret.extend(labels)
+		}
+		ret
+	})
 )));
 
 // > The metric name … must match the regex [a-zA-Z_:][a-zA-Z0-9_:]*.
