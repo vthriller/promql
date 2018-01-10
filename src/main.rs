@@ -33,7 +33,7 @@ named!(label_set <Vec<LabelMatch>>,
 	)
 );
 
-named!(instant_vec <Vec<LabelMatch>>, ws!(do_parse!(
+named!(instant_vec <Vec<LabelMatch>>, map_res!(ws!(do_parse!(
 	name: opt!(metric_name) >>
 	labels: opt!(complete!(label_set)) >>
 	({
@@ -48,9 +48,12 @@ named!(instant_vec <Vec<LabelMatch>>, ws!(do_parse!(
 		if let Some(labels) = labels {
 			ret.extend(labels)
 		}
-		ret
+
+		if ret.is_empty() {
+			Err("vector selector must contain label matchers or metric name")
+		} else { Ok(ret) }
 	})
-)));
+)), |x| x));
 
 // > The metric name … must match the regex [a-zA-Z_:][a-zA-Z0-9_:]*.
 // > Label names … must match the regex [a-zA-Z_][a-zA-Z0-9_]*. Label names beginning with __ are reserved for internal use.
