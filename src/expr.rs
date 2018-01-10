@@ -2,6 +2,9 @@ use vec::{instant_vec, LabelMatch};
 
 #[derive(Debug)]
 pub enum Op {
+	Plus, // +
+	Minus, // -
+
 	Eq, // ==
 	Ne, // !=
 	Lt, // <
@@ -58,9 +61,14 @@ macro_rules! left_op {
 	); );
 }
 
+left_op!(plus_minus, map!(instant_vec, Node::InstantVector), alt!(
+	  tag!("+") => { |_| Op::Plus }
+	| tag!("-") => { |_| Op::Minus }
+));
+
 // if you thing this kind of operator chaining makes little to no sense, think again: it actually matches 'foo' that is both '> bar' and '!= baz'.
 // or, speaking another way: comparison operators are really just filters for values in a vector, and this is a chain of filters.
-left_op!(comparison, map!(instant_vec, Node::InstantVector), alt!(
+left_op!(comparison, plus_minus, alt!(
 	  tag!("==") => { |_| Op::Eq }
 	| tag!("!=") => { |_| Op::Ne }
 	| tag!("<=") => { |_| Op::Le }
