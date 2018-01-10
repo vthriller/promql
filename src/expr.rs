@@ -30,56 +30,52 @@ named!(comparison_op <Op>, alt!(
 	| tag!(">")  => { |_| Op::Gt }
 ));
 
-// foo > bar != baz → Node[Node[foo > bar] != baz]
+// foo op bar op baz → Node[Node[foo op bar] op baz]
+macro_rules! left_op {
+	// $next is the parser for operator that takes precenence, or any other kind of non-operator token sequence
+	($name:ident, $next:ident!($($next_args:tt)*), $op:ident!($($op_args:tt)*)) => (
+		named!($name <Node>, ws!(do_parse!(
+			x: $next!($($next_args)*) >>
+			ops: many0!(do_parse!(
+				op: $op!($($op_args)*) >>
+				y: $next!($($next_args)*) >>
+				((op, y))
+			)) >>
+			({
+				let mut x = x;
+				for (op, y) in ops {
+					x = Node::Operator(Box::new(x), op, Box::new(y));
+				}
+				x
+			})
+		)));
+	);
+	($name:ident, $next:ident, $op:ident!($($op_args:tt)*)) => ( left_op!(
+		$name,
+		call!($next),
+		$op!($($op_args)*)
+	); );
+	($name:ident, $next:ident!($($next_args:tt)*), $op:ident) => ( left_op!(
+		$name,
+		$next!($($next_args)*),
+		call!($op)
+	); );
+	($name:ident, $next:ident, $op:ident) => ( left_op!(
+		$name,
+		call!($next),
+		call!($op)
+	); );
+}
+
 // if you thing this kind of operator chaining makes little to no sense, think again: it actually matches 'foo' that is both '> bar' and '!= baz'.
 // or, speaking another way: comparison operators are really just filters for values in a vector, and this is a chain of filters.
-named!(comparison <Node>, ws!(do_parse!(
-	x: map!(instant_vec, Node::InstantVector) >>
-	ops: many0!(do_parse!(
-		op: comparison_op >>
-		y: map!(instant_vec, Node::InstantVector) >>
-		((op, y))
-	)) >>
-	({
-		let mut x = x;
-		for (op, y) in ops {
-			x = Node::Operator(Box::new(x), op, Box::new(y));
-		}
-		x
-	})
-)));
+left_op!(comparison, map!(instant_vec, Node::InstantVector), comparison_op);
 
-named!(and_unless <Node>, ws!(do_parse!(
-	x: comparison >>
-	ops: many0!(do_parse!(
-		op: alt!(
-			  tag!("and") => { |_| Op::And }
-			| tag!("unless") => { |_| Op::Unless }
-		) >>
-		y: comparison >>
-		((op, y))
-	)) >>
-	({
-		let mut x = x;
-		for (op, y) in ops {
-			x = Node::Operator(Box::new(x), op, Box::new(y));
-		}
-		x
-	})
-)));
+left_op!(and_unless, comparison, alt!(
+	  tag!("and") => { |_| Op::And }
+	| tag!("unless") => { |_| Op::Unless }
+));
 
-named!(pub expression <Node>, ws!(do_parse!(
-	x: and_unless >>
-	ops: many0!(do_parse!(
-		tag!("or") >>
-		y: and_unless >>
-		(y)
-	)) >>
-	({
-		let mut x = x;
-		for y in ops {
-			x = Node::Operator(Box::new(x), Op::Or, Box::new(y));
-		}
-		x
-	})
-)));
+left_op!(or_op, and_unless, map!(tag!("or"), |_| Op::Or));
+
+named!(pub expression <Node>, call!(or_op));
