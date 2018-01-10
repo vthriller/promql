@@ -2,6 +2,8 @@
 extern crate nom;
 
 mod vec;
+mod expr;
+
 use vec::instant_vec;
 
 use nom::IResult;
@@ -26,4 +28,6 @@ fn main() {
 	show(instant_vec, "foo { bar = 'baz', quux !~ 'xyzzy', lorem = `ipsum \\n dolor \"sit amet\"` }");
 	show(instant_vec, "{lorem=~\"ipsum\"}");
 	show(instant_vec, "{}"); // should be invalid
+
+	show(expr::expression, "foo > bar > baz")
 }
