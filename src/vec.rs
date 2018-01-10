@@ -1,11 +1,7 @@
-#[macro_use]
-extern crate nom;
-
-use nom::{alpha, alphanumeric, IResult};
-use std::fmt::Debug;
+use nom::{alpha, alphanumeric};
 
 #[derive(Debug)]
-enum LabelMatchOp {
+pub enum LabelMatchOp {
 	Eq, // =
 	Ne, // !=
 	REq, // =~
@@ -13,7 +9,7 @@ enum LabelMatchOp {
 }
 
 #[derive(Debug)]
-struct LabelMatch {
+pub struct LabelMatch {
 	name: String,
 	op: LabelMatchOp,
 	value: String,
@@ -33,7 +29,7 @@ named!(label_set <Vec<LabelMatch>>,
 	)
 );
 
-named!(instant_vec <Vec<LabelMatch>>, map_res!(ws!(do_parse!(
+named!(pub instant_vec <Vec<LabelMatch>>, map_res!(ws!(do_parse!(
 	name: opt!(metric_name) >>
 	labels: opt!(complete!(label_set)) >>
 	({
@@ -143,24 +139,3 @@ named!(string <String>, alt!(
 		(s)
 	)
 ));
-
-fn show<O: Debug, E: Debug>(f: fn(&[u8]) -> IResult<&[u8], O, E>, s: &str) {
-	print!("{:?}\n", s);
-	match f(s.as_bytes()) {
-		IResult::Done(tail, res) => print!(
-			"Done(\n\t{:?},\n\t{:?},\n)",
-			res,
-			String::from_utf8(tail.to_vec()).unwrap()
-		),
-		x => print!("{:?}", x),
-	}
-	print!("\n\n");
-}
-
-fn main() {
-	show(instant_vec, "foo");
-	show(instant_vec, "foo {  }");
-	show(instant_vec, "foo { bar = 'baz', quux !~ 'xyzzy', lorem = `ipsum \\n dolor \"sit amet\"` }");
-	show(instant_vec, "{lorem=~\"ipsum\"}");
-	show(instant_vec, "{}"); // should be invalid
-}
