@@ -13,7 +13,7 @@ fn show<O: Debug, E: Debug>(f: fn(&[u8]) -> IResult<&[u8], O, E>, s: &str) {
 	print!("{:?}\n", s);
 	match f(s.as_bytes()) {
 		IResult::Done(tail, res) => print!(
-			"Done(\n\t{:?},\n\t{:?},\n)",
+			"Done({:#?},\n\t{:?},\n)",
 			res,
 			String::from_utf8(tail.to_vec()).unwrap()
 		),
