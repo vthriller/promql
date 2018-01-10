@@ -21,15 +21,6 @@ pub enum Node {
 	InstantVector(Vec<LabelMatch>),
 }
 
-named!(comparison_op <Op>, alt!(
-	  tag!("==") => { |_| Op::Eq }
-	| tag!("!=") => { |_| Op::Ne }
-	| tag!("<=") => { |_| Op::Le }
-	| tag!(">=") => { |_| Op::Ge }
-	| tag!("<")  => { |_| Op::Lt }
-	| tag!(">")  => { |_| Op::Gt }
-));
-
 // foo op bar op baz → Node[Node[foo op bar] op baz]
 macro_rules! left_op {
 	// $next is the parser for operator that takes precenence, or any other kind of non-operator token sequence
@@ -69,7 +60,14 @@ macro_rules! left_op {
 
 // if you thing this kind of operator chaining makes little to no sense, think again: it actually matches 'foo' that is both '> bar' and '!= baz'.
 // or, speaking another way: comparison operators are really just filters for values in a vector, and this is a chain of filters.
-left_op!(comparison, map!(instant_vec, Node::InstantVector), comparison_op);
+left_op!(comparison, map!(instant_vec, Node::InstantVector), alt!(
+	  tag!("==") => { |_| Op::Eq }
+	| tag!("!=") => { |_| Op::Ne }
+	| tag!("<=") => { |_| Op::Le }
+	| tag!(">=") => { |_| Op::Ge }
+	| tag!("<")  => { |_| Op::Lt }
+	| tag!(">")  => { |_| Op::Gt }
+));
 
 left_op!(and_unless, comparison, alt!(
 	  tag!("and") => { |_| Op::And }
