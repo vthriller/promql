@@ -75,10 +75,10 @@ named!(label_name <String>, do_parse!(
 ));
 
 named!(label_op <Op>, alt!(
-	  tag!("=")  => { |_| Op::Eq  }
-	| tag!("!=") => { |_| Op::Ne  }
-	| tag!("=~") => { |_| Op::REq }
+	  tag!("=~") => { |_| Op::REq }
 	| tag!("!~") => { |_| Op::RNe }
+	| tag!("=")  => { |_| Op::Eq  } // should come after =~
+	| tag!("!=") => { |_| Op::Ne  }
 ));
 
 // > Label values may contain any Unicode characters.
