@@ -21,12 +21,6 @@ fn show<O: Debug, E: Debug>(f: fn(&[u8]) -> IResult<&[u8], O, E>, s: &str) {
 }
 
 fn main() {
-	show(vec::vector, "foo");
-	show(vec::vector, "foo {  }");
-	show(vec::vector, "foo { bar = 'baz', quux !~ 'xyzzy', lorem = `ipsum \\n dolor \"sit amet\"` }");
-	show(vec::vector, "{lorem=~\"ipsum\"}");
-	show(vec::vector, "{}"); // should be invalid
-
 	show(vec::vector, "foo [1m]");
 	show(vec::vector, "foo [1m] offset 5m");
 	show(vec::vector, "foo offset 5m");

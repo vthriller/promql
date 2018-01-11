@@ -1,6 +1,6 @@
 use nom::{alpha, alphanumeric, digit};
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum LabelMatchOp {
 	Eq, // =
 	Ne, // !=
@@ -8,7 +8,7 @@ pub enum LabelMatchOp {
 	RNe, // !~
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct LabelMatch {
 	name: String,
 	op: LabelMatchOp,
@@ -29,7 +29,7 @@ named!(label_set <Vec<LabelMatch>>,
 	)
 );
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct Vector {
 	labels: Vec<LabelMatch>,
 	range: Option<usize>,
@@ -167,3 +167,78 @@ named!(string <String>, alt!(
 		(s)
 	)
 ));
+
+#[cfg(test)]
+mod tests {
+	use super::*;
+	use nom::IResult::*;
+	use nom::ErrorKind;
+
+	#[test]
+	fn instant_vectors() {
+		assert_eq!(vector(&b"foo"[..]), Done(&b""[..], Vector{
+			labels: vec![
+				LabelMatch{
+					name: "__name__".to_string(),
+					op: LabelMatchOp::Eq,
+					value: "foo".to_string(),
+				},
+			],
+			range: None,
+			offset: None
+		}));
+
+		assert_eq!(vector(&b"foo { }"[..]), Done(&b""[..], Vector{
+			labels: vec![
+				LabelMatch{
+					name: "__name__".to_string(),
+					op: LabelMatchOp::Eq,
+					value: "foo".to_string(),
+				},
+			],
+			range: None,
+			offset: None
+		}));
+
+		assert_eq!(vector(&b"foo { bar = 'baz', quux !~ 'xyzzy', lorem = `ipsum \\n dolor \"sit amet\"` }"[..]), Done(&b""[..], Vector{
+			labels: vec![
+				LabelMatch{
+					name: "__name__".to_string(),
+					op: LabelMatchOp::Eq,
+					value: "foo".to_string(),
+				},
+				LabelMatch{
+					name: "bar".to_string(),
+					op: LabelMatchOp::Eq,
+					value: "baz".to_string(),
+				},
+				LabelMatch{
+					name: "quux".to_string(),
+					op: LabelMatchOp::RNe,
+					value: "xyzzy".to_string(),
+				},
+				LabelMatch{
+					name: "lorem".to_string(),
+					op: LabelMatchOp::Eq,
+					value: "ipsum \\n dolor \"sit amet\"".to_string(),
+				},
+			],
+			range: None,
+			offset: None
+		}));
+
+		assert_eq!(vector(&b"{lorem=~\"ipsum\"}"[..]), Done(&b""[..], Vector{
+			labels: vec![
+				LabelMatch{
+					name: "lorem".to_string(),
+					op: LabelMatchOp::REq,
+					value: "ipsum".to_string(),
+				},
+			],
+			range: None,
+			offset: None
+		}));
+
+		assert_eq!(vector(&b"{}"[..]), Error(ErrorKind::MapRes));
+	}
+}
