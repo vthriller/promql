@@ -244,15 +244,37 @@ mod tests {
 
 	#[test]
 	fn modified_vectors() {
-		let instant = "foo";
-		let labels = || vec![
+		modified_vectors_for_instant("foo", || vec![
 			LabelMatch{
 				name: "__name__".to_string(),
 				op: LabelMatchOp::Eq,
 				value: "foo".to_string(),
 			},
-		];
+		]);
 
+		modified_vectors_for_instant("foo {bar!~\"baz\"}", || vec![
+			LabelMatch{
+				name: "__name__".to_string(),
+				op: LabelMatchOp::Eq,
+				value: "foo".to_string(),
+			},
+			LabelMatch{
+				name: "bar".to_string(),
+				op: LabelMatchOp::RNe,
+				value: "baz".to_string(),
+			},
+		]);
+
+		modified_vectors_for_instant("{instance!=`localhost`}", || vec![
+			LabelMatch{
+				name: "instance".to_string(),
+				op: LabelMatchOp::Ne,
+				value: "localhost".to_string(),
+			},
+		]);
+	}
+
+	fn modified_vectors_for_instant(instant: &str, labels: fn() -> Vec<LabelMatch>) {
 		assert_eq!(vector(format!("{} [1m]", instant).as_bytes()), Done(&b""[..], Vector{
 			labels: labels(),
 			range: Some(60),
