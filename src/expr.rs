@@ -1,4 +1,5 @@
 use vec::{instant_vec, LabelMatch};
+use nom::{float, digit};
 
 #[derive(Debug)]
 pub enum Op {
@@ -28,6 +29,7 @@ pub enum Op {
 pub enum Node {
 	Operator(Box<Node>, Op, Box<Node>),
 	InstantVector(Vec<LabelMatch>),
+	Scalar(f32),
 }
 impl Node {
 	fn operator(x: Node, op: Op, y: Node) -> Node {
@@ -36,6 +38,16 @@ impl Node {
 }
 
 named!(atom <Node>, ws!(alt!(
+	map!(tag_no_case!("NaN"), |_| Node::Scalar(::std::f32::NAN)) // XXX define Node::NaN instead?
+	|
+	alt!(
+		// https://github.com/Geal/nom/issues/437
+		map!(float, Node::Scalar)
+		|
+		// from_utf8_unchecked() on [0-9]+ is actually totally safe
+		map_res!(digit, |x: &[u8]| unsafe { String::from_utf8_unchecked(x.to_vec()) }.parse::<f32>().map(Node::Scalar))
+	)
+	|
 	map!(instant_vec, Node::InstantVector)
 	|
 	do_parse!(

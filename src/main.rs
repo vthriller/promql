@@ -29,7 +29,7 @@ fn main() {
 	show(instant_vec, "{lorem=~\"ipsum\"}");
 	show(instant_vec, "{}"); // should be invalid
 
-	show(expr::expression, "foo > bar > baz and quux < xyzzy");
+	show(expr::expression, "foo > bar != 0 and 15.5 < xyzzy");
 	show(expr::expression, "foo + bar - baz <= quux + xyzzy");
 	show(expr::expression, "foo + bar % baz");
 	show(expr::expression, "x^y^z");
