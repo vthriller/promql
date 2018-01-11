@@ -54,30 +54,22 @@ named!(pub instant_vec <Vec<LabelMatch>>, map_res!(ws!(do_parse!(
 // > The metric name … must match the regex [a-zA-Z_:][a-zA-Z0-9_:]*.
 // > Label names … must match the regex [a-zA-Z_][a-zA-Z0-9_]*. Label names beginning with __ are reserved for internal use.
 
-named!(metric_name <String>, do_parse!(
-	x: alt!(call!(alpha) | is_a!("_:")) >>
-	xs: many0!(alt!(call!(alphanumeric) | is_a!("_:"))) >>
-	({
-		// safe to unwrap in this block: we already matched subset of valid ASCII
-		let mut s = String::from_utf8(x.to_vec()).unwrap();
-		for x in xs {
-			s.push_str(&String::from_utf8(x.to_vec()).unwrap());
-		}
-		s
-	})
+named!(metric_name <String>, map!(
+	recognize!(tuple!(
+		alt!(call!(alpha) | is_a!("_:")),
+		many0!(alt!(call!(alphanumeric) | is_a!("_:")))
+	)),
+	// safe to unwrap: we already matched subset of valid ASCII
+	|s| String::from_utf8(s.to_vec()).unwrap()
 ));
 
-named!(label_name <String>, do_parse!(
-	x: alt!(call!(alpha) | is_a!("_")) >>
-	xs: many0!(alt!(call!(alphanumeric) | is_a!("_"))) >>
-	({
-		// safe to unwrap in this block: we already matched subset of valid ASCII
-		let mut s = String::from_utf8(x.to_vec()).unwrap();
-		for x in xs {
-			s.push_str(&String::from_utf8(x.to_vec()).unwrap());
-		}
-		s
-	})
+named!(label_name <String>, map!(
+	recognize!(tuple!(
+		alt!(call!(alpha) | is_a!("_")),
+		many0!(alt!(call!(alphanumeric) | is_a!("_")))
+	)),
+	// safe to unwrap: we already matched subset of valid ASCII
+	|s| String::from_utf8(s.to_vec()).unwrap()
 ));
 
 named!(label_op <LabelMatchOp>, alt!(
