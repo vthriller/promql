@@ -21,11 +21,6 @@ fn show<O: Debug, E: Debug>(f: fn(&[u8]) -> IResult<&[u8], O, E>, s: &str) {
 }
 
 fn main() {
-	show(vec::vector, "foo [1m]");
-	show(vec::vector, "foo [1m] offset 5m");
-	show(vec::vector, "foo offset 5m");
-	show(vec::vector, "foo offset 5m [1m]"); // should be invalid
-
 	show(expr::expression, "foo > bar != 0 and 15.5 < xyzzy");
 	show(expr::expression, "foo + bar - baz <= quux + xyzzy");
 	show(expr::expression, "foo + bar % baz");

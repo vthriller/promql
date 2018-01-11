@@ -241,4 +241,40 @@ mod tests {
 
 		assert_eq!(vector(&b"{}"[..]), Error(ErrorKind::MapRes));
 	}
+
+	#[test]
+	fn modified_vectors() {
+		let labels = || vec![
+			LabelMatch{
+				name: "__name__".to_string(),
+				op: LabelMatchOp::Eq,
+				value: "foo".to_string(),
+			},
+		];
+
+		assert_eq!(vector(&b"foo [1m]"[..]), Done(&b""[..], Vector{
+			labels: labels(),
+			range: Some(60),
+			offset: None,
+		}));
+
+		assert_eq!(vector(&b"foo offset 5m"[..]), Done(&b""[..], Vector{
+			labels: labels(),
+			range: None,
+			offset: Some(300),
+		}));
+
+		assert_eq!(vector(&b"foo [1m] offset 5m"[..]), Done(&b""[..], Vector{
+			labels: labels(),
+			range: Some(60),
+			offset: Some(300),
+		}));
+
+		// FIXME should be Error()?
+		assert_eq!(vector(&b"foo offset 5m [1m]"[..]), Done(&b"[1m]"[..], Vector{
+			labels: labels(),
+			range: None,
+			offset: Some(300),
+		}));
+	}
 }
