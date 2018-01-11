@@ -1,4 +1,4 @@
-use vec::{instant_vec, LabelMatch};
+use vec::{vector, Vector};
 use nom::{float, digit};
 
 #[derive(Debug)]
@@ -28,7 +28,7 @@ pub enum Op {
 #[derive(Debug)]
 pub enum Node {
 	Operator(Box<Node>, Op, Box<Node>),
-	InstantVector(Vec<LabelMatch>),
+	InstantVector(Vector),
 	Scalar(f32),
 }
 impl Node {
@@ -48,7 +48,7 @@ named!(atom <Node>, ws!(alt!(
 		map_res!(digit, |x: &[u8]| unsafe { String::from_utf8_unchecked(x.to_vec()) }.parse::<f32>().map(Node::Scalar))
 	)
 	|
-	map!(instant_vec, Node::InstantVector)
+	map!(vector, Node::InstantVector)
 	|
 	do_parse!(
 		char!('(') >>

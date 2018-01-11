@@ -1,4 +1,4 @@
-use nom::{alpha, alphanumeric};
+use nom::{alpha, alphanumeric, digit};
 
 #[derive(Debug)]
 pub enum LabelMatchOp {
@@ -29,7 +29,14 @@ named!(label_set <Vec<LabelMatch>>,
 	)
 );
 
-named!(pub instant_vec <Vec<LabelMatch>>, map_res!(ws!(do_parse!(
+#[derive(Debug)]
+pub struct Vector {
+	labels: Vec<LabelMatch>,
+	range: Option<usize>,
+	offset: Option<usize>,
+}
+
+named!(instant_vec <Vec<LabelMatch>>, map_res!(ws!(do_parse!(
 	name: opt!(metric_name) >>
 	labels: opt!(complete!(label_set)) >>
 	({
@@ -50,6 +57,35 @@ named!(pub instant_vec <Vec<LabelMatch>>, map_res!(ws!(do_parse!(
 		} else { Ok(ret) }
 	})
 )), |x| x));
+
+named!(range_literal <usize>, map!(
+	pair!(digit, one_of!("smhdwy")),
+	|(n, suf)| {
+		// from_utf8_unchecked() on [0-9]+ is actually totally safe
+		// FIXME unwrap? FIXME copy-pasted from expr.rs
+		let n = unsafe { String::from_utf8_unchecked(n.to_vec()) }.parse::<usize>().unwrap();
+		n * match suf {
+			's' => 1,
+			'm' => 60,
+			'h' => 60 * 60,
+			'd' => 60 * 60 * 24,
+			'w' => 60 * 60 * 24 * 7,
+			'y' => 60 * 60 * 24 * 365, // XXX leap years?
+			_ => unreachable!(),
+		}
+	}
+));
+
+named!(pub vector <Vector>, ws!(do_parse!(
+	labels: instant_vec >>
+	range: opt!(complete!(
+		delimited!(char!('['), range_literal, char!(']'))
+	)) >>
+	offset: opt!(complete!(
+		ws!(preceded!(tag!("offset"), range_literal))
+	)) >>
+	(Vector {labels, range, offset})
+)));
 
 // > The metric name … must match the regex [a-zA-Z_:][a-zA-Z0-9_:]*.
 // > Label names … must match the regex [a-zA-Z_][a-zA-Z0-9_]*. Label names beginning with __ are reserved for internal use.

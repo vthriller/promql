@@ -4,8 +4,6 @@ extern crate nom;
 mod vec;
 mod expr;
 
-use vec::instant_vec;
-
 use nom::IResult;
 use std::fmt::Debug;
 
@@ -23,11 +21,16 @@ fn show<O: Debug, E: Debug>(f: fn(&[u8]) -> IResult<&[u8], O, E>, s: &str) {
 }
 
 fn main() {
-	show(instant_vec, "foo");
-	show(instant_vec, "foo {  }");
-	show(instant_vec, "foo { bar = 'baz', quux !~ 'xyzzy', lorem = `ipsum \\n dolor \"sit amet\"` }");
-	show(instant_vec, "{lorem=~\"ipsum\"}");
-	show(instant_vec, "{}"); // should be invalid
+	show(vec::vector, "foo");
+	show(vec::vector, "foo {  }");
+	show(vec::vector, "foo { bar = 'baz', quux !~ 'xyzzy', lorem = `ipsum \\n dolor \"sit amet\"` }");
+	show(vec::vector, "{lorem=~\"ipsum\"}");
+	show(vec::vector, "{}"); // should be invalid
+
+	show(vec::vector, "foo [1m]");
+	show(vec::vector, "foo [1m] offset 5m");
+	show(vec::vector, "foo offset 5m");
+	show(vec::vector, "foo offset 5m [1m]"); // should be invalid
 
 	show(expr::expression, "foo > bar != 0 and 15.5 < xyzzy");
 	show(expr::expression, "foo + bar - baz <= quux + xyzzy");
