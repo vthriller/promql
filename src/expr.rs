@@ -50,21 +50,15 @@ named!(atom <Node>, ws!(alt!(
 	|
 	map!(vector, Node::InstantVector)
 	|
-	do_parse!(
-		char!('(') >>
-		x: expression >>
-		char!(')') >>
-		(x)
-	)
+	delimited!(char!('('), expression, char!(')'))
 )));
 
 // ^ is right-associative, so we can actually keep it simple and recursive
 named!(power <Node>, ws!(do_parse!(
 	x: atom >>
-	y: opt!(complete!(do_parse!(
-		tag!("^") >>
-		y: power >>
-		(y)
+	y: opt!(complete!(preceded!(
+		tag!("^"),
+		power
 	))) >>
 	( match y {
 		None => x,
@@ -78,10 +72,9 @@ macro_rules! left_op {
 	($name:ident, $next:ident!($($next_args:tt)*), $op:ident!($($op_args:tt)*)) => (
 		named!($name <Node>, ws!(do_parse!(
 			x: $next!($($next_args)*) >>
-			ops: many0!(do_parse!(
-				op: $op!($($op_args)*) >>
-				y: $next!($($next_args)*) >>
-				((op, y))
+			ops: many0!(tuple!(
+				$op!($($op_args)*),
+				$next!($($next_args)*)
 			)) >>
 			({
 				let mut x = x;
