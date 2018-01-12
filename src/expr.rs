@@ -167,20 +167,12 @@ mod tests {
 			expression(&b"foo > bar != 0 and 15.5 < xyzzy"[..]),
 			Done(&b""[..], operator(
 				operator(
-					operator(
-						vector("foo"),
-						Gt,
-						vector("bar")
-					),
+					operator(vector("foo"), Gt, vector("bar")),
 					Ne,
 					Scalar(0.)
 				),
 				And,
-				operator(
-					Scalar(15.5),
-					Lt,
-					vector("xyzzy")
-				)
+				operator(Scalar(15.5), Lt, vector("xyzzy")),
 			))
 		);
 
