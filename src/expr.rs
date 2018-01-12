@@ -1,4 +1,4 @@
-use vec::{vector, Vector};
+use vec::{vector, label_name, Vector};
 use nom::{float, digit};
 
 #[derive(Debug, PartialEq)]
@@ -27,13 +27,23 @@ pub enum Op {
 
 #[derive(Debug, PartialEq)]
 pub enum Node {
-	Operator(Box<Node>, Op, Box<Node>),
+	Operator {
+		x: Box<Node>,
+		op: Op,
+		// Option<(ignoring?, vec of labels)>; XXX proper struct here?
+		op_mod: Option<(bool, Vec<String>)>,
+		y: Box<Node>
+	},
 	InstantVector(Vector),
 	Scalar(f32),
 }
 impl Node {
-	fn operator(x: Node, op: Op, y: Node) -> Node {
-		Node::Operator(Box::new(x), op, Box::new(y))
+	fn operator(x: Node, op: Op, op_mod: Option<(bool, Vec<String>)>, y: Node) -> Node {
+		Node::Operator {
+			x: Box::new(x),
+			op, op_mod,
+			y: Box::new(y)
+		}
 	}
 }
 
@@ -58,11 +68,13 @@ named!(power <Node>, ws!(do_parse!(
 	x: atom >>
 	y: opt!(complete!(preceded!(
 		tag!("^"),
+		// TODO operator modifiers (e.g. 'ignoring (instance)')?
+		// who's going to raise one metric's value to the power of another metric's value? for WHAT?!
 		power
 	))) >>
 	( match y {
 		None => x,
-		Some(y) => Node::operator(x, Op::Pow, y),
+		Some(y) => Node::operator(x, Op::Pow, None, y),
 	} )
 )));
 
@@ -74,12 +86,23 @@ macro_rules! left_op {
 			x: $next!($($next_args)*) >>
 			ops: many0!(tuple!(
 				$op!($($op_args)*),
+				opt!(ws!(tuple!(
+					alt!(
+						  tag!("on") => { |_| false }
+						| tag!("ignoring") => { |_| true }
+					),
+					delimited!(
+						char!('('),
+						many1!(label_name),
+						char!(')')
+					)
+				))),
 				$next!($($next_args)*)
 			)) >>
 			({
 				let mut x = x;
-				for (op, y) in ops {
-					x = Node::operator(x, op, y);
+				for (op, op_mod, y) in ops {
+					x = Node::operator(x, op, op_mod, y);
 				}
 				x
 			})
@@ -160,12 +183,12 @@ mod tests {
 			expression(&b"foo > bar != 0 and 15.5 < xyzzy"[..]),
 			Done(&b""[..], operator(
 				operator(
-					operator(vector("foo"), Gt, vector("bar")),
-					Ne,
+					operator(vector("foo"), Gt, None, vector("bar")),
+					Ne, None,
 					Scalar(0.)
 				),
-				And,
-				operator(Scalar(15.5), Lt, vector("xyzzy")),
+				And, None,
+				operator(Scalar(15.5), Lt, None, vector("xyzzy")),
 			))
 		);
 
@@ -173,12 +196,12 @@ mod tests {
 			expression(&b"foo + bar - baz <= quux + xyzzy"[..]),
 			Done(&b""[..], operator(
 				operator(
-					operator(vector("foo"), Plus, vector("bar")),
-					Minus,
+					operator(vector("foo"), Plus, None, vector("bar")),
+					Minus, None,
 					vector("baz"),
 				),
-				Le,
-				operator(vector("quux"), Plus, vector("xyzzy")),
+				Le, None,
+				operator(vector("quux"), Plus, None, vector("xyzzy")),
 			))
 		);
 
@@ -186,8 +209,8 @@ mod tests {
 			expression(&b"foo + bar % baz"[..]),
 			Done(&b""[..], operator(
 				vector("foo"),
-				Plus,
-				operator(vector("bar"), Mod, vector("baz")),
+				Plus, None,
+				operator(vector("bar"), Mod, None, vector("baz")),
 			))
 		);
 
@@ -195,17 +218,30 @@ mod tests {
 			expression(&b"x^y^z"[..]),
 			Done(&b""[..], operator(
 				vector("x"),
-				Pow,
-				operator(vector("y"), Pow, vector("z")),
+				Pow, None,
+				operator(vector("y"), Pow, None, vector("z")),
 			))
 		);
 
 		assert_eq!(
 			expression(&b"(a+b)*c"[..]),
 			Done(&b""[..], operator(
-				operator(vector("a"), Plus, vector("b")),
-				Mul,
+				operator(vector("a"), Plus, None, vector("b")),
+				Mul, None,
 				vector("c"),
+			))
+		);
+
+		assert_eq!(
+			expression(&b"foo + ignoring (instance) bar / on (cluster) baz"[..]),
+			Done(&b""[..], operator(
+				vector("foo"),
+				Plus, Some((true, vec!["instance".to_string()])),
+				operator(
+					vector("bar"),
+					Div, Some((false, vec!["cluster".to_string()])),
+					vector("baz"),
+				)
 			))
 		);
 	}
