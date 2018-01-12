@@ -15,18 +15,16 @@ pub struct LabelMatch {
 	value: String,
 }
 
-named!(label_set <Vec<LabelMatch>>,
-	delimited!(
-		char!('{'),
-		ws!(separated_list!(char!(','), do_parse!(
-			name: label_name >>
-			op: label_op >>
-			value: string >>
-			(LabelMatch { name, op, value })
-		))),
-		char!('}')
-	)
-);
+named!(label_set <Vec<LabelMatch>>, delimited!(
+	char!('{'),
+	ws!(separated_list!(char!(','), do_parse!(
+		name: label_name >>
+		op: label_op >>
+		value: string >>
+		(LabelMatch { name, op, value })
+	))),
+	char!('}')
+));
 
 #[derive(Debug, PartialEq)]
 pub struct Vector {
