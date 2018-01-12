@@ -26,22 +26,28 @@ pub enum Op {
 }
 
 #[derive(Debug, PartialEq)]
+pub enum OpMatchMod {
+	None,
+	On(Vec<String>),
+	Ignoring(Vec<String>),
+}
+
+#[derive(Debug, PartialEq)]
 pub enum Node {
 	Operator {
 		x: Box<Node>,
 		op: Op,
-		// Option<(ignoring?, vec of labels)>; XXX proper struct here?
-		op_mod: Option<(bool, Vec<String>)>,
+		match_mod: OpMatchMod,
 		y: Box<Node>
 	},
 	InstantVector(Vector),
 	Scalar(f32),
 }
 impl Node {
-	fn operator(x: Node, op: Op, op_mod: Option<(bool, Vec<String>)>, y: Node) -> Node {
+	fn operator(x: Node, op: Op, match_mod: OpMatchMod, y: Node) -> Node {
 		Node::Operator {
 			x: Box::new(x),
-			op, op_mod,
+			op, match_mod,
 			y: Box::new(y)
 		}
 	}
@@ -74,7 +80,7 @@ named!(power <Node>, ws!(do_parse!(
 	))) >>
 	( match y {
 		None => x,
-		Some(y) => Node::operator(x, Op::Pow, None, y),
+		Some(y) => Node::operator(x, Op::Pow, OpMatchMod::None, y),
 	} )
 )));
 
@@ -101,8 +107,13 @@ macro_rules! left_op {
 			)) >>
 			({
 				let mut x = x;
-				for (op, op_mod, y) in ops {
-					x = Node::operator(x, op, op_mod, y);
+				for (op, match_mod, y) in ops {
+					let match_mod = match match_mod {
+						None => OpMatchMod::None,
+						Some((true, labels)) => OpMatchMod::Ignoring(labels),
+						Some((false, labels)) => OpMatchMod::On(labels),
+					};
+					x = Node::operator(x, op, match_mod, y);
 				}
 				x
 			})
@@ -183,12 +194,12 @@ mod tests {
 			expression(&b"foo > bar != 0 and 15.5 < xyzzy"[..]),
 			Done(&b""[..], operator(
 				operator(
-					operator(vector("foo"), Gt, None, vector("bar")),
-					Ne, None,
+					operator(vector("foo"), Gt, OpMatchMod::None, vector("bar")),
+					Ne, OpMatchMod::None,
 					Scalar(0.)
 				),
-				And, None,
-				operator(Scalar(15.5), Lt, None, vector("xyzzy")),
+				And, OpMatchMod::None,
+				operator(Scalar(15.5), Lt, OpMatchMod::None, vector("xyzzy")),
 			))
 		);
 
@@ -196,12 +207,12 @@ mod tests {
 			expression(&b"foo + bar - baz <= quux + xyzzy"[..]),
 			Done(&b""[..], operator(
 				operator(
-					operator(vector("foo"), Plus, None, vector("bar")),
-					Minus, None,
+					operator(vector("foo"), Plus, OpMatchMod::None, vector("bar")),
+					Minus, OpMatchMod::None,
 					vector("baz"),
 				),
-				Le, None,
-				operator(vector("quux"), Plus, None, vector("xyzzy")),
+				Le, OpMatchMod::None,
+				operator(vector("quux"), Plus, OpMatchMod::None, vector("xyzzy")),
 			))
 		);
 
@@ -209,8 +220,8 @@ mod tests {
 			expression(&b"foo + bar % baz"[..]),
 			Done(&b""[..], operator(
 				vector("foo"),
-				Plus, None,
-				operator(vector("bar"), Mod, None, vector("baz")),
+				Plus, OpMatchMod::None,
+				operator(vector("bar"), Mod, OpMatchMod::None, vector("baz")),
 			))
 		);
 
@@ -218,16 +229,16 @@ mod tests {
 			expression(&b"x^y^z"[..]),
 			Done(&b""[..], operator(
 				vector("x"),
-				Pow, None,
-				operator(vector("y"), Pow, None, vector("z")),
+				Pow, OpMatchMod::None,
+				operator(vector("y"), Pow, OpMatchMod::None, vector("z")),
 			))
 		);
 
 		assert_eq!(
 			expression(&b"(a+b)*c"[..]),
 			Done(&b""[..], operator(
-				operator(vector("a"), Plus, None, vector("b")),
-				Mul, None,
+				operator(vector("a"), Plus, OpMatchMod::None, vector("b")),
+				Mul, OpMatchMod::None,
 				vector("c"),
 			))
 		);
@@ -236,10 +247,10 @@ mod tests {
 			expression(&b"foo + ignoring (instance) bar / on (cluster) baz"[..]),
 			Done(&b""[..], operator(
 				vector("foo"),
-				Plus, Some((true, vec!["instance".to_string()])),
+				Plus, OpMatchMod::Ignoring(vec!["instance".to_string()]),
 				operator(
 					vector("bar"),
-					Div, Some((false, vec!["cluster".to_string()])),
+					Div, OpMatchMod::On(vec!["cluster".to_string()]),
 					vector("baz"),
 				)
 			))
