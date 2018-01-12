@@ -1,7 +1,7 @@
 use vec::{vector, Vector};
 use nom::{float, digit};
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum Op {
 	Pow, // ^
 
@@ -25,7 +25,7 @@ pub enum Op {
 	Or, // or
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum Node {
 	Operator(Box<Node>, Op, Box<Node>),
 	InstantVector(Vector),
@@ -139,3 +139,48 @@ left_op!(and_unless, comparison, alt!(
 left_op!(or_op, and_unless, map!(tag!("or"), |_| Op::Or));
 
 named!(pub expression <Node>, call!(or_op));
+
+#[cfg(test)]
+mod tests {
+	use super::*;
+	use vec;
+	use nom::IResult::*;
+	use nom::ErrorKind;
+
+	// we can't make vec::Vector ourselves due to private fields,
+	// and we really don't need to 'cause that's what's already tested in the 'mod vec'
+	fn vector(expr: &[u8]) -> vec::Vector {
+		match vec::vector(expr) {
+			Done(b"", x) => x,
+			_ => panic!("failed to parse label correctly")
+		}
+	}
+
+	#[test]
+	fn whatever() {
+		let foo = vector(&b"foo"[..]);
+		let bar = vector(&b"bar"[..]);
+		let xyzzy = vector(&b"xyzzy"[..]);
+
+		assert_eq!(
+			expression(&b"foo > bar != 0 and 15.5 < xyzzy"[..]),
+			Done(&b""[..], Node::operator(
+				Node::operator(
+					Node::operator(
+						Node::InstantVector(foo),
+						Op::Gt,
+						Node::InstantVector(bar)
+					),
+					Op::Ne,
+					Node::Scalar(0.)
+				),
+				Op::And,
+				Node::operator(
+					Node::Scalar(15.5),
+					Op::Lt,
+					Node::InstantVector(xyzzy)
+				)
+			))
+		);
+	}
+}
