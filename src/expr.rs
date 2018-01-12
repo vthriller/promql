@@ -158,22 +158,27 @@ mod tests {
 
 	#[test]
 	fn whatever() {
+		use self::Node::Scalar;
+		use self::Op::*;
+		// cannot 'use self::Node::operator' for some reason
+		let operator = Node::operator;
+
 		assert_eq!(
 			expression(&b"foo > bar != 0 and 15.5 < xyzzy"[..]),
-			Done(&b""[..], Node::operator(
-				Node::operator(
-					Node::operator(
+			Done(&b""[..], operator(
+				operator(
+					operator(
 						vector("foo"),
-						Op::Gt,
+						Gt,
 						vector("bar")
 					),
-					Op::Ne,
-					Node::Scalar(0.)
+					Ne,
+					Scalar(0.)
 				),
-				Op::And,
-				Node::operator(
-					Node::Scalar(15.5),
-					Op::Lt,
+				And,
+				operator(
+					Scalar(15.5),
+					Lt,
 					vector("xyzzy")
 				)
 			))
