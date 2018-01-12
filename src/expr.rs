@@ -149,9 +149,9 @@ mod tests {
 
 	// we can't make vec::Vector ourselves due to private fields,
 	// and we really don't need to 'cause that's what's already tested in the 'mod vec'
-	fn vector(expr: &[u8]) -> vec::Vector {
+	fn vector(expr: &[u8]) -> Node {
 		match vec::vector(expr) {
-			Done(b"", x) => x,
+			Done(b"", x) => Node::InstantVector(x),
 			_ => panic!("failed to parse label correctly")
 		}
 	}
@@ -166,11 +166,7 @@ mod tests {
 			expression(&b"foo > bar != 0 and 15.5 < xyzzy"[..]),
 			Done(&b""[..], Node::operator(
 				Node::operator(
-					Node::operator(
-						Node::InstantVector(foo),
-						Op::Gt,
-						Node::InstantVector(bar)
-					),
+					Node::operator(foo, Op::Gt, bar),
 					Op::Ne,
 					Node::Scalar(0.)
 				),
@@ -178,7 +174,7 @@ mod tests {
 				Node::operator(
 					Node::Scalar(15.5),
 					Op::Lt,
-					Node::InstantVector(xyzzy)
+					xyzzy
 				)
 			))
 		);
