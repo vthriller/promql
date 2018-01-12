@@ -21,8 +21,4 @@ fn show<O: Debug, E: Debug>(f: fn(&[u8]) -> IResult<&[u8], O, E>, s: &str) {
 }
 
 fn main() {
-	show(expr::expression, "foo + bar - baz <= quux + xyzzy");
-	show(expr::expression, "foo + bar % baz");
-	show(expr::expression, "x^y^z");
-	show(expr::expression, "(a+b)*c");
 }

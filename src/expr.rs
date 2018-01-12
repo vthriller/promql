@@ -183,5 +183,45 @@ mod tests {
 				)
 			))
 		);
+
+		assert_eq!(
+			expression(&b"foo + bar - baz <= quux + xyzzy"[..]),
+			Done(&b""[..], operator(
+				operator(
+					operator(vector("foo"), Plus, vector("bar")),
+					Minus,
+					vector("baz"),
+				),
+				Le,
+				operator(vector("quux"), Plus, vector("xyzzy")),
+			))
+		);
+
+		assert_eq!(
+			expression(&b"foo + bar % baz"[..]),
+			Done(&b""[..], operator(
+				vector("foo"),
+				Plus,
+				operator(vector("bar"), Mod, vector("baz")),
+			))
+		);
+
+		assert_eq!(
+			expression(&b"x^y^z"[..]),
+			Done(&b""[..], operator(
+				vector("x"),
+				Pow,
+				operator(vector("y"), Pow, vector("z")),
+			))
+		);
+
+		assert_eq!(
+			expression(&b"(a+b)*c"[..]),
+			Done(&b""[..], operator(
+				operator(vector("a"), Plus, vector("b")),
+				Mul,
+				vector("c"),
+			))
+		);
 	}
 }
