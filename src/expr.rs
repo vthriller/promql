@@ -71,8 +71,12 @@ pub enum Node {
 	String(String),
 	/// Function call, with arguments.
 	Function(String, Vec<Node>),
+	/// Unary negation, e.g. `-b` in `a + -b`
+	Negation(Box<Node>),
 }
 impl Node {
+	// these functions are here primarily to avoid explicit mention of `Box::new()` in the code
+
 	fn operator(x: Node, op: Op, op_mod: Option<OpMod>, y: Node) -> Node {
 		Node::Operator {
 			x: Box::new(x),
@@ -80,6 +84,9 @@ impl Node {
 			op_mod,
 			y: Box::new(y)
 		}
+	}
+	fn negation(x: Node) -> Node {
+		Node::Negation(Box::new(x))
 	}
 }
 
@@ -93,6 +100,12 @@ named!(atom <Node>, ws!(alt!(
 		// from_utf8_unchecked() on [0-9]+ is actually totally safe
 		map_res!(digit, |x: &[u8]| unsafe { String::from_utf8_unchecked(x.to_vec()) }.parse::<f32>().map(Node::Scalar))
 	)
+	|
+	// unary + does nothing
+	preceded!(char!('+'), atom)
+	|
+	// unary -, well, negates whatever is following it
+	map!(preceded!(char!('-'), atom), |a| Node::negation(a))
 	|
 	// function call is parsed before vector: the latter can actually consume function name as a vector, effectively rendering the rest of the expression invalid
 	complete!(ws!(do_parse!(
@@ -244,9 +257,12 @@ mod tests {
 
 	use self::Node::{Scalar, Function};
 	use self::Op::*;
+
 	// cannot 'use self::Node::operator' for some reason
 	#[allow(non_upper_case_globals)]
 	const operator: fn(Node, Op, Option<OpMod>, Node) -> Node = Node::operator;
+	#[allow(non_upper_case_globals)]
+	const negation: fn(Node) -> Node = Node::negation;
 
 	// vector parsing is already tested in `mod vec`, so use that parser instead of crafting lengthy structs all over the test functions
 	fn vector(expr: &str) -> Node {
@@ -349,6 +365,64 @@ mod tests {
 					}),
 					vector("baz"),
 				)
+			))
+		);
+	}
+
+	#[test]
+	fn unary() {
+		assert_eq!(
+			expression(&b"a + -b"[..]),
+			Done(&b""[..], operator(
+				vector("a"),
+				Plus, None,
+				negation(vector("b")),
+			))
+		);
+
+		assert_eq!(
+			expression(&b"a ^ - 1 - b"[..]),
+			Done(&b""[..], operator(
+				operator(
+					vector("a"),
+					Pow, None,
+					negation(Scalar(1.)),
+				),
+				Minus, None,
+				vector("b"),
+			))
+		);
+
+		assert_eq!(
+			expression(&b"a ^ - (1 - b)"[..]),
+			Done(&b""[..], operator(
+				vector("a"),
+				Pow, None,
+				negation(operator(
+					Scalar(1.),
+					Minus, None,
+					vector("b"),
+				)),
+			))
+		);
+
+		// yes, these are also valid
+
+		assert_eq!(
+			expression(&b"a +++++++ b"[..]),
+			Done(&b""[..], operator(
+				vector("a"),
+				Plus, None,
+				vector("b"),
+			))
+		);
+
+		assert_eq!(
+			expression(&b"a * --+-b"[..]),
+			Done(&b""[..], operator(
+				vector("a"),
+				Mul, None,
+				negation(negation(negation(vector("b")))),
 			))
 		);
 	}
