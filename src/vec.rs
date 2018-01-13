@@ -1,13 +1,15 @@
 use nom::{alpha, alphanumeric, digit};
 
+/// Label filter operators.
 #[derive(Debug, PartialEq)]
 pub enum LabelMatchOp {
-	Eq, // =
-	Ne, // !=
-	REq, // =~
-	RNe, // !~
+	/** `=`  */ Eq,
+	/** `!=` */ Ne,
+	/** `=~` */ REq,
+	/** `!~` */ RNe,
 }
 
+/// Single label filter.
 #[derive(Debug, PartialEq)]
 pub struct LabelMatch {
 	pub name: String,
@@ -26,10 +28,41 @@ named!(label_set <Vec<LabelMatch>>, delimited!(
 	char!('}')
 ));
 
+/**
+This struct represents both instant and range vectors.
+
+Note that there's no field for metric name: not only it is optional (as in `{instance="localhost", job="foo"}`), metric names can actually be matched using special label called `__name__` (e.g. `{__name__=~"megaexporter_.+"}`), so it only makes sense to parse label names into the corresponding label filter, like so:
+
+```
+# extern crate nom;
+# extern crate promql;
+# fn main() {
+use promql::vec::*;
+use promql::vec::LabelMatchOp::*; // Eq
+use nom::IResult;
+
+assert_eq!(
+	vector("foo{bar='baz'}".as_bytes()),
+	IResult::Done(&b""[..], Vector {
+		labels: vec![
+			// this is the filter for the metric name 'foo'
+			LabelMatch { name: "__name__".to_string(), op: Eq, value: "foo".to_string(), },
+			// here go all the other filters
+			LabelMatch { name: "bar".to_string(),      op: Eq, value: "baz".to_string(), },
+		],
+		range: None, offset: None,
+	})
+);
+# }
+```
+*/
 #[derive(Debug, PartialEq)]
 pub struct Vector {
+	/// Set of label filters
 	pub labels: Vec<LabelMatch>,
+	/// Range for range vectors, in seconds, e.g. `Some(300)` for `[5m]`
 	pub range: Option<usize>,
+	/// Offset in seconds, e.g. `Some(3600)` for `offset 1h`
 	pub offset: Option<usize>,
 }
 
@@ -73,7 +106,13 @@ named!(range_literal <usize>, map!(
 	}
 ));
 
-named!(pub vector <Vector>, ws!(do_parse!(
+named_attr!(
+/**
+Parses vector expression into the [`Vector`](struct.Vector.html).
+
+This parser operates on byte sequence instead of `&str` because of the fact that PromQL, like Go, allows raw byte sequences to be included in the string literals (e.g. `{omg='∞'}` is equivalent to both `{omg='\u221e'}` and `{omg='\xe2\x88\x9e'}`).
+*/,
+pub vector <Vector>, ws!(do_parse!(
 	labels: instant_vec >>
 	range: opt!(complete!(
 		delimited!(char!('['), range_literal, char!(']'))
