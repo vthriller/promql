@@ -50,7 +50,7 @@ pub enum Node {
 		op_mod: Option<OpMod>,
 		y: Box<Node>
 	},
-	InstantVector(Vector),
+	Vector(Vector),
 	Scalar(f32),
 	Function(String, Vec<Node>),
 }
@@ -90,7 +90,7 @@ named!(atom <Node>, ws!(alt!(
 	))
 	|
 	// FIXME? things like 'and' and 'group_left' are not supposed to parse as a vector: prometheus lexes them unambiguously
-	map!(vector, Node::InstantVector)
+	map!(vector, Node::Vector)
 	|
 	delimited!(char!('('), expression, char!(')'))
 )));
@@ -219,7 +219,7 @@ mod tests {
 	// and we really don't need to 'cause that's what's already tested in the 'mod vec'
 	fn vector(expr: &str) -> Node {
 		match vec::vector(expr.as_bytes()) {
-			Done(b"", x) => Node::InstantVector(x),
+			Done(b"", x) => Node::Vector(x),
 			_ => panic!("failed to parse label correctly")
 		}
 	}
