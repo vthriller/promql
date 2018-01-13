@@ -52,6 +52,7 @@ pub enum Node {
 	},
 	InstantVector(Vector),
 	Scalar(f32),
+	Function(String, Vec<Node>),
 }
 impl Node {
 	fn operator(x: Node, op: Op, op_mod: Option<OpMod>, y: Node) -> Node {
@@ -73,6 +74,19 @@ named!(atom <Node>, ws!(alt!(
 		|
 		// from_utf8_unchecked() on [0-9]+ is actually totally safe
 		map_res!(digit, |x: &[u8]| unsafe { String::from_utf8_unchecked(x.to_vec()) }.parse::<f32>().map(Node::Scalar))
+	)
+	|
+	// function call is parsed before vector: the latter can actually consume function name as a vector, effectively rendering the rest of the expression invalid
+	do_parse!(
+		// I have no idea what counts as a function name but label_name fits well for what's built into the prometheus so let's use that
+		name: label_name >>
+		// it's up to the library user to decide whether argument list is valid or not
+		args: delimited!(
+			char!('('),
+			separated_list!(char!(','), expression),
+			char!(')')
+		) >>
+		(Node::Function(name, args))
 	)
 	|
 	// FIXME? things like 'and' and 'group_left' are not supposed to parse as a vector: prometheus lexes them unambiguously
@@ -305,6 +319,24 @@ mod tests {
 					}),
 					vector("baz"),
 				)
+			))
+		);
+
+		assert_eq!(
+			expression(&b"foo() + bar(baz) + quux(xyzzy, plough)"[..]),
+			Done(&b""[..], operator(
+				operator(
+					Node::Function("foo".to_string(), vec![]),
+					Plus, None,
+					Node::Function("bar".to_string(), vec![
+						vector("baz")
+					])
+				),
+				Plus, None,
+				Node::Function("quux".to_string(), vec![
+					vector("xyzzy"),
+					vector("plough"),
+				])
 			))
 		);
 	}
