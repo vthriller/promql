@@ -226,7 +226,7 @@ mod tests {
 
 	#[test]
 	fn whatever() {
-		use self::Node::Scalar;
+		use self::Node::{Scalar, Function};
 		use self::Op::*;
 		// cannot 'use self::Node::operator' for some reason
 		let operator = Node::operator;
@@ -326,14 +326,14 @@ mod tests {
 			expression(&b"foo() + bar(baz) + quux(xyzzy, plough)"[..]),
 			Done(&b""[..], operator(
 				operator(
-					Node::Function("foo".to_string(), vec![]),
+					Function("foo".to_string(), vec![]),
 					Plus, None,
-					Node::Function("bar".to_string(), vec![
+					Function("bar".to_string(), vec![
 						vector("baz")
 					])
 				),
 				Plus, None,
-				Node::Function("quux".to_string(), vec![
+				Function("quux".to_string(), vec![
 					vector("xyzzy"),
 					vector("plough"),
 				])
@@ -343,13 +343,13 @@ mod tests {
 		assert_eq!(
 			expression(&b"round(rate(whatever [5m]) > 0, 0.2)"[..]),
 			Done(&b""[..],
-				Node::Function("round".to_string(), vec![
+				Function("round".to_string(), vec![
 					operator(
-						Node::Function("rate".to_string(), vec![
+						Function("rate".to_string(), vec![
 							vector("whatever [5m]")
 						]),
 						Gt, None,
-						Node::Scalar(0.),
+						Scalar(0.),
 					),
 					Scalar(0.2)
 				])
