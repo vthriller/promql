@@ -75,6 +75,7 @@ named!(atom <Node>, ws!(alt!(
 		map_res!(digit, |x: &[u8]| unsafe { String::from_utf8_unchecked(x.to_vec()) }.parse::<f32>().map(Node::Scalar))
 	)
 	|
+	// FIXME? things like 'and' and 'group_left' are not supposed to parse as a vector: prometheus lexes them unambiguously
 	map!(vector, Node::InstantVector)
 	|
 	delimited!(char!('('), expression, char!(')'))
