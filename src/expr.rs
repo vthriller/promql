@@ -215,6 +215,12 @@ mod tests {
 	use nom::IResult::*;
 	use nom::ErrorKind;
 
+	use self::Node::{Scalar, Function};
+	use self::Op::*;
+	// cannot 'use self::Node::operator' for some reason
+	#[allow(non_upper_case_globals)]
+	const operator: fn(Node, Op, Option<OpMod>, Node) -> Node = Node::operator;
+
 	// we can't make vec::Vector ourselves due to private fields,
 	// and we really don't need to 'cause that's what's already tested in the 'mod vec'
 	fn vector(expr: &str) -> Node {
@@ -225,12 +231,7 @@ mod tests {
 	}
 
 	#[test]
-	fn whatever() {
-		use self::Node::{Scalar, Function};
-		use self::Op::*;
-		// cannot 'use self::Node::operator' for some reason
-		let operator = Node::operator;
-
+	fn ops() {
 		assert_eq!(
 			expression(&b"foo > bar != 0 and 15.5 < xyzzy"[..]),
 			Done(&b""[..], operator(
@@ -283,7 +284,10 @@ mod tests {
 				vector("c"),
 			))
 		);
+	}
 
+	#[test]
+	fn op_mods() {
 		assert_eq!(
 			expression(&b"foo + ignoring (instance) bar / on (cluster) baz"[..]),
 			Done(&b""[..], operator(
@@ -321,7 +325,10 @@ mod tests {
 				)
 			))
 		);
+	}
 
+	#[test]
+	fn functions() {
 		assert_eq!(
 			expression(&b"foo() + bar(baz) + quux(xyzzy, plough)"[..]),
 			Done(&b""[..], operator(
