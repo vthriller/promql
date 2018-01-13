@@ -31,6 +31,7 @@ pub enum OpModAction { RestrictTo, Ignore }
 pub struct OpMod {
 	action: OpModAction,
 	labels: Vec<String>,
+	group: Option<OpGroupMod>,
 }
 
 #[derive(Debug, PartialEq)]
@@ -46,20 +47,18 @@ pub enum Node {
 	Operator {
 		x: Box<Node>,
 		op: Op,
-		match_mod: Option<OpMod>,
-		group_mod: Option<OpGroupMod>,
+		op_mod: Option<OpMod>,
 		y: Box<Node>
 	},
 	InstantVector(Vector),
 	Scalar(f32),
 }
 impl Node {
-	fn operator(x: Node, op: Op, match_mod: Option<OpMod>, group_mod: Option<OpGroupMod>, y: Node) -> Node {
+	fn operator(x: Node, op: Op, op_mod: Option<OpMod>, y: Node) -> Node {
 		Node::Operator {
 			x: Box::new(x),
 			op,
-			match_mod,
-			group_mod,
+			op_mod,
 			y: Box::new(y)
 		}
 	}
@@ -92,7 +91,7 @@ named!(power <Node>, ws!(do_parse!(
 	))) >>
 	( match y {
 		None => x,
-		Some(y) => Node::operator(x, Op::Pow, None, None, y),
+		Some(y) => Node::operator(x, Op::Pow, None, y),
 	} )
 )));
 
@@ -113,28 +112,30 @@ macro_rules! left_op {
 						char!('('),
 						many1!(label_name),
 						char!(')')
-					)
-				))),
-				// TODO > Grouping modifiers can only be used for comparison and arithmetic. Operations as and, unless and or operations match with all possible entries in the right vector by default.
-				opt!(ws!(tuple!(
-					alt!(
-						  tag!("group_left") => { |_| OpGroupSide::Left }
-						| tag!("group_right") => { |_| OpGroupSide::Right }
 					),
-					opt!(delimited!(
-						char!('('),
-						many1!(label_name),
-						char!(')')
-					))
+					// TODO > Grouping modifiers can only be used for comparison and arithmetic. Operations as and, unless and or operations match with all possible entries in the right vector by default.
+					opt!(ws!(tuple!(
+						alt!(
+							  tag!("group_left") => { |_| OpGroupSide::Left }
+							| tag!("group_right") => { |_| OpGroupSide::Right }
+						),
+						opt!(delimited!(
+							char!('('),
+							many1!(label_name),
+							char!(')')
+						))
+					)))
 				))),
 				$next!($($next_args)*)
 			)) >>
 			({
 				let mut x = x;
-				for (op, match_mod, group_mod, y) in ops {
-					let match_mod = match_mod.map(|(action, labels)| OpMod { action, labels });
-					let group_mod = group_mod.map(|(side, labels)| OpGroupMod { side, labels: labels.unwrap_or(vec![]) });
-					x = Node::operator(x, op, match_mod, group_mod, y);
+				for (op, op_mod, y) in ops {
+					let op_mod = op_mod.map(|(action, labels, group_mod)| OpMod {
+						action, labels,
+						group: group_mod.map(|(side, labels)| OpGroupMod { side, labels: labels.unwrap_or(vec![]) }),
+					});
+					x = Node::operator(x, op, op_mod, y);
 				}
 				x
 			})
@@ -215,12 +216,12 @@ mod tests {
 			expression(&b"foo > bar != 0 and 15.5 < xyzzy"[..]),
 			Done(&b""[..], operator(
 				operator(
-					operator(vector("foo"), Gt, None, None, vector("bar")),
-					Ne, None, None,
+					operator(vector("foo"), Gt, None, vector("bar")),
+					Ne, None,
 					Scalar(0.)
 				),
-				And, None, None,
-				operator(Scalar(15.5), Lt, None, None, vector("xyzzy")),
+				And, None,
+				operator(Scalar(15.5), Lt, None, vector("xyzzy")),
 			))
 		);
 
@@ -228,12 +229,12 @@ mod tests {
 			expression(&b"foo + bar - baz <= quux + xyzzy"[..]),
 			Done(&b""[..], operator(
 				operator(
-					operator(vector("foo"), Plus, None, None, vector("bar")),
-					Minus, None, None,
+					operator(vector("foo"), Plus, None, vector("bar")),
+					Minus, None,
 					vector("baz"),
 				),
-				Le, None, None,
-				operator(vector("quux"), Plus, None, None, vector("xyzzy")),
+				Le, None,
+				operator(vector("quux"), Plus, None, vector("xyzzy")),
 			))
 		);
 
@@ -241,8 +242,8 @@ mod tests {
 			expression(&b"foo + bar % baz"[..]),
 			Done(&b""[..], operator(
 				vector("foo"),
-				Plus, None, None,
-				operator(vector("bar"), Mod, None, None, vector("baz")),
+				Plus, None,
+				operator(vector("bar"), Mod, None, vector("baz")),
 			))
 		);
 
@@ -250,16 +251,16 @@ mod tests {
 			expression(&b"x^y^z"[..]),
 			Done(&b""[..], operator(
 				vector("x"),
-				Pow, None, None,
-				operator(vector("y"), Pow, None, None, vector("z")),
+				Pow, None,
+				operator(vector("y"), Pow, None, vector("z")),
 			))
 		);
 
 		assert_eq!(
 			expression(&b"(a+b)*c"[..]),
 			Done(&b""[..], operator(
-				operator(vector("a"), Plus, None, None, vector("b")),
-				Mul, None, None,
+				operator(vector("a"), Plus, None, vector("b")),
+				Mul, None,
 				vector("c"),
 			))
 		);
@@ -269,13 +270,11 @@ mod tests {
 			Done(&b""[..], operator(
 				vector("foo"),
 				Plus,
-				Some(OpMod { action: OpModAction::Ignore, labels: vec!["instance".to_string()] }),
-				None,
+				Some(OpMod { action: OpModAction::Ignore, labels: vec!["instance".to_string()], group: None }),
 				operator(
 					vector("bar"),
 					Div,
-					Some(OpMod { action: OpModAction::RestrictTo, labels: vec!["cluster".to_string()] }),
-					None,
+					Some(OpMod { action: OpModAction::RestrictTo, labels: vec!["cluster".to_string()], group: None }),
 					vector("baz"),
 				)
 			))
@@ -286,13 +285,19 @@ mod tests {
 			Done(&b""[..], operator(
 				vector("foo"),
 				Plus,
-				Some(OpMod { action: OpModAction::Ignore, labels: vec!["instance".to_string()] }),
-				Some(OpGroupMod { side: OpGroupSide::Right, labels: vec![] }),
+				Some(OpMod {
+					action: OpModAction::Ignore,
+					labels: vec!["instance".to_string()],
+					group: Some(OpGroupMod { side: OpGroupSide::Right, labels: vec![] }),
+				}),
 				operator(
 					vector("bar"),
 					Div,
-					Some(OpMod { action: OpModAction::RestrictTo, labels: vec!["cluster".to_string()] }),
-					Some(OpGroupMod { side: OpGroupSide::Left, labels: vec!["job".to_string()] }),
+					Some(OpMod {
+						action: OpModAction::RestrictTo,
+						labels: vec!["cluster".to_string()],
+						group: Some(OpGroupMod { side: OpGroupSide::Left, labels: vec!["job".to_string()] }),
+					}),
 					vector("baz"),
 				)
 			))
