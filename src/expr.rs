@@ -1,4 +1,5 @@
 use vec::{vector, label_name, Vector};
+use str::string;
 use nom::{float, digit};
 
 /// PromQL operators
@@ -66,6 +67,8 @@ pub enum Node {
 	Vector(Vector),
 	/// Floating point number.
 	Scalar(f32),
+	/// String literal.
+	String(String),
 	/// Function call, with arguments.
 	Function(String, Vec<Node>),
 }
@@ -98,7 +101,10 @@ named!(atom <Node>, ws!(alt!(
 		// it's up to the library user to decide whether argument list is valid or not
 		args: delimited!(
 			char!('('),
-			separated_list!(char!(','), expression),
+			separated_list!(char!(','), alt!(
+				  expression => { |e| e }
+				| string => { |s| Node::String(s) }
+			)),
 			char!(')')
 		) >>
 		(Node::Function(name, args))
@@ -381,6 +387,20 @@ mod tests {
 					Scalar(0.2)
 				])
 			)
+		);
+
+		assert_eq!(
+			expression(&b"label_replace(up, 'instance', '', 'instance', '.*')"[..]),
+			Done(&b""[..], Function(
+				"label_replace".to_string(),
+				vec![
+					vector("up"),
+					Node::String("instance".to_string()),
+					Node::String("".to_string()),
+					Node::String("instance".to_string()),
+					Node::String(".*".to_string()),
+				],
+			))
 		);
 	}
 }
