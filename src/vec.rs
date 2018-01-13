@@ -170,7 +170,7 @@ named!(string <String>, alt!(
 mod tests {
 	use super::*;
 	use nom::IResult::*;
-	use nom::ErrorKind;
+	use nom::{Err, ErrorKind};
 
 	#[test]
 	fn instant_vectors() {
@@ -237,7 +237,7 @@ mod tests {
 			offset: None
 		}));
 
-		assert_eq!(vector(&b"{}"[..]), Error(ErrorKind::MapRes));
+		assert_eq!(vector(&b"{}"[..]), Error(Err::Position(ErrorKind::MapRes, &b"{}"[..])));
 	}
 
 	#[test]

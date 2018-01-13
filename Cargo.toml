@@ -5,4 +5,7 @@ version = "0.1.0"
 authors = ["vthriller <unixway.drive+rs@gmail.com>"]
 
 [dependencies]
-nom = "^3.2"
+
+[dependencies.nom]
+version = "^3.2"
+features = ["verbose-errors"]
