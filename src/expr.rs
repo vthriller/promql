@@ -115,13 +115,14 @@ named!(power <Node>, ws!(do_parse!(
 	x: atom >>
 	y: opt!(complete!(preceded!(
 		tag!("^"),
-		// TODO operator modifiers (e.g. 'ignoring (instance)')?
-		// who's going to raise one metric's value to the power of another metric's value? for WHAT?!
-		power
+		tuple!(
+			opt!(op_modifier),
+			power
+		)
 	))) >>
 	( match y {
 		None => x,
-		Some(y) => Node::operator(x, Op::Pow, None, y),
+		Some((op_mod, y)) => Node::operator(x, Op::Pow, op_mod, y),
 	} )
 )));
 
