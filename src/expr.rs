@@ -81,7 +81,7 @@ named!(atom <Node>, ws!(alt!(
 	delimited!(char!('('), expression, char!(')'))
 )));
 
-named!(op_modifier <(OpModAction, Vec<String>, Option<(OpGroupSide, Vec<String>)>)>, ws!(tuple!(
+named!(op_modifier <(OpModAction, Vec<String>, Option<OpGroupMod>)>, ws!(tuple!(
 	alt!(
 		  tag!("on") => { |_| OpModAction::RestrictTo }
 		| tag!("ignoring") => { |_| OpModAction::Ignore }
@@ -92,19 +92,20 @@ named!(op_modifier <(OpModAction, Vec<String>, Option<(OpGroupSide, Vec<String>)
 		char!(')')
 	),
 	// TODO > Grouping modifiers can only be used for comparison and arithmetic. Operations as and, unless and or operations match with all possible entries in the right vector by default.
-	opt!(ws!(tuple!(
-		alt!(
+	opt!(ws!(do_parse!(
+		side: alt!(
 			  tag!("group_left") => { |_| OpGroupSide::Left }
 			| tag!("group_right") => { |_| OpGroupSide::Right }
-		),
-		map!(
+		) >>
+		labels: map!(
 			opt!(delimited!(
 				char!('('),
 				many1!(label_name),
 				char!(')')
 			)),
 			|labels| labels.unwrap_or(vec![])
-		)
+		) >>
+		(OpGroupMod { side, labels })
 	)))
 )));
 
@@ -137,9 +138,8 @@ macro_rules! left_op {
 			({
 				let mut x = x;
 				for (op, op_mod, y) in ops {
-					let op_mod = op_mod.map(|(action, labels, group_mod)| OpMod {
-						action, labels,
-						group: group_mod.map(|(side, labels)| OpGroupMod { side, labels }),
+					let op_mod = op_mod.map(|(action, labels, group)| OpMod {
+						action, labels, group
 					});
 					x = Node::operator(x, op, op_mod, y);
 				}
