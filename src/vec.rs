@@ -10,9 +10,9 @@ pub enum LabelMatchOp {
 
 #[derive(Debug, PartialEq)]
 pub struct LabelMatch {
-	name: String,
-	op: LabelMatchOp,
-	value: String,
+	pub name: String,
+	pub op: LabelMatchOp,
+	pub value: String,
 }
 
 named!(label_set <Vec<LabelMatch>>, delimited!(
@@ -28,9 +28,9 @@ named!(label_set <Vec<LabelMatch>>, delimited!(
 
 #[derive(Debug, PartialEq)]
 pub struct Vector {
-	labels: Vec<LabelMatch>,
-	range: Option<usize>,
-	offset: Option<usize>,
+	pub labels: Vec<LabelMatch>,
+	pub range: Option<usize>,
+	pub offset: Option<usize>,
 }
 
 named!(instant_vec <Vec<LabelMatch>>, map_res!(ws!(do_parse!(

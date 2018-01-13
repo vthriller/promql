@@ -29,17 +29,17 @@ pub enum Op {
 pub enum OpModAction { RestrictTo, Ignore }
 #[derive(Debug, PartialEq)]
 pub struct OpMod {
-	action: OpModAction,
-	labels: Vec<String>,
-	group: Option<OpGroupMod>,
+	pub action: OpModAction,
+	pub labels: Vec<String>,
+	pub group: Option<OpGroupMod>,
 }
 
 #[derive(Debug, PartialEq)]
 pub enum OpGroupSide { Left, Right }
 #[derive(Debug, PartialEq)]
 pub struct OpGroupMod {
-	side: OpGroupSide,
-	labels: Vec<String>,
+	pub side: OpGroupSide,
+	pub labels: Vec<String>,
 }
 
 #[derive(Debug, PartialEq)]
@@ -221,8 +221,7 @@ mod tests {
 	#[allow(non_upper_case_globals)]
 	const operator: fn(Node, Op, Option<OpMod>, Node) -> Node = Node::operator;
 
-	// we can't make vec::Vector ourselves due to private fields,
-	// and we really don't need to 'cause that's what's already tested in the 'mod vec'
+	// vector parsing is already tested in `mod vec`, so use that parser instead of crafting lengthy structs all over the test functions
 	fn vector(expr: &str) -> Node {
 		match vec::vector(expr.as_bytes()) {
 			Done(b"", x) => Node::Vector(x),
