@@ -81,7 +81,7 @@ named!(atom <Node>, ws!(alt!(
 	delimited!(char!('('), expression, char!(')'))
 )));
 
-named!(op_modifier <(OpModAction, Vec<String>, Option<(OpGroupSide, Option<Vec<String>>)>)>, ws!(tuple!(
+named!(op_modifier <(OpModAction, Vec<String>, Option<(OpGroupSide, Vec<String>)>)>, ws!(tuple!(
 	alt!(
 		  tag!("on") => { |_| OpModAction::RestrictTo }
 		| tag!("ignoring") => { |_| OpModAction::Ignore }
@@ -97,11 +97,14 @@ named!(op_modifier <(OpModAction, Vec<String>, Option<(OpGroupSide, Option<Vec<S
 			  tag!("group_left") => { |_| OpGroupSide::Left }
 			| tag!("group_right") => { |_| OpGroupSide::Right }
 		),
-		opt!(delimited!(
-			char!('('),
-			many1!(label_name),
-			char!(')')
-		))
+		map!(
+			opt!(delimited!(
+				char!('('),
+				many1!(label_name),
+				char!(')')
+			)),
+			|labels| labels.unwrap_or(vec![])
+		)
 	)))
 )));
 
@@ -136,7 +139,7 @@ macro_rules! left_op {
 				for (op, op_mod, y) in ops {
 					let op_mod = op_mod.map(|(action, labels, group_mod)| OpMod {
 						action, labels,
-						group: group_mod.map(|(side, labels)| OpGroupMod { side, labels: labels.unwrap_or(vec![]) }),
+						group: group_mod.map(|(side, labels)| OpGroupMod { side, labels }),
 					});
 					x = Node::operator(x, op, op_mod, y);
 				}
