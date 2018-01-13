@@ -77,7 +77,7 @@ named!(atom <Node>, ws!(alt!(
 	)
 	|
 	// function call is parsed before vector: the latter can actually consume function name as a vector, effectively rendering the rest of the expression invalid
-	ws!(do_parse!(
+	complete!(ws!(do_parse!(
 		// I have no idea what counts as a function name but label_name fits well for what's built into the prometheus so let's use that
 		name: label_name >>
 		// it's up to the library user to decide whether argument list is valid or not
@@ -87,7 +87,7 @@ named!(atom <Node>, ws!(alt!(
 			char!(')')
 		) >>
 		(Node::Function(name, args))
-	))
+	)))
 	|
 	// FIXME? things like 'and' and 'group_left' are not supposed to parse as a vector: prometheus lexes them unambiguously
 	map!(vector, Node::Vector)
