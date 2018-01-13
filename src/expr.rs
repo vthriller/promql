@@ -81,6 +81,30 @@ named!(atom <Node>, ws!(alt!(
 	delimited!(char!('('), expression, char!(')'))
 )));
 
+named!(op_modifier <(OpModAction, Vec<String>, Option<(OpGroupSide, Option<Vec<String>>)>)>, ws!(tuple!(
+	alt!(
+		  tag!("on") => { |_| OpModAction::RestrictTo }
+		| tag!("ignoring") => { |_| OpModAction::Ignore }
+	),
+	delimited!(
+		char!('('),
+		many1!(label_name),
+		char!(')')
+	),
+	// TODO > Grouping modifiers can only be used for comparison and arithmetic. Operations as and, unless and or operations match with all possible entries in the right vector by default.
+	opt!(ws!(tuple!(
+		alt!(
+			  tag!("group_left") => { |_| OpGroupSide::Left }
+			| tag!("group_right") => { |_| OpGroupSide::Right }
+		),
+		opt!(delimited!(
+			char!('('),
+			many1!(label_name),
+			char!(')')
+		))
+	)))
+)));
+
 // ^ is right-associative, so we can actually keep it simple and recursive
 named!(power <Node>, ws!(do_parse!(
 	x: atom >>
@@ -104,29 +128,7 @@ macro_rules! left_op {
 			x: $next!($($next_args)*) >>
 			ops: many0!(tuple!(
 				$op!($($op_args)*),
-				opt!(ws!(tuple!(
-					alt!(
-						  tag!("on") => { |_| OpModAction::RestrictTo }
-						| tag!("ignoring") => { |_| OpModAction::Ignore }
-					),
-					delimited!(
-						char!('('),
-						many1!(label_name),
-						char!(')')
-					),
-					// TODO > Grouping modifiers can only be used for comparison and arithmetic. Operations as and, unless and or operations match with all possible entries in the right vector by default.
-					opt!(ws!(tuple!(
-						alt!(
-							  tag!("group_left") => { |_| OpGroupSide::Left }
-							| tag!("group_right") => { |_| OpGroupSide::Right }
-						),
-						opt!(delimited!(
-							char!('('),
-							many1!(label_name),
-							char!(')')
-						))
-					)))
-				))),
+				opt!(op_modifier),
 				$next!($($next_args)*)
 			)) >>
 			({
