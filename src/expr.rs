@@ -1,57 +1,72 @@
 use vec::{vector, label_name, Vector};
 use nom::{float, digit};
 
+/// PromQL operators
 #[derive(Debug, PartialEq)]
 pub enum Op {
-	Pow, // ^
+	/** `^` */ Pow,
 
-	Mul, // *
-	Div, // /
-	Mod, // %
+	/** `*` */ Mul,
+	/** `/` */ Div,
+	/** `%` */ Mod,
 
-	Plus, // +
-	Minus, // -
+	/** `+` */ Plus,
+	/** `-` */ Minus,
 
-	Eq, // ==
-	Ne, // !=
-	Lt, // <
-	Gt, // >
-	Le, // <=
-	Ge, // >=
+	/** `==` */ Eq,
+	/** `!=` */ Ne,
+	/** `<` */ Lt,
+	/** `>` */ Gt,
+	/** `<=` */ Le,
+	/** `>=` */ Ge,
 
-	And, // and
-	Unless, // unless
+	/** `and` */ And,
+	/** `unless` */ Unless,
 
-	Or, // or
+	/** `or` */ Or,
 }
 
 #[derive(Debug, PartialEq)]
 pub enum OpModAction { RestrictTo, Ignore }
+/// Vector matching operator modifier (`on (…)`/`ignoring (…)`).
 #[derive(Debug, PartialEq)]
 pub struct OpMod {
+	/// Action applied to a list of vectors; whether `on (…)` or `ignored(…)` is used after the operator.
 	pub action: OpModAction,
+	/// Set of labels to apply `action` to.
 	pub labels: Vec<String>,
+	/// Additional grouping modifier, if any.
 	pub group: Option<OpGroupMod>,
 }
 
 #[derive(Debug, PartialEq)]
 pub enum OpGroupSide { Left, Right }
+/// Vector grouping operator modifier (`group_left(…)`/`group_right(…)`).
 #[derive(Debug, PartialEq)]
 pub struct OpGroupMod {
 	pub side: OpGroupSide,
 	pub labels: Vec<String>,
 }
 
+/// AST node.
 #[derive(Debug, PartialEq)]
 pub enum Node {
+	/// Operator: `a + ignoring (foo) b`
 	Operator {
+		/// First operand.
 		x: Box<Node>,
+		/// Operator itself.
 		op: Op,
+		/// Operator modifier.
 		op_mod: Option<OpMod>,
+		/// Second operand.
 		y: Box<Node>
 	},
+	/// Time series vector.
 	Vector(Vector),
+	/// Floating point number.
 	Scalar(f32),
+	/// Function call, with arguments.
 	Function(String, Vec<Node>),
 }
 impl Node {
@@ -206,7 +221,13 @@ left_op!(and_unless, comparison, alt!(
 
 left_op!(or_op, and_unless, map!(tag!("or"), |_| Op::Or));
 
-named!(pub expression <Node>, call!(or_op));
+named_attr!(
+/**
+Parse expression string into an AST.
+
+This parser operates on byte sequence instead of `&str` because of the fact that PromQL, like Go, allows raw byte sequences to be included in the string literals (e.g. `{omg='∞'}` is equivalent to both `{omg='\u221e'}` and `{omg='\xe2\x88\x9e'}`).
+*/,
+pub expression <Node>, call!(or_op));
 
 #[cfg(test)]
 mod tests {
