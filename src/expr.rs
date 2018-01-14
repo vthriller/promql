@@ -73,8 +73,13 @@ pub enum Node {
 	Scalar(f32),
 	/// String literal.
 	String(String),
-	/// Function call, with arguments.
-	Function(String, Vec<Node>),
+	/// Function call.
+	Function {
+		// Function name.
+		name: String,
+		// Function arguments.
+		args: Vec<Node>,
+	},
 	/// Unary negation, e.g. `-b` in `a + -b`
 	Negation(Box<Node>),
 }
@@ -105,7 +110,7 @@ named!(function <Node>, ws!(do_parse!(
 		)),
 		char!(')')
 	) >>
-	(Node::Function(name, args))
+	(Node::Function { name, args })
 )));
 
 named!(atom <Node>, ws!(alt!(
@@ -482,48 +487,59 @@ mod tests {
 			expression(&b"foo() + bar(baz) + quux(xyzzy, plough)"[..]),
 			Done(&b""[..], operator(
 				operator(
-					Function("foo".to_string(), vec![]),
+					Function {
+						name: "foo".to_string(),
+						args: vec![],
+					},
 					Plus(None),
-					Function("bar".to_string(), vec![
-						vector("baz")
-					])
+					Function {
+						name: "bar".to_string(),
+						args: vec![vector("baz")],
+					},
 				),
 				Plus(None),
-				Function("quux".to_string(), vec![
-					vector("xyzzy"),
-					vector("plough"),
-				])
+				Function {
+					name: "quux".to_string(),
+					args: vec![
+						vector("xyzzy"),
+						vector("plough"),
+					]
+				},
 			))
 		);
 
 		assert_eq!(
 			expression(&b"round(rate(whatever [5m]) > 0, 0.2)"[..]),
 			Done(&b""[..],
-				Function("round".to_string(), vec![
-					operator(
-						Function("rate".to_string(), vec![
-							vector("whatever [5m]")
-						]),
-						Gt(false, None),
-						Scalar(0.),
-					),
-					Scalar(0.2)
-				])
+				Function {
+					name: "round".to_string(),
+					args: vec![
+						operator(
+							Function {
+								name: "rate".to_string(),
+								args: vec![vector("whatever [5m]")],
+							},
+							Gt(false, None),
+							Scalar(0.),
+						),
+						Scalar(0.2)
+					]
+				}
 			)
 		);
 
 		assert_eq!(
 			expression(&b"label_replace(up, 'instance', '', 'instance', '.*')"[..]),
-			Done(&b""[..], Function(
-				"label_replace".to_string(),
-				vec![
+			Done(&b""[..], Function {
+				name: "label_replace".to_string(),
+				args: vec![
 					vector("up"),
 					Node::String("instance".to_string()),
 					Node::String("".to_string()),
 					Node::String("instance".to_string()),
 					Node::String(".*".to_string()),
 				],
-			))
+			})
 		);
 	}
 }
