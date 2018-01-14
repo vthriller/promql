@@ -139,7 +139,7 @@ named!(op_modifier <OpMod>, ws!(do_parse!(
 	) >>
 	labels: delimited!(
 		char!('('),
-		many1!(label_name),
+		separated_list!(char!(','), label_name),
 		char!(')')
 	) >>
 	// TODO > Grouping modifiers can only be used for comparison and arithmetic. Operations as and, unless and or operations match with all possible entries in the right vector by default.
@@ -151,7 +151,7 @@ named!(op_modifier <OpMod>, ws!(do_parse!(
 		labels: map!(
 			opt!(delimited!(
 				char!('('),
-				many1!(label_name),
+				separated_list!(char!(','), label_name),
 				char!(')')
 			)),
 			|labels| labels.unwrap_or(vec![])
@@ -382,7 +382,7 @@ mod tests {
 		);
 
 		assert_eq!(
-			expression(&b"foo + ignoring (instance) group_right bar / on (cluster) group_left (job) baz"[..]),
+			expression(&b"foo + ignoring (instance) group_right bar / on (cluster, shmuster) group_left (job) baz"[..]),
 			Done(&b""[..], operator(
 				vector("foo"),
 				Plus(Some(OpMod {
@@ -394,7 +394,7 @@ mod tests {
 					vector("bar"),
 					Div(Some(OpMod {
 						action: OpModAction::RestrictTo,
-						labels: vec!["cluster".to_string()],
+						labels: vec!["cluster".to_string(), "shmuster".to_string()],
 						group: Some(OpGroupMod { side: OpGroupSide::Left, labels: vec!["job".to_string()] }),
 					})),
 					vector("baz"),
