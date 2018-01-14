@@ -93,6 +93,21 @@ impl Node {
 	}
 }
 
+named!(function <Node>, ws!(do_parse!(
+	// I have no idea what counts as a function name but label_name fits well for what's built into the prometheus so let's use that
+	name: label_name >>
+	// it's up to the library user to decide whether argument list is valid or not
+	args: delimited!(
+		char!('('),
+		separated_list!(char!(','), alt!(
+			  expression => { |e| e }
+			| string => { |s| Node::String(s) }
+		)),
+		char!(')')
+	) >>
+	(Node::Function(name, args))
+)));
+
 named!(atom <Node>, ws!(alt!(
 	map!(tag_no_case!("NaN"), |_| Node::Scalar(::std::f32::NAN)) // XXX define Node::NaN instead?
 	|
@@ -111,20 +126,7 @@ named!(atom <Node>, ws!(alt!(
 	map!(preceded!(char!('-'), atom), |a| Node::negation(a))
 	|
 	// function call is parsed before vector: the latter can actually consume function name as a vector, effectively rendering the rest of the expression invalid
-	complete!(ws!(do_parse!(
-		// I have no idea what counts as a function name but label_name fits well for what's built into the prometheus so let's use that
-		name: label_name >>
-		// it's up to the library user to decide whether argument list is valid or not
-		args: delimited!(
-			char!('('),
-			separated_list!(char!(','), alt!(
-				  expression => { |e| e }
-				| string => { |s| Node::String(s) }
-			)),
-			char!(')')
-		) >>
-		(Node::Function(name, args))
-	)))
+	complete!(function)
 	|
 	// FIXME? things like 'and' and 'group_left' are not supposed to parse as a vector: prometheus lexes them unambiguously
 	map!(vector, Node::Vector)
