@@ -55,6 +55,15 @@ pub struct OpGroupMod {
 	pub labels: Vec<String>,
 }
 
+#[derive(Debug, PartialEq)]
+pub enum AggregationAction { Without, By }
+#[derive(Debug, PartialEq)]
+pub struct AggregationMod {
+	// Action applied to a list of vectors; whether `by (…)` or `without (…)` is used.
+	pub action: AggregationAction,
+	pub labels: Vec<String>,
+}
+
 /// AST node.
 #[derive(Debug, PartialEq)]
 pub enum Node {
@@ -73,12 +82,14 @@ pub enum Node {
 	Scalar(f32),
 	/// String literal.
 	String(String),
-	/// Function call.
+	/// Function call or aggregation operator.
 	Function {
 		// Function name.
 		name: String,
 		// Function arguments.
 		args: Vec<Node>,
+		// Aggregation operator modifiers (`by(…)`/`without(…)`).
+		aggregation: Option<AggregationMod>,
 	},
 	/// Unary negation, e.g. `-b` in `a + -b`
 	Negation(Box<Node>),
@@ -110,7 +121,19 @@ named!(function <Node>, ws!(do_parse!(
 		)),
 		char!(')')
 	) >>
-	(Node::Function { name, args })
+	aggregation: opt!(complete!(ws!(do_parse!(
+		action: alt!(
+			  tag!("by") => { |_| AggregationAction::By }
+			| tag!("without") => { |_| AggregationAction::Without }
+		) >>
+		labels: delimited!(
+			char!('('),
+			separated_list!(char!(','), label_name),
+			char!(')')
+		) >>
+		(AggregationMod { action, labels })
+	)))) >>
+	(Node::Function { name, args, aggregation })
 )));
 
 named!(atom <Node>, ws!(alt!(
@@ -490,11 +513,13 @@ mod tests {
 					Function {
 						name: "foo".to_string(),
 						args: vec![],
+						aggregation: None,
 					},
 					Plus(None),
 					Function {
 						name: "bar".to_string(),
 						args: vec![vector("baz")],
+						aggregation: None,
 					},
 				),
 				Plus(None),
@@ -503,7 +528,8 @@ mod tests {
 					args: vec![
 						vector("xyzzy"),
 						vector("plough"),
-					]
+					],
+					aggregation: None,
 				},
 			))
 		);
@@ -518,12 +544,14 @@ mod tests {
 							Function {
 								name: "rate".to_string(),
 								args: vec![vector("whatever [5m]")],
+								aggregation: None,
 							},
 							Gt(false, None),
 							Scalar(0.),
 						),
 						Scalar(0.2)
-					]
+					],
+					aggregation: None,
 				}
 			)
 		);
@@ -539,7 +567,34 @@ mod tests {
 					Node::String("instance".to_string()),
 					Node::String(".*".to_string()),
 				],
+				aggregation: None,
 			})
+		);
+	}
+
+	#[test]
+	fn agg_functions() {
+		assert_eq!(
+			expression(&b"sum(foo) by (bar) * count(foo) without (bar)"[..]),
+			Done(&b""[..], operator(
+				Function {
+					name: "sum".to_string(),
+					args: vec![vector("foo")],
+					aggregation: Some(AggregationMod {
+						action: AggregationAction::By,
+						labels: vec!["bar".to_string()]
+					}),
+				},
+				Mul(None),
+				Function {
+					name: "count".to_string(),
+					args: vec![vector("foo")],
+					aggregation: Some(AggregationMod {
+						action: AggregationAction::Without,
+						labels: vec!["bar".to_string()]
+					}),
+				},
+			))
 		);
 	}
 }
