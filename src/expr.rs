@@ -182,12 +182,11 @@ macro_rules! left_op {
 			x: $next!($($next_args)*) >>
 			ops: many0!(tuple!(
 				$op!($($op_args)*),
-				opt!(op_modifier),
 				$next!($($next_args)*)
 			)) >>
 			({
 				let mut x = x;
-				for (op, op_mod, y) in ops {
+				for ((op, op_mod), y) in ops {
 					x = Node::operator(x, op, op_mod, y);
 				}
 				x
@@ -211,34 +210,49 @@ macro_rules! left_op {
 	); );
 }
 
-left_op!(mul_div_mod, power, alt!(
-	  tag!("*") => { |_| Op::Mul }
-	| tag!("/") => { |_| Op::Div }
-	| tag!("%") => { |_| Op::Mod }
+left_op!(mul_div_mod, power, tuple!(
+	alt!(
+		  tag!("*") => { |_| Op::Mul }
+		| tag!("/") => { |_| Op::Div }
+		| tag!("%") => { |_| Op::Mod }
+	),
+	opt!(op_modifier)
 ));
 
-left_op!(plus_minus, mul_div_mod, alt!(
-	  tag!("+") => { |_| Op::Plus }
-	| tag!("-") => { |_| Op::Minus }
+left_op!(plus_minus, mul_div_mod, tuple!(
+	alt!(
+		  tag!("+") => { |_| Op::Plus }
+		| tag!("-") => { |_| Op::Minus }
+	),
+	opt!(op_modifier)
 ));
 
 // if you thing this kind of operator chaining makes little to no sense, think again: it actually matches 'foo' that is both '> bar' and '!= baz'.
 // or, speaking another way: comparison operators are really just filters for values in a vector, and this is a chain of filters.
-left_op!(comparison, plus_minus, alt!(
-	  tag!("==") => { |_| Op::Eq }
-	| tag!("!=") => { |_| Op::Ne }
-	| tag!("<=") => { |_| Op::Le }
-	| tag!(">=") => { |_| Op::Ge }
-	| tag!("<")  => { |_| Op::Lt }
-	| tag!(">")  => { |_| Op::Gt }
+left_op!(comparison, plus_minus, tuple!(
+	alt!(
+		  tag!("==") => { |_| Op::Eq }
+		| tag!("!=") => { |_| Op::Ne }
+		| tag!("<=") => { |_| Op::Le }
+		| tag!(">=") => { |_| Op::Ge }
+		| tag!("<")  => { |_| Op::Lt }
+		| tag!(">")  => { |_| Op::Gt }
+	),
+	opt!(op_modifier)
 ));
 
-left_op!(and_unless, comparison, alt!(
-	  tag!("and") => { |_| Op::And }
-	| tag!("unless") => { |_| Op::Unless }
+left_op!(and_unless, comparison, tuple!(
+	alt!(
+		  tag!("and") => { |_| Op::And }
+		| tag!("unless") => { |_| Op::Unless }
+	),
+	opt!(op_modifier)
 ));
 
-left_op!(or_op, and_unless, map!(tag!("or"), |_| Op::Or));
+left_op!(or_op, and_unless, tuple!(
+	map!(tag!("or"), |_| Op::Or),
+	opt!(op_modifier)
+));
 
 named_attr!(
 /**
