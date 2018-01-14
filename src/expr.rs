@@ -5,26 +5,26 @@ use nom::{float, digit};
 /// PromQL operators
 #[derive(Debug, PartialEq)]
 pub enum Op {
-	/** `^` */ Pow,
+	/** `^` */ Pow(Option<OpMod>),
 
-	/** `*` */ Mul,
-	/** `/` */ Div,
-	/** `%` */ Mod,
+	/** `*` */ Mul(Option<OpMod>),
+	/** `/` */ Div(Option<OpMod>),
+	/** `%` */ Mod(Option<OpMod>),
 
-	/** `+` */ Plus,
-	/** `-` */ Minus,
+	/** `+` */ Plus(Option<OpMod>),
+	/** `-` */ Minus(Option<OpMod>),
 
-	/** `==` */ Eq,
-	/** `!=` */ Ne,
-	/** `<` */ Lt,
-	/** `>` */ Gt,
-	/** `<=` */ Le,
-	/** `>=` */ Ge,
+	/** `==` */ Eq(Option<OpMod>),
+	/** `!=` */ Ne(Option<OpMod>),
+	/** `<` */ Lt(Option<OpMod>),
+	/** `>` */ Gt(Option<OpMod>),
+	/** `<=` */ Le(Option<OpMod>),
+	/** `>=` */ Ge(Option<OpMod>),
 
-	/** `and` */ And,
-	/** `unless` */ Unless,
+	/** `and` */ And(Option<OpMod>),
+	/** `unless` */ Unless(Option<OpMod>),
 
-	/** `or` */ Or,
+	/** `or` */ Or(Option<OpMod>),
 }
 
 #[derive(Debug, PartialEq)]
@@ -58,8 +58,6 @@ pub enum Node {
 		x: Box<Node>,
 		/// Operator itself.
 		op: Op,
-		/// Operator modifier.
-		op_mod: Option<OpMod>,
 		/// Second operand.
 		y: Box<Node>
 	},
@@ -77,11 +75,10 @@ pub enum Node {
 impl Node {
 	// these functions are here primarily to avoid explicit mention of `Box::new()` in the code
 
-	fn operator(x: Node, op: Op, op_mod: Option<OpMod>, y: Node) -> Node {
+	fn operator(x: Node, op: Op, y: Node) -> Node {
 		Node::Operator {
 			x: Box::new(x),
 			op,
-			op_mod,
 			y: Box::new(y)
 		}
 	}
@@ -170,7 +167,7 @@ named!(power <Node>, ws!(do_parse!(
 	))) >>
 	( match y {
 		None => x,
-		Some((op_mod, y)) => Node::operator(x, Op::Pow, op_mod, y),
+		Some((op_mod, y)) => Node::operator(x, Op::Pow(op_mod), y),
 	} )
 )));
 
@@ -186,8 +183,8 @@ macro_rules! left_op {
 			)) >>
 			({
 				let mut x = x;
-				for ((op, op_mod), y) in ops {
-					x = Node::operator(x, op, op_mod, y);
+				for (op, y) in ops {
+					x = Node::operator(x, op, y);
 				}
 				x
 			})
@@ -210,48 +207,58 @@ macro_rules! left_op {
 	); );
 }
 
-left_op!(mul_div_mod, power, tuple!(
-	alt!(
-		  tag!("*") => { |_| Op::Mul }
-		| tag!("/") => { |_| Op::Div }
-		| tag!("%") => { |_| Op::Mod }
-	),
-	opt!(op_modifier)
+// for now I think I'd better keep alt!() with closures than return boxed closures:
+// that way I'm avoiding another match {} later down the operator parser just to construct the value
+// also, it allows me to keep list of operator literals in one place so I won't forget to change them somewhere else down the parser code in the future
+type ModdedOpMaker = Box<Fn(Option<OpMod>) -> Op>;
+
+left_op!(mul_div_mod, power, do_parse!(
+	op: alt!(
+		  tag!("*") => { |_| -> ModdedOpMaker { Box::new(Op::Mul) } }
+		| tag!("/") => { |_| -> ModdedOpMaker { Box::new(Op::Div) } }
+		| tag!("%") => { |_| -> ModdedOpMaker { Box::new(Op::Mod) } }
+	) >>
+	op_mod: opt!(op_modifier) >>
+	(op(op_mod))
 ));
 
-left_op!(plus_minus, mul_div_mod, tuple!(
-	alt!(
-		  tag!("+") => { |_| Op::Plus }
-		| tag!("-") => { |_| Op::Minus }
-	),
-	opt!(op_modifier)
+left_op!(plus_minus, mul_div_mod, do_parse!(
+	op: alt!(
+		  tag!("+") => { |_| -> ModdedOpMaker { Box::new(Op::Plus) } }
+		| tag!("-") => { |_| -> ModdedOpMaker { Box::new(Op::Minus) } }
+	) >>
+	op_mod: opt!(op_modifier) >>
+	(op(op_mod))
 ));
 
 // if you thing this kind of operator chaining makes little to no sense, think again: it actually matches 'foo' that is both '> bar' and '!= baz'.
 // or, speaking another way: comparison operators are really just filters for values in a vector, and this is a chain of filters.
-left_op!(comparison, plus_minus, tuple!(
-	alt!(
-		  tag!("==") => { |_| Op::Eq }
-		| tag!("!=") => { |_| Op::Ne }
-		| tag!("<=") => { |_| Op::Le }
-		| tag!(">=") => { |_| Op::Ge }
-		| tag!("<")  => { |_| Op::Lt }
-		| tag!(">")  => { |_| Op::Gt }
-	),
-	opt!(op_modifier)
+left_op!(comparison, plus_minus, do_parse!(
+	op: alt!(
+		  tag!("==") => { |_| -> ModdedOpMaker { Box::new(Op::Eq) } }
+		| tag!("!=") => { |_| -> ModdedOpMaker { Box::new(Op::Ne) } }
+		| tag!("<=") => { |_| -> ModdedOpMaker { Box::new(Op::Le) } }
+		| tag!(">=") => { |_| -> ModdedOpMaker { Box::new(Op::Ge) } }
+		| tag!("<")  => { |_| -> ModdedOpMaker { Box::new(Op::Lt) } }
+		| tag!(">")  => { |_| -> ModdedOpMaker { Box::new(Op::Gt) } }
+	) >>
+	op_mod: opt!(op_modifier) >>
+	(op(op_mod))
 ));
 
-left_op!(and_unless, comparison, tuple!(
-	alt!(
-		  tag!("and") => { |_| Op::And }
-		| tag!("unless") => { |_| Op::Unless }
-	),
-	opt!(op_modifier)
+left_op!(and_unless, comparison, do_parse!(
+	op: alt!(
+		  tag!("and")    => { |_| -> ModdedOpMaker { Box::new(Op::And) } }
+		| tag!("unless") => { |_| -> ModdedOpMaker { Box::new(Op::Unless) } }
+	) >>
+	op_mod: opt!(op_modifier) >>
+	(op(op_mod))
 ));
 
-left_op!(or_op, and_unless, tuple!(
-	map!(tag!("or"), |_| Op::Or),
-	opt!(op_modifier)
+left_op!(or_op, and_unless, do_parse!(
+	op: map!(tag!("or"), |_| -> ModdedOpMaker { Box::new(Op::Or) }) >>
+	op_mod: opt!(op_modifier) >>
+	(op(op_mod))
 ));
 
 named_attr!(
@@ -274,7 +281,7 @@ mod tests {
 
 	// cannot 'use self::Node::operator' for some reason
 	#[allow(non_upper_case_globals)]
-	const operator: fn(Node, Op, Option<OpMod>, Node) -> Node = Node::operator;
+	const operator: fn(Node, Op, Node) -> Node = Node::operator;
 	#[allow(non_upper_case_globals)]
 	const negation: fn(Node) -> Node = Node::negation;
 
@@ -292,12 +299,12 @@ mod tests {
 			expression(&b"foo > bar != 0 and 15.5 < xyzzy"[..]),
 			Done(&b""[..], operator(
 				operator(
-					operator(vector("foo"), Gt, None, vector("bar")),
-					Ne, None,
+					operator(vector("foo"), Gt(None), vector("bar")),
+					Ne(None),
 					Scalar(0.)
 				),
-				And, None,
-				operator(Scalar(15.5), Lt, None, vector("xyzzy")),
+				And(None),
+				operator(Scalar(15.5), Lt(None), vector("xyzzy")),
 			))
 		);
 
@@ -305,12 +312,12 @@ mod tests {
 			expression(&b"foo + bar - baz <= quux + xyzzy"[..]),
 			Done(&b""[..], operator(
 				operator(
-					operator(vector("foo"), Plus, None, vector("bar")),
-					Minus, None,
+					operator(vector("foo"), Plus(None), vector("bar")),
+					Minus(None),
 					vector("baz"),
 				),
-				Le, None,
-				operator(vector("quux"), Plus, None, vector("xyzzy")),
+				Le(None),
+				operator(vector("quux"), Plus(None), vector("xyzzy")),
 			))
 		);
 
@@ -318,8 +325,8 @@ mod tests {
 			expression(&b"foo + bar % baz"[..]),
 			Done(&b""[..], operator(
 				vector("foo"),
-				Plus, None,
-				operator(vector("bar"), Mod, None, vector("baz")),
+				Plus(None),
+				operator(vector("bar"), Mod(None), vector("baz")),
 			))
 		);
 
@@ -327,16 +334,16 @@ mod tests {
 			expression(&b"x^y^z"[..]),
 			Done(&b""[..], operator(
 				vector("x"),
-				Pow, None,
-				operator(vector("y"), Pow, None, vector("z")),
+				Pow(None),
+				operator(vector("y"), Pow(None), vector("z")),
 			))
 		);
 
 		assert_eq!(
 			expression(&b"(a+b)*c"[..]),
 			Done(&b""[..], operator(
-				operator(vector("a"), Plus, None, vector("b")),
-				Mul, None,
+				operator(vector("a"), Plus(None), vector("b")),
+				Mul(None),
 				vector("c"),
 			))
 		);
@@ -348,12 +355,10 @@ mod tests {
 			expression(&b"foo + ignoring (instance) bar / on (cluster) baz"[..]),
 			Done(&b""[..], operator(
 				vector("foo"),
-				Plus,
-				Some(OpMod { action: OpModAction::Ignore, labels: vec!["instance".to_string()], group: None }),
+				Plus(Some(OpMod { action: OpModAction::Ignore, labels: vec!["instance".to_string()], group: None })),
 				operator(
 					vector("bar"),
-					Div,
-					Some(OpMod { action: OpModAction::RestrictTo, labels: vec!["cluster".to_string()], group: None }),
+					Div(Some(OpMod { action: OpModAction::RestrictTo, labels: vec!["cluster".to_string()], group: None })),
 					vector("baz"),
 				)
 			))
@@ -363,20 +368,18 @@ mod tests {
 			expression(&b"foo + ignoring (instance) group_right bar / on (cluster) group_left (job) baz"[..]),
 			Done(&b""[..], operator(
 				vector("foo"),
-				Plus,
-				Some(OpMod {
+				Plus(Some(OpMod {
 					action: OpModAction::Ignore,
 					labels: vec!["instance".to_string()],
 					group: Some(OpGroupMod { side: OpGroupSide::Right, labels: vec![] }),
-				}),
+				})),
 				operator(
 					vector("bar"),
-					Div,
-					Some(OpMod {
+					Div(Some(OpMod {
 						action: OpModAction::RestrictTo,
 						labels: vec!["cluster".to_string()],
 						group: Some(OpGroupMod { side: OpGroupSide::Left, labels: vec!["job".to_string()] }),
-					}),
+					})),
 					vector("baz"),
 				)
 			))
@@ -389,7 +392,7 @@ mod tests {
 			expression(&b"a + -b"[..]),
 			Done(&b""[..], operator(
 				vector("a"),
-				Plus, None,
+				Plus(None),
 				negation(vector("b")),
 			))
 		);
@@ -399,10 +402,10 @@ mod tests {
 			Done(&b""[..], operator(
 				operator(
 					vector("a"),
-					Pow, None,
+					Pow(None),
 					negation(Scalar(1.)),
 				),
-				Minus, None,
+				Minus(None),
 				vector("b"),
 			))
 		);
@@ -411,10 +414,10 @@ mod tests {
 			expression(&b"a ^ - (1 - b)"[..]),
 			Done(&b""[..], operator(
 				vector("a"),
-				Pow, None,
+				Pow(None),
 				negation(operator(
 					Scalar(1.),
-					Minus, None,
+					Minus(None),
 					vector("b"),
 				)),
 			))
@@ -426,7 +429,7 @@ mod tests {
 			expression(&b"a +++++++ b"[..]),
 			Done(&b""[..], operator(
 				vector("a"),
-				Plus, None,
+				Plus(None),
 				vector("b"),
 			))
 		);
@@ -435,7 +438,7 @@ mod tests {
 			expression(&b"a * --+-b"[..]),
 			Done(&b""[..], operator(
 				vector("a"),
-				Mul, None,
+				Mul(None),
 				negation(negation(negation(vector("b")))),
 			))
 		);
@@ -448,12 +451,12 @@ mod tests {
 			Done(&b""[..], operator(
 				operator(
 					Function("foo".to_string(), vec![]),
-					Plus, None,
+					Plus(None),
 					Function("bar".to_string(), vec![
 						vector("baz")
 					])
 				),
-				Plus, None,
+				Plus(None),
 				Function("quux".to_string(), vec![
 					vector("xyzzy"),
 					vector("plough"),
@@ -469,7 +472,7 @@ mod tests {
 						Function("rate".to_string(), vec![
 							vector("whatever [5m]")
 						]),
-						Gt, None,
+						Gt(None),
 						Scalar(0.),
 					),
 					Scalar(0.2)
