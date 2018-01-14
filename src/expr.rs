@@ -14,12 +14,18 @@ pub enum Op {
 	/** `+` */ Plus(Option<OpMod>),
 	/** `-` */ Minus(Option<OpMod>),
 
-	/** `==` */ Eq(Option<OpMod>),
-	/** `!=` */ Ne(Option<OpMod>),
-	/** `<` */ Lt(Option<OpMod>),
-	/** `>` */ Gt(Option<OpMod>),
-	/** `<=` */ Le(Option<OpMod>),
-	/** `>=` */ Ge(Option<OpMod>),
+	/// `==`, with optional `bool` modifier in addition to regular operator modifiers
+	Eq(bool, Option<OpMod>),
+	/// `!=`, with optional `bool` modifier in addition to regular operator modifiers
+	Ne(bool, Option<OpMod>),
+	/// `<`, with optional `bool` modifier in addition to regular operator modifiers
+	Lt(bool, Option<OpMod>),
+	/// `>`, with optional `bool` modifier in addition to regular operator modifiers
+	Gt(bool, Option<OpMod>),
+	/// `<=`, with optional `bool` modifier in addition to regular operator modifiers
+	Le(bool, Option<OpMod>),
+	/// `>=`, with optional `bool` modifier in addition to regular operator modifiers
+	Ge(bool, Option<OpMod>),
 
 	/** `and` */ And(Option<OpMod>),
 	/** `unless` */ Unless(Option<OpMod>),
@@ -231,20 +237,23 @@ left_op!(plus_minus, mul_div_mod, do_parse!(
 	(op(op_mod))
 ));
 
+type ModdedCmpOpMaker = Box<Fn(bool, Option<OpMod>) -> Op>;
+
 // if you thing this kind of operator chaining makes little to no sense, think again: it actually matches 'foo' that is both '> bar' and '!= baz'.
 // or, speaking another way: comparison operators are really just filters for values in a vector, and this is a chain of filters.
-left_op!(comparison, plus_minus, do_parse!(
+left_op!(comparison, plus_minus, ws!(do_parse!(
 	op: alt!(
-		  tag!("==") => { |_| -> ModdedOpMaker { Box::new(Op::Eq) } }
-		| tag!("!=") => { |_| -> ModdedOpMaker { Box::new(Op::Ne) } }
-		| tag!("<=") => { |_| -> ModdedOpMaker { Box::new(Op::Le) } }
-		| tag!(">=") => { |_| -> ModdedOpMaker { Box::new(Op::Ge) } }
-		| tag!("<")  => { |_| -> ModdedOpMaker { Box::new(Op::Lt) } }
-		| tag!(">")  => { |_| -> ModdedOpMaker { Box::new(Op::Gt) } }
+		  tag!("==") => { |_| -> ModdedCmpOpMaker { Box::new(Op::Eq) } }
+		| tag!("!=") => { |_| -> ModdedCmpOpMaker { Box::new(Op::Ne) } }
+		| tag!("<=") => { |_| -> ModdedCmpOpMaker { Box::new(Op::Le) } }
+		| tag!(">=") => { |_| -> ModdedCmpOpMaker { Box::new(Op::Ge) } }
+		| tag!("<")  => { |_| -> ModdedCmpOpMaker { Box::new(Op::Lt) } }
+		| tag!(">")  => { |_| -> ModdedCmpOpMaker { Box::new(Op::Gt) } }
 	) >>
+	boolness: opt!(tag!("bool")) >>
 	op_mod: opt!(op_modifier) >>
-	(op(op_mod))
-));
+	(op(boolness.is_some(), op_mod))
+)));
 
 left_op!(and_unless, comparison, do_parse!(
 	op: alt!(
@@ -299,12 +308,12 @@ mod tests {
 			expression(&b"foo > bar != 0 and 15.5 < xyzzy"[..]),
 			Done(&b""[..], operator(
 				operator(
-					operator(vector("foo"), Gt(None), vector("bar")),
-					Ne(None),
+					operator(vector("foo"), Gt(false, None), vector("bar")),
+					Ne(false, None),
 					Scalar(0.)
 				),
 				And(None),
-				operator(Scalar(15.5), Lt(None), vector("xyzzy")),
+				operator(Scalar(15.5), Lt(false, None), vector("xyzzy")),
 			))
 		);
 
@@ -316,7 +325,7 @@ mod tests {
 					Minus(None),
 					vector("baz"),
 				),
-				Le(None),
+				Le(false, None),
 				operator(vector("quux"), Plus(None), vector("xyzzy")),
 			))
 		);
@@ -382,6 +391,19 @@ mod tests {
 					})),
 					vector("baz"),
 				)
+			))
+		);
+
+		assert_eq!(
+			expression(&b"node_cpu{cpu='cpu0'} > bool ignoring (cpu) node_cpu{cpu='cpu1'}"[..]),
+			Done(&b""[..], operator(
+				vector("node_cpu{cpu='cpu0'}"),
+				Gt(true, Some(OpMod {
+					action: OpModAction::Ignore,
+					labels: vec!["cpu".to_string()],
+					group: None,
+				})),
+				vector("node_cpu{cpu='cpu1'}"),
 			))
 		);
 	}
@@ -472,7 +494,7 @@ mod tests {
 						Function("rate".to_string(), vec![
 							vector("whatever [5m]")
 						]),
-						Gt(None),
+						Gt(false, None),
 						Scalar(0.),
 					),
 					Scalar(0.2)
