@@ -364,10 +364,18 @@ mod tests {
 			expression(&b"foo + ignoring (instance) bar / on (cluster) baz"[..]),
 			Done(&b""[..], operator(
 				vector("foo"),
-				Plus(Some(OpMod { action: OpModAction::Ignore, labels: vec!["instance".to_string()], group: None })),
+				Plus(Some(OpMod {
+					action: OpModAction::Ignore,
+					labels: vec!["instance".to_string()],
+					group: None,
+				})),
 				operator(
 					vector("bar"),
-					Div(Some(OpMod { action: OpModAction::RestrictTo, labels: vec!["cluster".to_string()], group: None })),
+					Div(Some(OpMod {
+						action: OpModAction::RestrictTo,
+						labels: vec!["cluster".to_string()],
+						group: None,
+					})),
 					vector("baz"),
 				)
 			))
