@@ -3,6 +3,7 @@ name = "promql"
 description = "PromQL parser"
 version = "0.1.0"
 authors = ["vthriller <unixway.drive+rs@gmail.com>"]
+license = "Apache-2.0"
 
 [dependencies]
 
