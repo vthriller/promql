@@ -109,30 +109,34 @@ impl Node {
 	}
 }
 
+named!(function_aggregation <AggregationMod>, complete!(ws!(do_parse!(
+	action: alt!(
+		  tag!("by") => { |_| AggregationAction::By }
+		| tag!("without") => { |_| AggregationAction::Without }
+	) >>
+	labels: delimited!(
+		char!('('),
+		separated_list!(char!(','), label_name),
+		char!(')')
+	) >>
+	(AggregationMod { action, labels })
+))));
+
+// it's up to the library user to decide whether argument list is valid or not
+named!(function_args <Vec<Node>>, delimited!(
+	char!('('),
+	separated_list!(char!(','), alt!(
+		  expression => { |e| e }
+		| string => { |s| Node::String(s) }
+	)),
+	char!(')')
+));
+
 named!(function <Node>, ws!(do_parse!(
 	// I have no idea what counts as a function name but label_name fits well for what's built into the prometheus so let's use that
 	name: label_name >>
-	// it's up to the library user to decide whether argument list is valid or not
-	args: delimited!(
-		char!('('),
-		separated_list!(char!(','), alt!(
-			  expression => { |e| e }
-			| string => { |s| Node::String(s) }
-		)),
-		char!(')')
-	) >>
-	aggregation: opt!(complete!(ws!(do_parse!(
-		action: alt!(
-			  tag!("by") => { |_| AggregationAction::By }
-			| tag!("without") => { |_| AggregationAction::Without }
-		) >>
-		labels: delimited!(
-			char!('('),
-			separated_list!(char!(','), label_name),
-			char!(')')
-		) >>
-		(AggregationMod { action, labels })
-	)))) >>
+	args: function_args >>
+	aggregation: opt!(function_aggregation) >>
 	(Node::Function { name, args, aggregation })
 )));
 
