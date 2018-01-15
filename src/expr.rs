@@ -109,16 +109,18 @@ impl Node {
 	}
 }
 
+named!(label_list <Vec<String>>, ws!(delimited!(
+	char!('('),
+	separated_list!(char!(','), label_name),
+	char!(')')
+)));
+
 named!(function_aggregation <AggregationMod>, ws!(do_parse!(
 	action: alt!(
 		  tag!("by") => { |_| AggregationAction::By }
 		| tag!("without") => { |_| AggregationAction::Without }
 	) >>
-	labels: delimited!(
-		char!('('),
-		separated_list!(char!(','), label_name),
-		char!(')')
-	) >>
+	labels: label_list >>
 	(AggregationMod { action, labels })
 )));
 
@@ -186,11 +188,7 @@ named!(op_modifier <OpMod>, ws!(do_parse!(
 		  tag!("on") => { |_| OpModAction::RestrictTo }
 		| tag!("ignoring") => { |_| OpModAction::Ignore }
 	) >>
-	labels: delimited!(
-		char!('('),
-		separated_list!(char!(','), label_name),
-		char!(')')
-	) >>
+	labels: label_list >>
 	// TODO > Grouping modifiers can only be used for comparison and arithmetic. Operations as and, unless and or operations match with all possible entries in the right vector by default.
 	group: opt!(ws!(do_parse!(
 		side: alt!(
@@ -198,11 +196,7 @@ named!(op_modifier <OpMod>, ws!(do_parse!(
 			| tag!("group_right") => { |_| OpGroupSide::Right }
 		) >>
 		labels: map!(
-			opt!(delimited!(
-				char!('('),
-				separated_list!(char!(','), label_name),
-				char!(')')
-			)),
+			opt!(label_list),
 			|labels| labels.unwrap_or(vec![])
 		) >>
 		(OpGroupMod { side, labels })
