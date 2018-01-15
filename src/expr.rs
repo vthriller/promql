@@ -135,9 +135,24 @@ named!(function_args <Vec<Node>>, ws!(delimited!(
 named!(function <Node>, ws!(do_parse!(
 	// I have no idea what counts as a function name but label_name fits well for what's built into the prometheus so let's use that
 	name: label_name >>
-	args: function_args >>
-	aggregation: opt!(function_aggregation) >>
-	(Node::Function { name, args, aggregation })
+	args_agg: alt!(
+		// both 'sum by (label, label) (foo)' and 'sum(foo) by (label, label)' are valid
+		do_parse!(
+			args: function_args >>
+			aggregation: opt!(function_aggregation) >>
+			((args, aggregation))
+		)
+		|
+		do_parse!(
+			aggregation: opt!(function_aggregation) >>
+			args: function_args >>
+			((args, aggregation))
+		)
+	) >>
+	({
+		let (args, aggregation) = args_agg;
+		Node::Function { name, args, aggregation }
+	})
 )));
 
 named!(atom <Node>, ws!(alt!(
@@ -580,6 +595,29 @@ mod tests {
 	fn agg_functions() {
 		assert_eq!(
 			expression(&b"sum(foo) by (bar) * count(foo) without (bar)"[..]),
+			Done(&b""[..], operator(
+				Function {
+					name: "sum".to_string(),
+					args: vec![vector("foo")],
+					aggregation: Some(AggregationMod {
+						action: AggregationAction::By,
+						labels: vec!["bar".to_string()]
+					}),
+				},
+				Mul(None),
+				Function {
+					name: "count".to_string(),
+					args: vec![vector("foo")],
+					aggregation: Some(AggregationMod {
+						action: AggregationAction::Without,
+						labels: vec!["bar".to_string()]
+					}),
+				},
+			))
+		);
+
+		assert_eq!(
+			expression(&b"sum by (bar) (foo) * count without (bar) (foo)"[..]),
 			Done(&b""[..], operator(
 				Function {
 					name: "sum".to_string(),
