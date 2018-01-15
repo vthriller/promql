@@ -123,14 +123,14 @@ named!(function_aggregation <AggregationMod>, complete!(ws!(do_parse!(
 ))));
 
 // it's up to the library user to decide whether argument list is valid or not
-named!(function_args <Vec<Node>>, delimited!(
+named!(function_args <Vec<Node>>, ws!(delimited!(
 	char!('('),
 	separated_list!(char!(','), alt!(
 		  expression => { |e| e }
 		| string => { |s| Node::String(s) }
 	)),
 	char!(')')
-));
+)));
 
 named!(function <Node>, ws!(do_parse!(
 	// I have no idea what counts as a function name but label_name fits well for what's built into the prometheus so let's use that
