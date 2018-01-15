@@ -137,7 +137,7 @@ named!(metric_name <String>, map!(
 ));
 
 // XXX nom does not allow pub(crate) here
-named!(pub label_name <String>, map!(
+named_attr!(#[doc(hidden)], pub label_name <String>, map!(
 	recognize!(tuple!(
 		alt!(call!(alpha) | is_a!("_")),
 		many0!(alt!(call!(alphanumeric) | is_a!("_")))
