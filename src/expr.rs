@@ -109,7 +109,7 @@ impl Node {
 	}
 }
 
-named!(function_aggregation <AggregationMod>, complete!(ws!(do_parse!(
+named!(function_aggregation <AggregationMod>, ws!(do_parse!(
 	action: alt!(
 		  tag!("by") => { |_| AggregationAction::By }
 		| tag!("without") => { |_| AggregationAction::Without }
@@ -120,7 +120,7 @@ named!(function_aggregation <AggregationMod>, complete!(ws!(do_parse!(
 		char!(')')
 	) >>
 	(AggregationMod { action, labels })
-))));
+)));
 
 // it's up to the library user to decide whether argument list is valid or not
 named!(function_args <Vec<Node>>, ws!(delimited!(
@@ -139,7 +139,7 @@ named!(function <Node>, ws!(do_parse!(
 		// both 'sum by (label, label) (foo)' and 'sum(foo) by (label, label)' are valid
 		do_parse!(
 			args: function_args >>
-			aggregation: opt!(function_aggregation) >>
+			aggregation: opt!(complete!(function_aggregation)) >>
 			((args, aggregation))
 		)
 		|
