@@ -256,61 +256,37 @@ macro_rules! left_op {
 	); );
 }
 
-// for now I think I'd better keep alt!() with closures than return boxed closures:
-// that way I'm avoiding another match {} later down the operator parser just to construct the value
-// also, it allows me to keep list of operator literals in one place so I won't forget to change them somewhere else down the parser code in the future
-type ModdedOpMaker = Box<Fn(Option<OpMod>) -> Op>;
-
-left_op!(mul_div_mod, power, do_parse!(
-	op: alt!(
-		  tag!("*") => { |_| -> ModdedOpMaker { Box::new(Op::Mul) } }
-		| tag!("/") => { |_| -> ModdedOpMaker { Box::new(Op::Div) } }
-		| tag!("%") => { |_| -> ModdedOpMaker { Box::new(Op::Mod) } }
-	) >>
-	op_mod: opt!(op_modifier) >>
-	(op(op_mod))
+left_op!(mul_div_mod, power, alt!(
+	  preceded!(tag!("*"), opt!(op_modifier)) => { |op_mod| Op::Mul(op_mod) }
+	| preceded!(tag!("/"), opt!(op_modifier)) => { |op_mod| Op::Div(op_mod) }
+	| preceded!(tag!("%"), opt!(op_modifier)) => { |op_mod| Op::Mod(op_mod) }
 ));
 
-left_op!(plus_minus, mul_div_mod, do_parse!(
-	op: alt!(
-		  tag!("+") => { |_| -> ModdedOpMaker { Box::new(Op::Plus) } }
-		| tag!("-") => { |_| -> ModdedOpMaker { Box::new(Op::Minus) } }
-	) >>
-	op_mod: opt!(op_modifier) >>
-	(op(op_mod))
+left_op!(plus_minus, mul_div_mod, alt!(
+	  preceded!(tag!("+"), opt!(op_modifier)) => { |op_mod| Op::Plus(op_mod) }
+	| preceded!(tag!("-"), opt!(op_modifier)) => { |op_mod| Op::Minus(op_mod) }
 ));
-
-type ModdedCmpOpMaker = Box<Fn(bool, Option<OpMod>) -> Op>;
 
 // if you thing this kind of operator chaining makes little to no sense, think again: it actually matches 'foo' that is both '> bar' and '!= baz'.
 // or, speaking another way: comparison operators are really just filters for values in a vector, and this is a chain of filters.
-left_op!(comparison, plus_minus, ws!(do_parse!(
-	op: alt!(
-		  tag!("==") => { |_| -> ModdedCmpOpMaker { Box::new(Op::Eq) } }
-		| tag!("!=") => { |_| -> ModdedCmpOpMaker { Box::new(Op::Ne) } }
-		| tag!("<=") => { |_| -> ModdedCmpOpMaker { Box::new(Op::Le) } }
-		| tag!(">=") => { |_| -> ModdedCmpOpMaker { Box::new(Op::Ge) } }
-		| tag!("<")  => { |_| -> ModdedCmpOpMaker { Box::new(Op::Lt) } }
-		| tag!(">")  => { |_| -> ModdedCmpOpMaker { Box::new(Op::Gt) } }
-	) >>
-	boolness: opt!(tag!("bool")) >>
-	op_mod: opt!(op_modifier) >>
-	(op(boolness.is_some(), op_mod))
-)));
+left_op!(comparison, plus_minus, alt!(
+	  preceded!(tag!("=="), ws!(tuple!(opt!(tag!("bool")), opt!(op_modifier)))) => { |(boolness, op_mod): (Option<_>, _)| Op::Eq(boolness.is_some(), op_mod) }
+	| preceded!(tag!("!="), ws!(tuple!(opt!(tag!("bool")), opt!(op_modifier)))) => { |(boolness, op_mod): (Option<_>, _)| Op::Ne(boolness.is_some(), op_mod) }
+	| preceded!(tag!("<="), ws!(tuple!(opt!(tag!("bool")), opt!(op_modifier)))) => { |(boolness, op_mod): (Option<_>, _)| Op::Le(boolness.is_some(), op_mod) }
+	| preceded!(tag!(">="), ws!(tuple!(opt!(tag!("bool")), opt!(op_modifier)))) => { |(boolness, op_mod): (Option<_>, _)| Op::Ge(boolness.is_some(), op_mod) }
+	| preceded!(tag!("<"),  ws!(tuple!(opt!(tag!("bool")), opt!(op_modifier)))) => { |(boolness, op_mod): (Option<_>, _)| Op::Lt(boolness.is_some(), op_mod) }
+	| preceded!(tag!(">"),  ws!(tuple!(opt!(tag!("bool")), opt!(op_modifier)))) => { |(boolness, op_mod): (Option<_>, _)| Op::Gt(boolness.is_some(), op_mod) }
+));
 
-left_op!(and_unless, comparison, do_parse!(
-	op: alt!(
-		  tag!("and")    => { |_| -> ModdedOpMaker { Box::new(Op::And) } }
-		| tag!("unless") => { |_| -> ModdedOpMaker { Box::new(Op::Unless) } }
-	) >>
-	op_mod: opt!(op_modifier) >>
-	(op(op_mod))
+left_op!(and_unless, comparison, alt!(
+	  preceded!(tag!("and"), opt!(op_modifier)) => { |op_mod| Op::And(op_mod) }
+	| preceded!(tag!("unless"), opt!(op_modifier)) => { |op_mod| Op::Unless(op_mod) }
 ));
 
 left_op!(or_op, and_unless, do_parse!(
-	op: map!(tag!("or"), |_| -> ModdedOpMaker { Box::new(Op::Or) }) >>
+	tag!("or") >>
 	op_mod: opt!(op_modifier) >>
-	(op(op_mod))
+	(Op::Or(op_mod))
 ));
 
 named_attr!(
