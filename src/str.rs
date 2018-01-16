@@ -50,3 +50,28 @@ named!(pub string <String>, alt!(
 		(s)
 	)
 ));
+
+#[cfg(test)]
+mod tests {
+	use super::*;
+	use nom::IResult::*;
+	use nom::{Err, ErrorKind};
+
+	#[test]
+	fn strings() {
+		assert_eq!(
+			string(&b"\"lorem ipsum \\\"dolor\\nsit amet\\\"\""[..]),
+			Done(&b""[..], "lorem ipsum \"dolor\nsit amet\"".to_string())
+		);
+
+		assert_eq!(
+			string(&b"'lorem ipsum \\'dolor\\nsit\\tamet\\''"[..]),
+			Done(&b""[..], "lorem ipsum 'dolor\nsit\tamet'".to_string())
+		);
+
+		assert_eq!(
+			string(&b"`lorem ipsum \\\"dolor\\nsit\\tamet\\\"`"[..]),
+			Done(&b""[..], "lorem ipsum \\\"dolor\\nsit\\tamet\\\"".to_string())
+		);
+	}
+}
