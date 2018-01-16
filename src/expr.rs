@@ -270,17 +270,12 @@ macro_rules! with_modifier {
 
 macro_rules! with_bool_modifier {
 	($i:expr, $literal:expr, $op:expr) => (
-		map!(
-			$i,
-			preceded!(
-				tag!($literal),
-				ws!(tuple!(
-					opt!(tag!("bool")),
-					opt!(op_modifier)
-				))
-			),
-			|(boolness, op_mod)| $op(boolness.is_some(), op_mod)
-		)
+		ws!($i, do_parse!(
+			tag!($literal) >>
+			boolness: opt!(tag!("bool")) >>
+			op_mod: opt!(op_modifier) >>
+			($op(boolness.is_some(), op_mod))
+		))
 	)
 }
 
