@@ -230,16 +230,13 @@ named!(op_modifier <OpMod>, ws!(do_parse!(
 // ^ is right-associative, so we can actually keep it simple and recursive
 named!(power <Node>, ws!(do_parse!(
 	x: atom >>
-	y: opt!(complete!(preceded!(
-		tag!("^"),
-		tuple!(
-			opt!(op_modifier),
-			power
-		)
+	y: opt!(complete!(tuple!(
+		with_modifier!("^", Op::Pow),
+		power
 	))) >>
 	( match y {
 		None => x,
-		Some((op_mod, y)) => Node::operator(x, Op::Pow(op_mod), y),
+		Some((op, y)) => Node::operator(x, op, y),
 	} )
 )));
 
