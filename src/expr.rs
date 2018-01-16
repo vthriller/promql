@@ -183,6 +183,29 @@ named!(atom <Node>, ws!(alt!(
 	delimited!(char!('('), expression, char!(')'))
 )));
 
+macro_rules! with_modifier {
+	// this macro mimicks another parser macros, hence implicit input argument, $i
+	// for comparison, see nom's call!()
+	($i:expr, $literal:expr, $op:expr) => (
+		map!(
+			$i,
+			preceded!(tag!($literal), opt!(op_modifier)),
+			|op_mod| $op(op_mod)
+		)
+	)
+}
+
+macro_rules! with_bool_modifier {
+	($i:expr, $literal:expr, $op:expr) => (
+		ws!($i, do_parse!(
+			tag!($literal) >>
+			boolness: opt!(tag!("bool")) >>
+			op_mod: opt!(op_modifier) >>
+			($op(boolness.is_some(), op_mod))
+		))
+	)
+}
+
 named!(op_modifier <OpMod>, ws!(do_parse!(
 	action: alt!(
 		  tag!("on") => { |_| OpModAction::RestrictTo }
@@ -254,29 +277,6 @@ macro_rules! left_op {
 		call!($next),
 		call!($op)
 	); );
-}
-
-macro_rules! with_modifier {
-	// this macro mimicks another parser macros, hence implicit input argument, $i
-	// for comparison, see nom's call!()
-	($i:expr, $literal:expr, $op:expr) => (
-		map!(
-			$i,
-			preceded!(tag!($literal), opt!(op_modifier)),
-			|op_mod| $op(op_mod)
-		)
-	)
-}
-
-macro_rules! with_bool_modifier {
-	($i:expr, $literal:expr, $op:expr) => (
-		ws!($i, do_parse!(
-			tag!($literal) >>
-			boolness: opt!(tag!("bool")) >>
-			op_mod: opt!(op_modifier) >>
-			($op(boolness.is_some(), op_mod))
-		))
-	)
 }
 
 left_op!(mul_div_mod, power, alt!(
