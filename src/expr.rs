@@ -268,6 +268,22 @@ macro_rules! with_modifier {
 	)
 }
 
+macro_rules! with_bool_modifier {
+	($i:expr, $literal:expr, $op:expr) => (
+		map!(
+			$i,
+			preceded!(
+				tag!($literal),
+				ws!(tuple!(
+					opt!(tag!("bool")),
+					opt!(op_modifier)
+				))
+			),
+			|(boolness, op_mod)| $op(boolness.is_some(), op_mod)
+		)
+	)
+}
+
 left_op!(mul_div_mod, power, alt!(
 	  with_modifier!("*", Op::Mul)
 	| with_modifier!("/", Op::Div)
@@ -282,12 +298,12 @@ left_op!(plus_minus, mul_div_mod, alt!(
 // if you thing this kind of operator chaining makes little to no sense, think again: it actually matches 'foo' that is both '> bar' and '!= baz'.
 // or, speaking another way: comparison operators are really just filters for values in a vector, and this is a chain of filters.
 left_op!(comparison, plus_minus, alt!(
-	  preceded!(tag!("=="), ws!(tuple!(opt!(tag!("bool")), opt!(op_modifier)))) => { |(boolness, op_mod): (Option<_>, _)| Op::Eq(boolness.is_some(), op_mod) }
-	| preceded!(tag!("!="), ws!(tuple!(opt!(tag!("bool")), opt!(op_modifier)))) => { |(boolness, op_mod): (Option<_>, _)| Op::Ne(boolness.is_some(), op_mod) }
-	| preceded!(tag!("<="), ws!(tuple!(opt!(tag!("bool")), opt!(op_modifier)))) => { |(boolness, op_mod): (Option<_>, _)| Op::Le(boolness.is_some(), op_mod) }
-	| preceded!(tag!(">="), ws!(tuple!(opt!(tag!("bool")), opt!(op_modifier)))) => { |(boolness, op_mod): (Option<_>, _)| Op::Ge(boolness.is_some(), op_mod) }
-	| preceded!(tag!("<"),  ws!(tuple!(opt!(tag!("bool")), opt!(op_modifier)))) => { |(boolness, op_mod): (Option<_>, _)| Op::Lt(boolness.is_some(), op_mod) }
-	| preceded!(tag!(">"),  ws!(tuple!(opt!(tag!("bool")), opt!(op_modifier)))) => { |(boolness, op_mod): (Option<_>, _)| Op::Gt(boolness.is_some(), op_mod) }
+	  with_bool_modifier!("==", Op::Eq)
+	| with_bool_modifier!("!=", Op::Ne)
+	| with_bool_modifier!("<=", Op::Le)
+	| with_bool_modifier!(">=", Op::Ge)
+	| with_bool_modifier!("<",  Op::Lt)
+	| with_bool_modifier!(">",  Op::Gt)
 ));
 
 left_op!(and_unless, comparison, alt!(
