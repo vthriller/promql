@@ -11,19 +11,16 @@ TODO? should we really care whether \' is used in ""-strings or vice versa? (Pro
 */
 named!(rune <char>, preceded!(char!('\\'),
         alt!(
-		map!(one_of!("abfnrtv\\'\""), |c| match c {
-			'a' => '\u{0007}',
-			'b' => '\u{0008}',
-			'f' => '\u{000c}',
-			'n' => '\n',
-			'r' => '\r',
-			't' => '\t',
-			'v' => '\u{000b}',
-			'\\' => '\\',
-			'\'' => '\'',
-			'"' => '"',
-			_ => unreachable!(),
-		})
+		  char!('a') => { |_| '\u{0007}' }
+		| char!('b') => { |_| '\u{0008}' }
+		| char!('f') => { |_| '\u{000c}' }
+		| char!('n') => { |_| '\n' }
+		| char!('r') => { |_| '\r' }
+		| char!('t') => { |_| '\t' }
+		| char!('v') => { |_| '\u{000b}' }
+		| char!('\\') => { |_| '\\' }
+		| char!('\'') => { |_| '\'' }
+		| char!('"') => { |_| '"' }
 	)
 ));
 
