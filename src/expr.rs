@@ -259,24 +259,24 @@ macro_rules! left_op {
 macro_rules! with_modifier {
 	// this macro mimicks another parser macros, hence implicit input argument, $i
 	// for comparison, see nom's call!()
-	($i:expr, $parser:ident!($($parser_args:tt)*), $op:expr) => (
+	($i:expr, $literal:expr, $op:expr) => (
 		map!(
 			$i,
-			preceded!($parser!($($parser_args)*), opt!(op_modifier)),
+			preceded!(tag!($literal), opt!(op_modifier)),
 			|op_mod| $op(op_mod)
 		)
 	)
 }
 
 left_op!(mul_div_mod, power, alt!(
-	  with_modifier!(tag!("*"), Op::Mul)
-	| with_modifier!(tag!("/"), Op::Div)
-	| with_modifier!(tag!("%"), Op::Mod)
+	  with_modifier!("*", Op::Mul)
+	| with_modifier!("/", Op::Div)
+	| with_modifier!("%", Op::Mod)
 ));
 
 left_op!(plus_minus, mul_div_mod, alt!(
-	  with_modifier!(tag!("+"), Op::Plus)
-	| with_modifier!(tag!("-"), Op::Minus)
+	  with_modifier!("+", Op::Plus)
+	| with_modifier!("-", Op::Minus)
 ));
 
 // if you thing this kind of operator chaining makes little to no sense, think again: it actually matches 'foo' that is both '> bar' and '!= baz'.
@@ -291,11 +291,11 @@ left_op!(comparison, plus_minus, alt!(
 ));
 
 left_op!(and_unless, comparison, alt!(
-	  with_modifier!(tag!("and"), Op::And)
-	| with_modifier!(tag!("unless"), Op::Unless)
+	  with_modifier!("and", Op::And)
+	| with_modifier!("unless", Op::Unless)
 ));
 
-left_op!(or_op, and_unless, with_modifier!(tag!("or"), Op::Or));
+left_op!(or_op, and_unless, with_modifier!("or", Op::Or));
 
 named_attr!(
 /**
