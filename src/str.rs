@@ -1,9 +1,7 @@
 // > Label values may contain any Unicode characters.
 // > PromQL follows the same [escaping rules as Go](https://golang.org/ref/spec#String_literals).
 
-/* TODO
-\UXXXXXXXX (std::char::from_u32)
-
+/*
 TODO? should we really care whether \' is used in ""-strings or vice versa? (Prometheus itself does…)
 */
 
@@ -43,6 +41,13 @@ named!(rune <Vec<u8>>,
 			// go does not allow invalid unicode scalars (surrogates, chars beyond U+10ffff), and the same applies to from_u32()
 			| map_opt!(
 				preceded!(char!('u'), fixed_length_radix!(u32, 4, 16)),
+				|n| ::std::char::from_u32(n).map(|c| {
+					let mut tmp = [0; 4];
+					c.encode_utf8(&mut tmp).as_bytes().to_vec()
+				})
+			)
+			| map_opt!(
+				preceded!(char!('U'), fixed_length_radix!(u32, 8, 16)),
 				|n| ::std::char::from_u32(n).map(|c| {
 					let mut tmp = [0; 4];
 					c.encode_utf8(&mut tmp).as_bytes().to_vec()
@@ -128,6 +133,17 @@ mod tests {
 		assert_eq!(
 			rune(&b"\\uD801"[..]),
 			Error(Err::Position(ErrorKind::Alt, &b"uD801"[..]))
+		);
+
+		assert_eq!(
+			rune(&b"\\U00010330"[..]),
+			Done(&b""[..], "\u{10330}".as_bytes().to_vec())
+		);
+
+		// out of range
+		assert_eq!(
+			rune(&b"\\UdeadDEAD"[..]),
+			Error(Err::Position(ErrorKind::Alt, &b"UdeadDEAD"[..]))
 		);
 	}
 }
