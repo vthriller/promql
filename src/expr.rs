@@ -165,7 +165,13 @@ named!(atom <Node>, ws!(alt!(
 		map!(complete!(float), Node::Scalar)
 		|
 		// from_utf8_unchecked() on [0-9]+ is actually totally safe
-		map_res!(digit, |x: &[u8]| unsafe { String::from_utf8_unchecked(x.to_vec()) }.parse::<f32>().map(Node::Scalar))
+		map_res!(
+			recognize!(tuple!(
+				opt!(char!('-')),
+				digit
+			)),
+			|x: &[u8]| unsafe { String::from_utf8_unchecked(x.to_vec()) }.parse::<f32>().map(Node::Scalar)
+		)
 	)
 	|
 	// unary + does nothing
@@ -344,7 +350,7 @@ mod tests {
 		// I wonder how "0" does ever parse correctly in ops()…
 
 		assert_eq!(expression(&b"123"[..]),      Done(&b""[..], Scalar(123.)));
-		//assert_eq!(expression(&b"-123"[..]),     Done(&b""[..], Scalar(-123.)));
+		assert_eq!(expression(&b"-123"[..]),     Done(&b""[..], Scalar(-123.)));
 
 		//assert_eq!(expression(&b"123."[..]),     Done(&b""[..], Scalar(123.)));
 		//assert_eq!(expression(&b"-123."[..]),    Done(&b""[..], Scalar(-123.)));
