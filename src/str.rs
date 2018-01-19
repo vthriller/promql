@@ -93,9 +93,10 @@ macro_rules! chars_except {
 
 named!(pub string <String>, map_res!(
 	alt!(
-		delimited!(char!('"'), chars_except!("\"\\"), char!('"'))
+		// newlines are not allowed in interpreted quotes, but are totally fine in raw string literals
+		delimited!(char!('"'), chars_except!("\n\"\\"), char!('"'))
 		|
-		delimited!(char!('\''), chars_except!("'\\"), char!('\''))
+		delimited!(char!('\''), chars_except!("\n'\\"), char!('\''))
 		|
 		// raw string literals, where "backslashes have no special meaning"
 		delimited!(char!('`'), is_not_v!("`"), char!('`') )
@@ -124,6 +125,18 @@ mod tests {
 		assert_eq!(
 			string(&b"`lorem ipsum \\\"dolor\\nsit\\tamet\\\"`"[..]),
 			Done(&b""[..], "lorem ipsum \\\"dolor\\nsit\\tamet\\\"".to_string())
+		);
+
+		// literal, non-escaped newlines
+
+		assert_eq!(
+			string(&b"'this\nis not invalid'"[..]),
+			Error(Err::Position(ErrorKind::Alt, &b"'this\nis not invalid'"[..]))
+		);
+
+		assert_eq!(
+			string(&b"`but this\nis`"[..]),
+			Done(&b""[..], "but this\nis".to_string())
 		);
 	}
 
