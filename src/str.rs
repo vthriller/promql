@@ -27,18 +27,27 @@ named!(rune <Vec<u8>>, map!(
 	|c| vec![c]
 ));
 
+// none_of!() returns &[char]
+// is_not!() returns &[u8]
+// what we need here is Vec<u8>
+macro_rules! is_not_v {
+	($i:expr, $arg:expr) => {
+		map!($i, is_not!($arg), |bytes| bytes.to_vec())
+	}
+}
+
 named!(pub string <String>, map_res!(
 	alt!(
 		do_parse!(
 			char!('"') >>
-			s: many0!(alt!(rune | map!(is_not!("\"\\"), |bytes| bytes.to_vec()))) >>
+			s: many0!(alt!(rune | is_not_v!("\"\\"))) >>
 			char!('"') >>
 			(s.concat())
 		)
 		|
 		do_parse!(
 			char!('\'') >>
-			s: many0!(alt!(rune | map!(is_not!("'\\"), |bytes| bytes.to_vec()))) >>
+			s: many0!(alt!(rune | is_not_v!("'\\"))) >>
 			char!('\'') >>
 			(s.concat())
 		)
@@ -46,9 +55,9 @@ named!(pub string <String>, map_res!(
 		do_parse!(
 			// raw string literals, where "backslashes have no special meaning"
 			char!('`') >>
-			s: is_not!("`") >>
+			s: is_not_v!("`") >>
 			char!('`') >>
-			(s.to_vec())
+			(s)
 		)
 	),
 	|s: Vec<u8>| String::from_utf8(s)
