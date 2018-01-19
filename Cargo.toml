@@ -6,6 +6,7 @@ authors = ["vthriller <unixway.drive+rs@gmail.com>"]
 license = "Apache-2.0"
 
 [dependencies]
+quick-error = "1.2"
 
 [dependencies.nom]
 version = "^3.2"

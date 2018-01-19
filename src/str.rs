@@ -5,15 +5,30 @@
 TODO? should we really care whether \' is used in ""-strings or vice versa? (Prometheus itself does…)
 */
 
+// XXX is it an overkill to employ quick-error just to couple two error types that user wouldn't even see?
+quick_error! {
+	#[derive(Debug)]
+	pub enum UnicodeRuneError {
+		UTF8(err: ::std::string::FromUtf8Error) {
+			from()
+		}
+		Int(err: ::std::num::ParseIntError) {
+			from()
+		}
+	}
+}
+
 macro_rules! fixed_length_radix {
 	// $type is :ident, not :ty; otherwise "error: expected expression, found `u8`" in "$type::from_str_radix"
 	($i:expr, $type:ident, $len:expr, $radix:expr) => {
 		// there's no easy way to combine nom::is_(whatever)_digit with something like length_count
 		// besides u123::from_str_radix will validate chars anyways, so why do extra work?
-		map_res!($i, take!($len), |n: &[u8]| $type::from_str_radix(
-			&unsafe { String::from_utf8_unchecked(n.to_vec()) },
-			$radix
-		))
+		map_res!($i, take!($len), |n: &[u8]| -> Result<_, UnicodeRuneError> {
+			Ok($type::from_str_radix(
+				&String::from_utf8(n.to_vec())?,
+				$radix
+			)?)
+		})
 	}
 }
 
