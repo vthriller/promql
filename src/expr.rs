@@ -339,6 +339,30 @@ mod tests {
 	}
 
 	#[test]
+	fn scalar() {
+		// TODO FIXME WHATEVER
+		// I wonder how "0" does ever parse correctly in ops()…
+
+		//assert_eq!(expression(&b"123"[..]),      Done(&b""[..], Scalar(123.)));
+		//assert_eq!(expression(&b"-123"[..]),     Done(&b""[..], Scalar(-123.)));
+
+		//assert_eq!(expression(&b"123."[..]),     Done(&b""[..], Scalar(123.)));
+		//assert_eq!(expression(&b"-123."[..]),    Done(&b""[..], Scalar(-123.)));
+
+		assert_eq!(expression(&b"123.45"[..]),   Done(&b""[..], Scalar(123.45)));
+		assert_eq!(expression(&b"-123.45"[..]),  Done(&b""[..], Scalar(-123.45)));
+
+		assert_eq!(expression(&b".123"[..]),     Done(&b""[..], Scalar(0.123)));
+		assert_eq!(expression(&b"-.123"[..]),    Done(&b""[..], Scalar(-0.123)));
+
+		assert_eq!(expression(&b"1.23e5"[..]),   Done(&b""[..], Scalar(1.23e5)));
+		assert_eq!(expression(&b"-1.23e5"[..]),  Done(&b""[..], Scalar(-1.23e5)));
+
+		assert_eq!(expression(&b"1.23e-5"[..]),  Done(&b""[..], Scalar(1.23e-5)));
+		assert_eq!(expression(&b"-1.23e-5"[..]), Done(&b""[..], Scalar(-1.23e-5)));
+    }
+
+	#[test]
 	fn ops() {
 		assert_eq!(
 			expression(&b"foo > bar != 0 and 15.5 < xyzzy"[..]),
