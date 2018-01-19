@@ -313,6 +313,7 @@ This parser operates on byte sequence instead of `&str` because of the fact that
 */,
 pub expression <Node>, call!(or_op));
 
+#[allow(unused_imports)]
 #[cfg(test)]
 mod tests {
 	use super::*;

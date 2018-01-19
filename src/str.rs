@@ -103,6 +103,7 @@ named!(pub string <String>, map_res!(
 	|s: Vec<u8>| String::from_utf8(s)
 ));
 
+#[allow(unused_imports)]
 #[cfg(test)]
 mod tests {
 	use super::*;

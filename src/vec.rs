@@ -153,6 +153,7 @@ named!(label_op <LabelMatchOp>, alt!(
 	| tag!("!=") => { |_| LabelMatchOp::Ne  }
 ));
 
+#[allow(unused_imports)]
 #[cfg(test)]
 mod tests {
 	use super::*;
