@@ -38,27 +38,26 @@ macro_rules! is_not_v {
 
 named!(pub string <String>, map_res!(
 	alt!(
-		do_parse!(
-			char!('"') >>
-			s: many0!(alt!(rune | is_not_v!("\"\\"))) >>
-			char!('"') >>
-			(s.concat())
+		delimited!(
+			char!('"'),
+			map!(
+				many0!(alt!(rune | is_not_v!("\"\\"))),
+				|s| s.concat()
+			),
+			char!('"')
 		)
 		|
-		do_parse!(
-			char!('\'') >>
-			s: many0!(alt!(rune | is_not_v!("'\\"))) >>
-			char!('\'') >>
-			(s.concat())
+		delimited!(
+			char!('\''),
+			map!(
+				many0!(alt!(rune | is_not_v!("'\\"))),
+				|s| s.concat()
+			),
+			char!('\'')
 		)
 		|
-		do_parse!(
-			// raw string literals, where "backslashes have no special meaning"
-			char!('`') >>
-			s: is_not_v!("`") >>
-			char!('`') >>
-			(s)
-		)
+		// raw string literals, where "backslashes have no special meaning"
+		delimited!(char!('`'), is_not_v!("`"), char!('`') )
 	),
 	|s: Vec<u8>| String::from_utf8(s)
 ));
