@@ -162,7 +162,7 @@ named!(atom <Node>, ws!(alt!(
 	|
 	alt!(
 		// https://github.com/Geal/nom/issues/437
-		map!(float, Node::Scalar)
+		map!(complete!(float), Node::Scalar)
 		|
 		// from_utf8_unchecked() on [0-9]+ is actually totally safe
 		map_res!(digit, |x: &[u8]| unsafe { String::from_utf8_unchecked(x.to_vec()) }.parse::<f32>().map(Node::Scalar))
@@ -343,7 +343,7 @@ mod tests {
 		// TODO FIXME WHATEVER
 		// I wonder how "0" does ever parse correctly in ops()…
 
-		//assert_eq!(expression(&b"123"[..]),      Done(&b""[..], Scalar(123.)));
+		assert_eq!(expression(&b"123"[..]),      Done(&b""[..], Scalar(123.)));
 		//assert_eq!(expression(&b"-123"[..]),     Done(&b""[..], Scalar(-123.)));
 
 		//assert_eq!(expression(&b"123."[..]),     Done(&b""[..], Scalar(123.)));
