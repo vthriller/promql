@@ -2,7 +2,6 @@
 // > PromQL follows the same [escaping rules as Go](https://golang.org/ref/spec#String_literals).
 
 /* TODO
-\uXXXX (std::char::from_u32)
 \UXXXXXXXX (std::char::from_u32)
 
 TODO? should we really care whether \' is used in ""-strings or vice versa? (Prometheus itself does…)
@@ -40,6 +39,14 @@ named!(rune <Vec<u8>>,
 			| map!(
 				preceded!(char!('x'), fixed_length_radix!(u8, 2, 16)),
 				|n| vec![n]
+			)
+			// go does not allow invalid unicode scalars (surrogates, chars beyond U+10ffff), and the same applies to from_u32()
+			| map_opt!(
+				preceded!(char!('u'), fixed_length_radix!(u32, 4, 16)),
+				|n| ::std::char::from_u32(n).map(|c| {
+					let mut tmp = [0; 4];
+					c.encode_utf8(&mut tmp).as_bytes().to_vec()
+				})
 			)
 		)
 	)
@@ -110,6 +117,17 @@ mod tests {
 		assert_eq!(
 			rune(&b"\\x23"[..]),
 			Done(&b""[..], vec![0x23])
+		);
+
+		assert_eq!(
+			rune(&b"\\uabcd"[..]),
+			Done(&b""[..], "\u{abcd}".as_bytes().to_vec())
+		);
+
+		// high surrogate
+		assert_eq!(
+			rune(&b"\\uD801"[..]),
+			Error(Err::Position(ErrorKind::Alt, &b"uD801"[..]))
 		);
 	}
 }
