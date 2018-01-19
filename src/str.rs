@@ -8,6 +8,18 @@
 
 TODO? should we really care whether \' is used in ""-strings or vice versa? (Prometheus itself does…)
 */
+
+macro_rules! fixed_length_radix {
+	($i:expr, $len:expr, $radix:expr) => {
+		// there's no easy way to combine nom::is_(whatever)_digit with something like length_count
+		// besides u123::from_str_radix will validate chars anyways, so why do extra work?
+		map_res!($i, take!($len), |n: &[u8]| u8::from_str_radix(
+			&unsafe { String::from_utf8_unchecked(n.to_vec()) },
+			$radix
+		))
+	}
+}
+
 named!(rune <Vec<u8>>, map!(
 	preceded!(char!('\\'),
 		alt!(
@@ -21,12 +33,7 @@ named!(rune <Vec<u8>>, map!(
 			| char!('\\') => { |_| 0x5c }
 			| char!('\'') => { |_| 0x27 }
 			| char!('"') => { |_| 0x22 }
-			// there's no easy way to combine nom::is_(whatever)_digit with something like length_count
-			// besides u123::from_str_radix will validate chars anyways, so why do extra work?
-			| map_res!(take!(3), |n: &[u8]| u8::from_str_radix(
-				&unsafe { String::from_utf8_unchecked(n.to_vec()) },
-				8
-			))
+			| fixed_length_radix!(3, 8)
 		)
 	),
 	|c| vec![c]
