@@ -29,6 +29,14 @@ macro_rules! fixed_length_radix {
 	}
 }
 
+// go does not allow invalid unicode scalars (surrogates, chars beyond U+10ffff), and the same applies to from_u32()
+fn validate_unicode_scalar(n: u32) -> Option<Vec<u8>> {
+	::std::char::from_u32(n).map(|c| {
+		let mut tmp = [0; 4];
+		c.encode_utf8(&mut tmp).as_bytes().to_vec()
+	})
+}
+
 named!(rune <Vec<u8>>,
 	preceded!(char!('\\'),
 		alt!(
@@ -51,20 +59,13 @@ named!(rune <Vec<u8>>,
 				preceded!(char!('x'), fixed_length_radix!(u8, 2, 16)),
 				|n| vec![n]
 			)
-			// go does not allow invalid unicode scalars (surrogates, chars beyond U+10ffff), and the same applies to from_u32()
 			| map_opt!(
 				preceded!(char!('u'), fixed_length_radix!(u32, 4, 16)),
-				|n| ::std::char::from_u32(n).map(|c| {
-					let mut tmp = [0; 4];
-					c.encode_utf8(&mut tmp).as_bytes().to_vec()
-				})
+				validate_unicode_scalar
 			)
 			| map_opt!(
 				preceded!(char!('U'), fixed_length_radix!(u32, 8, 16)),
-				|n| ::std::char::from_u32(n).map(|c| {
-					let mut tmp = [0; 4];
-					c.encode_utf8(&mut tmp).as_bytes().to_vec()
-				})
+				validate_unicode_scalar
 			)
 		)
 	)
