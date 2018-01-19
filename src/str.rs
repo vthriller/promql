@@ -36,25 +36,21 @@ macro_rules! is_not_v {
 	}
 }
 
+macro_rules! chars_except {
+	($i:expr, $arg:expr) => {
+			map!(
+				$i,
+				many0!(alt!(rune | is_not_v!($arg))),
+				|s| s.concat()
+			)
+	}
+}
+
 named!(pub string <String>, map_res!(
 	alt!(
-		delimited!(
-			char!('"'),
-			map!(
-				many0!(alt!(rune | is_not_v!("\"\\"))),
-				|s| s.concat()
-			),
-			char!('"')
-		)
+		delimited!(char!('"'), chars_except!("\"\\"), char!('"'))
 		|
-		delimited!(
-			char!('\''),
-			map!(
-				many0!(alt!(rune | is_not_v!("'\\"))),
-				|s| s.concat()
-			),
-			char!('\'')
-		)
+		delimited!(char!('\''), chars_except!("'\\"), char!('\''))
 		|
 		// raw string literals, where "backslashes have no special meaning"
 		delimited!(char!('`'), is_not_v!("`"), char!('`') )
