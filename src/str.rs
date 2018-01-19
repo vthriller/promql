@@ -108,7 +108,7 @@ named!(pub string <String>, map_res!(
 mod tests {
 	use super::*;
 	use nom::IResult::*;
-	use nom::{Err, ErrorKind};
+	use nom::{Err, ErrorKind, Needed};
 
 	#[test]
 	fn strings() {
@@ -172,6 +172,18 @@ mod tests {
 		assert_eq!(
 			rune(&b"\\UdeadDEAD"[..]),
 			Error(Err::Position(ErrorKind::Alt, &b"UdeadDEAD"[..]))
+		);
+
+		// utter nonsense
+
+		assert_eq!(
+			rune(&b"\\xxx"[..]),
+			Error(Err::Position(ErrorKind::Alt, &b"xxx"[..]))
+		);
+
+		assert_eq!(
+			rune(&b"\\x1"[..]),
+			Incomplete(Needed::Size(4))
 		);
 	}
 }
