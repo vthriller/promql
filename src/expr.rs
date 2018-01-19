@@ -361,6 +361,9 @@ mod tests {
 		assert_eq!(expression(&b".123"[..]),     Done(&b""[..], Scalar(0.123)));
 		assert_eq!(expression(&b"-.123"[..]),    Done(&b""[..], Scalar(-0.123)));
 
+		//assert_eq!(expression(&b"123e5"[..]),    Done(&b""[..], Scalar(123e5)));
+		//assert_eq!(expression(&b"-123e5"[..]),   Done(&b""[..], Scalar(-123e5)));
+
 		assert_eq!(expression(&b"1.23e5"[..]),   Done(&b""[..], Scalar(1.23e5)));
 		assert_eq!(expression(&b"-1.23e5"[..]),  Done(&b""[..], Scalar(-1.23e5)));
 
