@@ -9,10 +9,11 @@ TODO? should we really care whether \' is used in ""-strings or vice versa? (Pro
 */
 
 macro_rules! fixed_length_radix {
-	($i:expr, $len:expr, $radix:expr) => {
+	// $type is :ident, not :ty; otherwise "error: expected expression, found `u8`" in "$type::from_str_radix"
+	($i:expr, $type:ident, $len:expr, $radix:expr) => {
 		// there's no easy way to combine nom::is_(whatever)_digit with something like length_count
 		// besides u123::from_str_radix will validate chars anyways, so why do extra work?
-		map_res!($i, take!($len), |n: &[u8]| u8::from_str_radix(
+		map_res!($i, take!($len), |n: &[u8]| $type::from_str_radix(
 			&unsafe { String::from_utf8_unchecked(n.to_vec()) },
 			$radix
 		))
@@ -33,11 +34,11 @@ named!(rune <Vec<u8>>,
 			| char!('\'') => { |_| vec![0x27] }
 			| char!('"') => { |_| vec![0x22] }
 			| map!(
-				fixed_length_radix!(3, 8),
+				fixed_length_radix!(u8, 3, 8),
 				|n| vec![n]
 			)
 			| map!(
-				preceded!(char!('x'), fixed_length_radix!(2, 16)),
+				preceded!(char!('x'), fixed_length_radix!(u8, 2, 16)),
 				|n| vec![n]
 			)
 		)
