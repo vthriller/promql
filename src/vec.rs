@@ -127,23 +127,21 @@ pub vector <Vector>, ws!(do_parse!(
 // > The metric name … must match the regex [a-zA-Z_:][a-zA-Z0-9_:]*.
 // > Label names … must match the regex [a-zA-Z_][a-zA-Z0-9_]*. Label names beginning with __ are reserved for internal use.
 
-named!(metric_name <String>, map!(
+named!(metric_name <String>, flat_map!(
 	recognize!(tuple!(
 		alt!(call!(alpha) | is_a!("_:")),
 		many0!(alt!(call!(alphanumeric) | is_a!("_:")))
 	)),
-	// safe to unwrap: we already matched subset of valid ASCII
-	|s| String::from_utf8(s.to_vec()).unwrap()
+	parse_to!(String)
 ));
 
 // XXX nom does not allow pub(crate) here
-named_attr!(#[doc(hidden)], pub label_name <String>, map!(
+named_attr!(#[doc(hidden)], pub label_name <String>, flat_map!(
 	recognize!(tuple!(
 		alt!(call!(alpha) | is_a!("_")),
 		many0!(alt!(call!(alphanumeric) | is_a!("_")))
 	)),
-	// safe to unwrap: we already matched subset of valid ASCII
-	|s| String::from_utf8(s.to_vec()).unwrap()
+	parse_to!(String)
 ));
 
 named!(label_op <LabelMatchOp>, alt!(
