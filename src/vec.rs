@@ -89,22 +89,22 @@ named!(instant_vec <Vec<LabelMatch>>, map_res!(ws!(do_parse!(
 	})
 )), |x| x));
 
-named!(range_literal <usize>, map!(
-	pair!(digit, one_of!("smhdwy")),
-	|(n, suf)| {
+named!(range_literal <usize>, do_parse!(
+	num: map!(
+		digit,
 		// from_utf8_unchecked() on [0-9]+ is actually totally safe
 		// FIXME unwrap? FIXME copy-pasted from expr.rs
-		let n = unsafe { String::from_utf8_unchecked(n.to_vec()) }.parse::<usize>().unwrap();
-		n * match suf {
-			's' => 1,
-			'm' => 60,
-			'h' => 60 * 60,
-			'd' => 60 * 60 * 24,
-			'w' => 60 * 60 * 24 * 7,
-			'y' => 60 * 60 * 24 * 365, // XXX leap years?
-			_ => unreachable!(),
-		}
-	}
+		|n| unsafe { String::from_utf8_unchecked(n.to_vec()) }.parse::<usize>().unwrap()
+	) >>
+	suffix: alt!(
+		  char!('s') => { |_| 1 }
+		| char!('m') => { |_| 60 }
+		| char!('h') => { |_| 60 * 60 }
+		| char!('d') => { |_| 60 * 60 * 24 }
+		| char!('w') => { |_| 60 * 60 * 24 * 7 }
+		| char!('y') => { |_| 60 * 60 * 24 * 365 } // XXX leap years?
+	) >>
+	(num * suffix)
 ));
 
 named_attr!(
