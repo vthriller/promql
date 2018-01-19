@@ -2,7 +2,6 @@
 // > PromQL follows the same [escaping rules as Go](https://golang.org/ref/spec#String_literals).
 
 /* TODO
-\xXX
 \uXXXX (std::char::from_u32)
 \UXXXXXXXX (std::char::from_u32)
 
@@ -34,6 +33,7 @@ named!(rune <Vec<u8>>, map!(
 			| char!('\'') => { |_| 0x27 }
 			| char!('"') => { |_| 0x22 }
 			| fixed_length_radix!(3, 8)
+			| preceded!(char!('x'), fixed_length_radix!(2, 16))
 		)
 	),
 	|c| vec![c]
@@ -99,6 +99,11 @@ mod tests {
 		assert_eq!(
 			rune(&b"\\123"[..]),
 			Done(&b""[..], vec![0o123])
+		);
+
+		assert_eq!(
+			rune(&b"\\x23"[..]),
+			Done(&b""[..], vec![0x23])
 		);
 	}
 }
