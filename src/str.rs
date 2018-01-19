@@ -19,25 +19,30 @@ macro_rules! fixed_length_radix {
 	}
 }
 
-named!(rune <Vec<u8>>, map!(
+named!(rune <Vec<u8>>,
 	preceded!(char!('\\'),
 		alt!(
-			  char!('a') => { |_| 0x07 }
-			| char!('b') => { |_| 0x08 }
-			| char!('f') => { |_| 0x0c }
-			| char!('n') => { |_| 0x0a }
-			| char!('r') => { |_| 0x0d }
-			| char!('t') => { |_| 0x09 }
-			| char!('v') => { |_| 0x0b }
-			| char!('\\') => { |_| 0x5c }
-			| char!('\'') => { |_| 0x27 }
-			| char!('"') => { |_| 0x22 }
-			| fixed_length_radix!(3, 8)
-			| preceded!(char!('x'), fixed_length_radix!(2, 16))
+			  char!('a') => { |_| vec![0x07] }
+			| char!('b') => { |_| vec![0x08] }
+			| char!('f') => { |_| vec![0x0c] }
+			| char!('n') => { |_| vec![0x0a] }
+			| char!('r') => { |_| vec![0x0d] }
+			| char!('t') => { |_| vec![0x09] }
+			| char!('v') => { |_| vec![0x0b] }
+			| char!('\\') => { |_| vec![0x5c] }
+			| char!('\'') => { |_| vec![0x27] }
+			| char!('"') => { |_| vec![0x22] }
+			| map!(
+				fixed_length_radix!(3, 8),
+				|n| vec![n]
+			)
+			| map!(
+				preceded!(char!('x'), fixed_length_radix!(2, 16)),
+				|n| vec![n]
+			)
 		)
-	),
-	|c| vec![c]
-));
+	)
+);
 
 // none_of!() returns &[char]
 // is_not!() returns &[u8]
