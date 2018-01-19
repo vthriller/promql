@@ -2,7 +2,6 @@
 // > PromQL follows the same [escaping rules as Go](https://golang.org/ref/spec#String_literals).
 
 /* TODO
-\OOO (oct)
 \xXX
 \uXXXX (std::char::from_u32)
 \UXXXXXXXX (std::char::from_u32)
@@ -22,6 +21,12 @@ named!(rune <Vec<u8>>, map!(
 			| char!('\\') => { |_| 0x5c }
 			| char!('\'') => { |_| 0x27 }
 			| char!('"') => { |_| 0x22 }
+			// there's no easy way to combine nom::is_(whatever)_digit with something like length_count
+			// besides u123::from_str_radix will validate chars anyways, so why do extra work?
+			| map_res!(take!(3), |n: &[u8]| u8::from_str_radix(
+				&unsafe { String::from_utf8_unchecked(n.to_vec()) },
+				8
+			))
 		)
 	),
 	|c| vec![c]
@@ -79,6 +84,14 @@ mod tests {
 		assert_eq!(
 			string(&b"`lorem ipsum \\\"dolor\\nsit\\tamet\\\"`"[..]),
 			Done(&b""[..], "lorem ipsum \\\"dolor\\nsit\\tamet\\\"".to_string())
+		);
+	}
+
+	#[test]
+	fn runes() {
+		assert_eq!(
+			rune(&b"\\123"[..]),
+			Done(&b""[..], vec![0o123])
 		);
 	}
 }
