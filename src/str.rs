@@ -1,10 +1,6 @@
 // > Label values may contain any Unicode characters.
 // > PromQL follows the same [escaping rules as Go](https://golang.org/ref/spec#String_literals).
 
-/*
-TODO? should we really care whether \' is used in ""-strings or vice versa? (Prometheus itself does…)
-*/
-
 // XXX is it an overkill to employ quick-error just to couple two error types that user wouldn't even see?
 quick_error! {
 	#[derive(Debug)]
@@ -18,6 +14,7 @@ quick_error! {
 	}
 }
 
+// `fixed_length_radix!(T, n, radix)` parses sequence of `n` chars as a `radix`-base number into a type `T`
 macro_rules! fixed_length_radix {
 	// $type is :ident, not :ty; otherwise "error: expected expression, found `u8`" in "$type::from_str_radix"
 	($i:expr, $type:ident, $len:expr, $radix:expr) => {
@@ -42,6 +39,7 @@ named!(rune <Vec<u8>>,
 			| char!('r') => { |_| vec![0x0d] }
 			| char!('t') => { |_| vec![0x09] }
 			| char!('v') => { |_| vec![0x0b] }
+			// TODO? should we really care whether \' is used in ""-strings or vice versa? (Prometheus itself does…)
 			| char!('\\') => { |_| vec![0x5c] }
 			| char!('\'') => { |_| vec![0x27] }
 			| char!('"') => { |_| vec![0x22] }
@@ -72,15 +70,15 @@ named!(rune <Vec<u8>>,
 	)
 );
 
-// none_of!() returns &[char]
-// is_not!() returns &[u8]
-// what we need here is Vec<u8>
+// parses sequence of chars that are not in $arg
+// returns Vec<u8> (unlike none_of!() which returns &[char], or is_not!() which returns &[u8])
 macro_rules! is_not_v {
 	($i:expr, $arg:expr) => {
 		map!($i, is_not!($arg), |bytes| bytes.to_vec())
 	}
 }
 
+// sequence of chars (except those marked as invalid in $arg) or rune literals, parsed into Vec<u8>
 macro_rules! chars_except {
 	($i:expr, $arg:expr) => {
 			map!(
