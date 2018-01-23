@@ -339,7 +339,7 @@ mod tests {
 	// vector parsing is already tested in `mod vec`, so use that parser instead of crafting lengthy structs all over the test functions
 	fn vector(expr: &str) -> Node {
 		match vec::vector(expr.as_bytes()) {
-			Done(b"", x) => Node::Vector(x),
+			Ok((b"", x)) => Node::Vector(x),
 			_ => panic!("failed to parse label correctly")
 		}
 	}
@@ -349,33 +349,33 @@ mod tests {
 		// TODO FIXME WHATEVER
 		// I wonder how "0" does ever parse correctly in ops()…
 
-		assert_eq!(expression(&b"123"[..]),      Done(&b""[..], Scalar(123.)));
-		assert_eq!(expression(&b"-123"[..]),     Done(&b""[..], Scalar(-123.)));
+		assert_eq!(expression(&b"123"[..]),      Ok((&b""[..], Scalar(123.))));
+		assert_eq!(expression(&b"-123"[..]),     Ok((&b""[..], Scalar(-123.))));
 
-		//assert_eq!(expression(&b"123."[..]),     Done(&b""[..], Scalar(123.)));
-		//assert_eq!(expression(&b"-123."[..]),    Done(&b""[..], Scalar(-123.)));
+		//assert_eq!(expression(&b"123."[..]),     Ok((&b""[..], Scalar(123.))));
+		//assert_eq!(expression(&b"-123."[..]),    Ok((&b""[..], Scalar(-123.))));
 
-		assert_eq!(expression(&b"123.45"[..]),   Done(&b""[..], Scalar(123.45)));
-		assert_eq!(expression(&b"-123.45"[..]),  Done(&b""[..], Scalar(-123.45)));
+		assert_eq!(expression(&b"123.45"[..]),   Ok((&b""[..], Scalar(123.45))));
+		assert_eq!(expression(&b"-123.45"[..]),  Ok((&b""[..], Scalar(-123.45))));
 
-		assert_eq!(expression(&b".123"[..]),     Done(&b""[..], Scalar(0.123)));
-		assert_eq!(expression(&b"-.123"[..]),    Done(&b""[..], Scalar(-0.123)));
+		assert_eq!(expression(&b".123"[..]),     Ok((&b""[..], Scalar(0.123))));
+		assert_eq!(expression(&b"-.123"[..]),    Ok((&b""[..], Scalar(-0.123))));
 
-		//assert_eq!(expression(&b"123e5"[..]),    Done(&b""[..], Scalar(123e5)));
-		//assert_eq!(expression(&b"-123e5"[..]),   Done(&b""[..], Scalar(-123e5)));
+		//assert_eq!(expression(&b"123e5"[..]),    Ok((&b""[..], Scalar(123e5))));
+		//assert_eq!(expression(&b"-123e5"[..]),   Ok((&b""[..], Scalar(-123e5))));
 
-		assert_eq!(expression(&b"1.23e5"[..]),   Done(&b""[..], Scalar(1.23e5)));
-		assert_eq!(expression(&b"-1.23e5"[..]),  Done(&b""[..], Scalar(-1.23e5)));
+		assert_eq!(expression(&b"1.23e5"[..]),   Ok((&b""[..], Scalar(1.23e5))));
+		assert_eq!(expression(&b"-1.23e5"[..]),  Ok((&b""[..], Scalar(-1.23e5))));
 
-		assert_eq!(expression(&b"1.23e-5"[..]),  Done(&b""[..], Scalar(1.23e-5)));
-		assert_eq!(expression(&b"-1.23e-5"[..]), Done(&b""[..], Scalar(-1.23e-5)));
+		assert_eq!(expression(&b"1.23e-5"[..]),  Ok((&b""[..], Scalar(1.23e-5))));
+		assert_eq!(expression(&b"-1.23e-5"[..]), Ok((&b""[..], Scalar(-1.23e-5))));
     }
 
 	#[test]
 	fn ops() {
 		assert_eq!(
 			expression(&b"foo > bar != 0 and 15.5 < xyzzy"[..]),
-			Done(&b""[..], operator(
+			Ok((&b""[..], operator(
 				operator(
 					operator(vector("foo"), Gt(false, None), vector("bar")),
 					Ne(false, None),
@@ -383,12 +383,12 @@ mod tests {
 				),
 				And(None),
 				operator(Scalar(15.5), Lt(false, None), vector("xyzzy")),
-			))
+			)))
 		);
 
 		assert_eq!(
 			expression(&b"foo + bar - baz <= quux + xyzzy"[..]),
-			Done(&b""[..], operator(
+			Ok((&b""[..], operator(
 				operator(
 					operator(vector("foo"), Plus(None), vector("bar")),
 					Minus(None),
@@ -396,34 +396,34 @@ mod tests {
 				),
 				Le(false, None),
 				operator(vector("quux"), Plus(None), vector("xyzzy")),
-			))
+			)))
 		);
 
 		assert_eq!(
 			expression(&b"foo + bar % baz"[..]),
-			Done(&b""[..], operator(
+			Ok((&b""[..], operator(
 				vector("foo"),
 				Plus(None),
 				operator(vector("bar"), Mod(None), vector("baz")),
-			))
+			)))
 		);
 
 		assert_eq!(
 			expression(&b"x^y^z"[..]),
-			Done(&b""[..], operator(
+			Ok((&b""[..], operator(
 				vector("x"),
 				Pow(None),
 				operator(vector("y"), Pow(None), vector("z")),
-			))
+			)))
 		);
 
 		assert_eq!(
 			expression(&b"(a+b)*c"[..]),
-			Done(&b""[..], operator(
+			Ok((&b""[..], operator(
 				operator(vector("a"), Plus(None), vector("b")),
 				Mul(None),
 				vector("c"),
-			))
+			)))
 		);
 	}
 
@@ -431,7 +431,7 @@ mod tests {
 	fn op_mods() {
 		assert_eq!(
 			expression(&b"foo + ignoring (instance) bar / on (cluster) baz"[..]),
-			Done(&b""[..], operator(
+			Ok((&b""[..], operator(
 				vector("foo"),
 				Plus(Some(OpMod {
 					action: OpModAction::Ignore,
@@ -447,12 +447,12 @@ mod tests {
 					})),
 					vector("baz"),
 				)
-			))
+			)))
 		);
 
 		assert_eq!(
 			expression(&b"foo + ignoring (instance) group_right bar / on (cluster, shmuster) group_left (job) baz"[..]),
-			Done(&b""[..], operator(
+			Ok((&b""[..], operator(
 				vector("foo"),
 				Plus(Some(OpMod {
 					action: OpModAction::Ignore,
@@ -468,12 +468,12 @@ mod tests {
 					})),
 					vector("baz"),
 				)
-			))
+			)))
 		);
 
 		assert_eq!(
 			expression(&b"node_cpu{cpu='cpu0'} > bool ignoring (cpu) node_cpu{cpu='cpu1'}"[..]),
-			Done(&b""[..], operator(
+			Ok((&b""[..], operator(
 				vector("node_cpu{cpu='cpu0'}"),
 				Gt(true, Some(OpMod {
 					action: OpModAction::Ignore,
@@ -481,7 +481,7 @@ mod tests {
 					group: None,
 				})),
 				vector("node_cpu{cpu='cpu1'}"),
-			))
+			)))
 		);
 	}
 
@@ -489,16 +489,16 @@ mod tests {
 	fn unary() {
 		assert_eq!(
 			expression(&b"a + -b"[..]),
-			Done(&b""[..], operator(
+			Ok((&b""[..], operator(
 				vector("a"),
 				Plus(None),
 				negation(vector("b")),
-			))
+			)))
 		);
 
 		assert_eq!(
 			expression(&b"a ^ - 1 - b"[..]),
-			Done(&b""[..], operator(
+			Ok((&b""[..], operator(
 				operator(
 					vector("a"),
 					Pow(None),
@@ -506,12 +506,12 @@ mod tests {
 				),
 				Minus(None),
 				vector("b"),
-			))
+			)))
 		);
 
 		assert_eq!(
 			expression(&b"a ^ - (1 - b)"[..]),
-			Done(&b""[..], operator(
+			Ok((&b""[..], operator(
 				vector("a"),
 				Pow(None),
 				negation(operator(
@@ -519,27 +519,27 @@ mod tests {
 					Minus(None),
 					vector("b"),
 				)),
-			))
+			)))
 		);
 
 		// yes, these are also valid
 
 		assert_eq!(
 			expression(&b"a +++++++ b"[..]),
-			Done(&b""[..], operator(
+			Ok((&b""[..], operator(
 				vector("a"),
 				Plus(None),
 				vector("b"),
-			))
+			)))
 		);
 
 		assert_eq!(
 			expression(&b"a * --+-b"[..]),
-			Done(&b""[..], operator(
+			Ok((&b""[..], operator(
 				vector("a"),
 				Mul(None),
 				negation(negation(negation(vector("b")))),
-			))
+			)))
 		);
 	}
 
@@ -547,7 +547,7 @@ mod tests {
 	fn functions() {
 		assert_eq!(
 			expression(&b"foo() + bar(baz) + quux(xyzzy, plough)"[..]),
-			Done(&b""[..], operator(
+			Ok((&b""[..], operator(
 				operator(
 					Function {
 						name: "foo".to_string(),
@@ -570,12 +570,12 @@ mod tests {
 					],
 					aggregation: None,
 				},
-			))
+			)))
 		);
 
 		assert_eq!(
 			expression(&b"round(rate(whatever [5m]) > 0, 0.2)"[..]),
-			Done(&b""[..],
+			Ok((&b""[..],
 				Function {
 					name: "round".to_string(),
 					args: vec![
@@ -592,12 +592,12 @@ mod tests {
 					],
 					aggregation: None,
 				}
-			)
+			))
 		);
 
 		assert_eq!(
 			expression(&b"label_replace(up, 'instance', '', 'instance', '.*')"[..]),
-			Done(&b""[..], Function {
+			Ok((&b""[..], Function {
 				name: "label_replace".to_string(),
 				args: vec![
 					vector("up"),
@@ -607,7 +607,7 @@ mod tests {
 					Node::String(".*".to_string()),
 				],
 				aggregation: None,
-			})
+			}))
 		);
 	}
 
@@ -615,7 +615,7 @@ mod tests {
 	fn agg_functions() {
 		assert_eq!(
 			expression(&b"sum(foo) by (bar) * count(foo) without (bar)"[..]),
-			Done(&b""[..], operator(
+			Ok((&b""[..], operator(
 				Function {
 					name: "sum".to_string(),
 					args: vec![vector("foo")],
@@ -633,12 +633,12 @@ mod tests {
 						labels: vec!["bar".to_string()]
 					}),
 				},
-			))
+			)))
 		);
 
 		assert_eq!(
 			expression(&b"sum by (bar) (foo) * count without (bar) (foo)"[..]),
-			Done(&b""[..], operator(
+			Ok((&b""[..], operator(
 				Function {
 					name: "sum".to_string(),
 					args: vec![vector("foo")],
@@ -656,7 +656,7 @@ mod tests {
 						labels: vec!["bar".to_string()]
 					}),
 				},
-			))
+			)))
 		);
 	}
 }

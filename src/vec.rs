@@ -44,7 +44,7 @@ use nom::IResult;
 
 assert_eq!(
 	vector("foo{bar='baz'}".as_bytes()),
-	IResult::Done(&b""[..], Vector {
+	Ok((&b""[..], Vector {
 		labels: vec![
 			// this is the filter for the metric name 'foo'
 			LabelMatch { name: "__name__".to_string(), op: Eq, value: "foo".to_string(), },
@@ -52,7 +52,7 @@ assert_eq!(
 			LabelMatch { name: "bar".to_string(),      op: Eq, value: "baz".to_string(), },
 		],
 		range: None, offset: None,
-	})
+	}))
 );
 # }
 ```
@@ -160,7 +160,7 @@ mod tests {
 
 	#[test]
 	fn instant_vectors() {
-		assert_eq!(vector(&b"foo"[..]), Done(&b""[..], Vector{
+		assert_eq!(vector(&b"foo"[..]), Ok((&b""[..], Vector{
 			labels: vec![
 				LabelMatch{
 					name: "__name__".to_string(),
@@ -170,9 +170,9 @@ mod tests {
 			],
 			range: None,
 			offset: None
-		}));
+		})));
 
-		assert_eq!(vector(&b"foo { }"[..]), Done(&b""[..], Vector{
+		assert_eq!(vector(&b"foo { }"[..]), Ok((&b""[..], Vector{
 			labels: vec![
 				LabelMatch{
 					name: "__name__".to_string(),
@@ -182,9 +182,9 @@ mod tests {
 			],
 			range: None,
 			offset: None
-		}));
+		})));
 
-		assert_eq!(vector(&b"foo { bar = 'baz', quux !~ 'xyzzy', lorem = `ipsum \\n dolor \"sit amet\"` }"[..]), Done(&b""[..], Vector{
+		assert_eq!(vector(&b"foo { bar = 'baz', quux !~ 'xyzzy', lorem = `ipsum \\n dolor \"sit amet\"` }"[..]), Ok((&b""[..], Vector{
 			labels: vec![
 				LabelMatch{
 					name: "__name__".to_string(),
@@ -209,9 +209,9 @@ mod tests {
 			],
 			range: None,
 			offset: None
-		}));
+		})));
 
-		assert_eq!(vector(&b"{lorem=~\"ipsum\"}"[..]), Done(&b""[..], Vector{
+		assert_eq!(vector(&b"{lorem=~\"ipsum\"}"[..]), Ok((&b""[..], Vector{
 			labels: vec![
 				LabelMatch{
 					name: "lorem".to_string(),
@@ -221,7 +221,7 @@ mod tests {
 			],
 			range: None,
 			offset: None
-		}));
+		})));
 
 		assert_eq!(vector(&b"{}"[..]), Error(Err::Position(ErrorKind::MapRes, &b"{}"[..])));
 	}
@@ -259,29 +259,29 @@ mod tests {
 	}
 
 	fn modified_vectors_for_instant(instant: &str, labels: fn() -> Vec<LabelMatch>) {
-		assert_eq!(vector(format!("{} [1m]", instant).as_bytes()), Done(&b""[..], Vector{
+		assert_eq!(vector(format!("{} [1m]", instant).as_bytes()), Ok((&b""[..], Vector{
 			labels: labels(),
 			range: Some(60),
 			offset: None,
-		}));
+		})));
 
-		assert_eq!(vector(format!("{} offset 5m", instant).as_bytes()), Done(&b""[..], Vector{
+		assert_eq!(vector(format!("{} offset 5m", instant).as_bytes()), Ok((&b""[..], Vector{
 			labels: labels(),
 			range: None,
 			offset: Some(300),
-		}));
+		})));
 
-		assert_eq!(vector(format!("{} [1m] offset 5m", instant).as_bytes()), Done(&b""[..], Vector{
+		assert_eq!(vector(format!("{} [1m] offset 5m", instant).as_bytes()), Ok((&b""[..], Vector{
 			labels: labels(),
 			range: Some(60),
 			offset: Some(300),
-		}));
+		})));
 
 		// FIXME should be Error()?
-		assert_eq!(vector(format!("{} offset 5m [1m]", instant).as_bytes()), Done(&b"[1m]"[..], Vector{
+		assert_eq!(vector(format!("{} offset 5m [1m]", instant).as_bytes()), Ok((&b"[1m]"[..], Vector{
 			labels: labels(),
 			range: None,
 			offset: Some(300),
-		}));
+		})));
 	}
 }

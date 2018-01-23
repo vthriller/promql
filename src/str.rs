@@ -114,17 +114,17 @@ mod tests {
 	fn strings() {
 		assert_eq!(
 			string(&b"\"lorem ipsum \\\"dolor\\nsit amet\\\"\""[..]),
-			Done(&b""[..], "lorem ipsum \"dolor\nsit amet\"".to_string())
+			Ok((&b""[..], "lorem ipsum \"dolor\nsit amet\"".to_string()))
 		);
 
 		assert_eq!(
 			string(&b"'lorem ipsum \\'dolor\\nsit\\tamet\\''"[..]),
-			Done(&b""[..], "lorem ipsum 'dolor\nsit\tamet'".to_string())
+			Ok((&b""[..], "lorem ipsum 'dolor\nsit\tamet'".to_string()))
 		);
 
 		assert_eq!(
 			string(&b"`lorem ipsum \\\"dolor\\nsit\\tamet\\\"`"[..]),
-			Done(&b""[..], "lorem ipsum \\\"dolor\\nsit\\tamet\\\"".to_string())
+			Ok((&b""[..], "lorem ipsum \\\"dolor\\nsit\\tamet\\\"".to_string()))
 		);
 
 		// literal, non-escaped newlines
@@ -136,7 +136,7 @@ mod tests {
 
 		assert_eq!(
 			string(&b"`but this\nis`"[..]),
-			Done(&b""[..], "but this\nis".to_string())
+			Ok((&b""[..], "but this\nis".to_string()))
 		);
 	}
 
@@ -144,17 +144,17 @@ mod tests {
 	fn runes() {
 		assert_eq!(
 			rune(&b"\\123"[..]),
-			Done(&b""[..], vec![0o123])
+			Ok((&b""[..], vec![0o123]))
 		);
 
 		assert_eq!(
 			rune(&b"\\x23"[..]),
-			Done(&b""[..], vec![0x23])
+			Ok((&b""[..], vec![0x23]))
 		);
 
 		assert_eq!(
 			rune(&b"\\uabcd"[..]),
-			Done(&b""[..], "\u{abcd}".as_bytes().to_vec())
+			Ok((&b""[..], "\u{abcd}".as_bytes().to_vec()))
 		);
 
 		// high surrogate
@@ -165,7 +165,7 @@ mod tests {
 
 		assert_eq!(
 			rune(&b"\\U00010330"[..]),
-			Done(&b""[..], "\u{10330}".as_bytes().to_vec())
+			Ok((&b""[..], "\u{10330}".as_bytes().to_vec()))
 		);
 
 		// out of range
