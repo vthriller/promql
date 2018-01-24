@@ -9,5 +9,6 @@ license = "Apache-2.0"
 quick-error = "1.2"
 
 [dependencies.nom]
-version = "4.0.0-alpha2"
+git = "https://github.com/Geal/nom.git"
+rev = "968ae9f"
 features = ["verbose-errors"]
