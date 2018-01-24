@@ -341,14 +341,11 @@ mod tests {
 
 	#[test]
 	fn scalar() {
-		// TODO FIXME WHATEVER
-		// I wonder how "0" does ever parse correctly in ops()…
-
 		assert_eq!(expression(cbs("123")),      Ok((cbs(""), Scalar(123.))));
 		assert_eq!(expression(cbs("-123")),     Ok((cbs(""), Scalar(-123.))));
 
-		//assert_eq!(expression(cbs("123.")),     Ok((cbs(""), Scalar(123.))));
-		//assert_eq!(expression(cbs("-123.")),    Ok((cbs(""), Scalar(-123.))));
+		assert_eq!(expression(cbs("123.")),     Ok((cbs(""), Scalar(123.))));
+		assert_eq!(expression(cbs("-123.")),    Ok((cbs(""), Scalar(-123.))));
 
 		assert_eq!(expression(cbs("123.45")),   Ok((cbs(""), Scalar(123.45))));
 		assert_eq!(expression(cbs("-123.45")),  Ok((cbs(""), Scalar(-123.45))));
@@ -356,8 +353,8 @@ mod tests {
 		assert_eq!(expression(cbs(".123")),     Ok((cbs(""), Scalar(0.123))));
 		assert_eq!(expression(cbs("-.123")),    Ok((cbs(""), Scalar(-0.123))));
 
-		//assert_eq!(expression(cbs("123e5")),    Ok((cbs(""), Scalar(123e5))));
-		//assert_eq!(expression(cbs("-123e5")),   Ok((cbs(""), Scalar(-123e5))));
+		assert_eq!(expression(cbs("123e5")),    Ok((cbs(""), Scalar(123e5))));
+		assert_eq!(expression(cbs("-123e5")),   Ok((cbs(""), Scalar(-123e5))));
 
 		assert_eq!(expression(cbs("1.23e5")),   Ok((cbs(""), Scalar(1.23e5))));
 		assert_eq!(expression(cbs("-1.23e5")),  Ok((cbs(""), Scalar(-1.23e5))));
