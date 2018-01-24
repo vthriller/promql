@@ -41,11 +41,12 @@ Note that there's no field for metric name: not only it is optional (as in `{ins
 # fn main() {
 use promql::vec::*;
 use promql::vec::LabelMatchOp::*; // Eq
+use nom::types::CompleteByteSlice;
 use nom::IResult;
 
 assert_eq!(
-	vector("foo{bar='baz'}".as_bytes()),
-	Ok((&b""[..], Vector {
+	vector(CompleteByteSlice("foo{bar='baz'}".as_bytes())),
+	Ok((CompleteByteSlice(b""), Vector {
 		labels: vec![
 			// this is the filter for the metric name 'foo'
 			LabelMatch { name: "__name__".to_string(), op: Eq, value: "foo".to_string(), },
@@ -158,9 +159,13 @@ mod tests {
 	use super::*;
 	use nom::{Err, ErrorKind, Context};
 
+	fn cbs(s: &str) -> CompleteByteSlice {
+		CompleteByteSlice(s.as_bytes())
+	}
+
 	#[test]
 	fn instant_vectors() {
-		assert_eq!(vector(&b"foo"[..]), Ok((&b""[..], Vector{
+		assert_eq!(vector(cbs("foo")), Ok((cbs(""), Vector{
 			labels: vec![
 				LabelMatch{
 					name: "__name__".to_string(),
@@ -172,7 +177,7 @@ mod tests {
 			offset: None
 		})));
 
-		assert_eq!(vector(&b"foo { }"[..]), Ok((&b""[..], Vector{
+		assert_eq!(vector(cbs("foo { }")), Ok((cbs(""), Vector{
 			labels: vec![
 				LabelMatch{
 					name: "__name__".to_string(),
@@ -184,7 +189,7 @@ mod tests {
 			offset: None
 		})));
 
-		assert_eq!(vector(&b"foo { bar = 'baz', quux !~ 'xyzzy', lorem = `ipsum \\n dolor \"sit amet\"` }"[..]), Ok((&b""[..], Vector{
+		assert_eq!(vector(cbs("foo { bar = 'baz', quux !~ 'xyzzy', lorem = `ipsum \\n dolor \"sit amet\"` }")), Ok((cbs(""), Vector{
 			labels: vec![
 				LabelMatch{
 					name: "__name__".to_string(),
@@ -211,7 +216,7 @@ mod tests {
 			offset: None
 		})));
 
-		assert_eq!(vector(&b"{lorem=~\"ipsum\"}"[..]), Ok((&b""[..], Vector{
+		assert_eq!(vector(cbs("{lorem=~\"ipsum\"}")), Ok((cbs(""), Vector{
 			labels: vec![
 				LabelMatch{
 					name: "lorem".to_string(),
@@ -223,7 +228,7 @@ mod tests {
 			offset: None
 		})));
 
-		assert_eq!(vector(&b"{}"[..]), Err(Err::Error(Context::Code(&b"{}"[..], ErrorKind::MapRes))));
+		assert_eq!(vector(cbs("{}")), Err(Err::Error(Context::Code(cbs("{}"), ErrorKind::MapRes))));
 	}
 
 	#[test]
@@ -259,26 +264,26 @@ mod tests {
 	}
 
 	fn modified_vectors_for_instant(instant: &str, labels: fn() -> Vec<LabelMatch>) {
-		assert_eq!(vector(format!("{} [1m]", instant).as_bytes()), Ok((&b""[..], Vector{
+		assert_eq!(vector(cbs(&format!("{} [1m]", instant))), Ok((cbs(""), Vector{
 			labels: labels(),
 			range: Some(60),
 			offset: None,
 		})));
 
-		assert_eq!(vector(format!("{} offset 5m", instant).as_bytes()), Ok((&b""[..], Vector{
+		assert_eq!(vector(cbs(&format!("{} offset 5m", instant))), Ok((cbs(""), Vector{
 			labels: labels(),
 			range: None,
 			offset: Some(300),
 		})));
 
-		assert_eq!(vector(format!("{} [1m] offset 5m", instant).as_bytes()), Ok((&b""[..], Vector{
+		assert_eq!(vector(cbs(&format!("{} [1m] offset 5m", instant))), Ok((cbs(""), Vector{
 			labels: labels(),
 			range: Some(60),
 			offset: Some(300),
 		})));
 
 		// FIXME should be Error()?
-		assert_eq!(vector(format!("{} offset 5m [1m]", instant).as_bytes()), Ok((&b"[1m]"[..], Vector{
+		assert_eq!(vector(cbs(&format!("{} offset 5m [1m]", instant))), Ok((cbs("[1m]"), Vector{
 			labels: labels(),
 			range: None,
 			offset: Some(300),

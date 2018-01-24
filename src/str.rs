@@ -111,79 +111,83 @@ mod tests {
 	use super::*;
 	use nom::{Err, ErrorKind, Needed, Context};
 
+	fn cbs(s: &str) -> CompleteByteSlice {
+		CompleteByteSlice(s.as_bytes())
+	}
+
 	#[test]
 	fn strings() {
 		assert_eq!(
-			string(&b"\"lorem ipsum \\\"dolor\\nsit amet\\\"\""[..]),
-			Ok((&b""[..], "lorem ipsum \"dolor\nsit amet\"".to_string()))
+			string(cbs("\"lorem ipsum \\\"dolor\\nsit amet\\\"\"")),
+			Ok((cbs(""), "lorem ipsum \"dolor\nsit amet\"".to_string()))
 		);
 
 		assert_eq!(
-			string(&b"'lorem ipsum \\'dolor\\nsit\\tamet\\''"[..]),
-			Ok((&b""[..], "lorem ipsum 'dolor\nsit\tamet'".to_string()))
+			string(cbs("'lorem ipsum \\'dolor\\nsit\\tamet\\''")),
+			Ok((cbs(""), "lorem ipsum 'dolor\nsit\tamet'".to_string()))
 		);
 
 		assert_eq!(
-			string(&b"`lorem ipsum \\\"dolor\\nsit\\tamet\\\"`"[..]),
-			Ok((&b""[..], "lorem ipsum \\\"dolor\\nsit\\tamet\\\"".to_string()))
+			string(cbs("`lorem ipsum \\\"dolor\\nsit\\tamet\\\"`")),
+			Ok((cbs(""), "lorem ipsum \\\"dolor\\nsit\\tamet\\\"".to_string()))
 		);
 
 		// literal, non-escaped newlines
 
 		assert_eq!(
-			string(&b"'this\nis not invalid'"[..]),
-			Err(Err::Error(Context::Code(&b"'this\nis not invalid'"[..], ErrorKind::Alt)))
+			string(cbs("'this\nis not invalid'")),
+			Err(Err::Error(Context::Code(cbs("'this\nis not invalid'"), ErrorKind::Alt)))
 		);
 
 		assert_eq!(
-			string(&b"`but this\nis`"[..]),
-			Ok((&b""[..], "but this\nis".to_string()))
+			string(cbs("`but this\nis`")),
+			Ok((cbs(""), "but this\nis".to_string()))
 		);
 	}
 
 	#[test]
 	fn runes() {
 		assert_eq!(
-			rune(&b"\\123"[..]),
-			Ok((&b""[..], vec![0o123]))
+			rune(cbs("\\123")),
+			Ok((cbs(""), vec![0o123]))
 		);
 
 		assert_eq!(
-			rune(&b"\\x23"[..]),
-			Ok((&b""[..], vec![0x23]))
+			rune(cbs("\\x23")),
+			Ok((cbs(""), vec![0x23]))
 		);
 
 		assert_eq!(
-			rune(&b"\\uabcd"[..]),
-			Ok((&b""[..], "\u{abcd}".as_bytes().to_vec()))
+			rune(cbs("\\uabcd")),
+			Ok((cbs(""), "\u{abcd}".as_bytes().to_vec()))
 		);
 
 		// high surrogate
 		assert_eq!(
-			rune(&b"\\uD801"[..]),
-			Err(Err::Error(Context::Code(&b"uD801"[..], ErrorKind::Alt)))
+			rune(cbs("\\uD801")),
+			Err(Err::Error(Context::Code(cbs("uD801"), ErrorKind::Alt)))
 		);
 
 		assert_eq!(
-			rune(&b"\\U00010330"[..]),
-			Ok((&b""[..], "\u{10330}".as_bytes().to_vec()))
+			rune(cbs("\\U00010330")),
+			Ok((cbs(""), "\u{10330}".as_bytes().to_vec()))
 		);
 
 		// out of range
 		assert_eq!(
-			rune(&b"\\UdeadDEAD"[..]),
-			Err(Err::Error(Context::Code(&b"UdeadDEAD"[..], ErrorKind::Alt)))
+			rune(cbs("\\UdeadDEAD")),
+			Err(Err::Error(Context::Code(cbs("UdeadDEAD"), ErrorKind::Alt)))
 		);
 
 		// utter nonsense
 
 		assert_eq!(
-			rune(&b"\\xxx"[..]),
-			Err(Err::Error(Context::Code(&b"xxx"[..], ErrorKind::Alt)))
+			rune(cbs("\\xxx")),
+			Err(Err::Error(Context::Code(cbs("xxx"), ErrorKind::Alt)))
 		);
 
 		assert_eq!(
-			rune(&b"\\x1"[..]),
+			rune(cbs("\\x1")),
 			Err(Err::Incomplete(Needed::Size(4)))
 		);
 	}
