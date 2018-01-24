@@ -341,27 +341,31 @@ mod tests {
 
 	#[test]
 	fn scalar() {
-		assert_eq!(expression(cbs("123")),      Ok((cbs(""), Scalar(123.))));
-		assert_eq!(expression(cbs("-123")),     Ok((cbs(""), Scalar(-123.))));
+		scalar_single("123",       123.);
+		scalar_single("-123",     -123.);
 
-		assert_eq!(expression(cbs("123.")),     Ok((cbs(""), Scalar(123.))));
-		assert_eq!(expression(cbs("-123.")),    Ok((cbs(""), Scalar(-123.))));
+		scalar_single("123.",      123.);
+		scalar_single("-123.",    -123.);
 
-		assert_eq!(expression(cbs("123.45")),   Ok((cbs(""), Scalar(123.45))));
-		assert_eq!(expression(cbs("-123.45")),  Ok((cbs(""), Scalar(-123.45))));
+		scalar_single("123.45",    123.45);
+		scalar_single("-123.45",  -123.45);
 
-		assert_eq!(expression(cbs(".123")),     Ok((cbs(""), Scalar(0.123))));
-		assert_eq!(expression(cbs("-.123")),    Ok((cbs(""), Scalar(-0.123))));
+		scalar_single(".123",      0.123);
+		scalar_single("-.123",    -0.123);
 
-		assert_eq!(expression(cbs("123e5")),    Ok((cbs(""), Scalar(123e5))));
-		assert_eq!(expression(cbs("-123e5")),   Ok((cbs(""), Scalar(-123e5))));
+		scalar_single("123e5",     123e5);
+		scalar_single("-123e5",   -123e5);
 
-		assert_eq!(expression(cbs("1.23e5")),   Ok((cbs(""), Scalar(1.23e5))));
-		assert_eq!(expression(cbs("-1.23e5")),  Ok((cbs(""), Scalar(-1.23e5))));
+		scalar_single("1.23e5",    1.23e5);
+		scalar_single("-1.23e5",  -1.23e5);
 
-		assert_eq!(expression(cbs("1.23e-5")),  Ok((cbs(""), Scalar(1.23e-5))));
-		assert_eq!(expression(cbs("-1.23e-5")), Ok((cbs(""), Scalar(-1.23e-5))));
-    }
+		scalar_single("1.23e-5",   1.23e-5);
+		scalar_single("-1.23e-5", -1.23e-5);
+	}
+
+	fn scalar_single(input: &str, output: f32) {
+		assert_eq!(expression(cbs(input)), Ok((cbs(""), Scalar(output))));
+	}
 
 	#[test]
 	fn ops() {
