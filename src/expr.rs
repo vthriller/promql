@@ -324,7 +324,6 @@ pub expression <Node>, call!(or_op));
 mod tests {
 	use super::*;
 	use vec;
-	use nom::IResult::*;
 	use nom::ErrorKind;
 
 	use self::Node::{Scalar, Function};

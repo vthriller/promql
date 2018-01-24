@@ -155,7 +155,6 @@ named!(label_op <LabelMatchOp>, alt!(
 #[cfg(test)]
 mod tests {
 	use super::*;
-	use nom::IResult::*;
 	use nom::{Err, ErrorKind, Context};
 
 	#[test]

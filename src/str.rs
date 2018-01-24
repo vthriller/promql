@@ -107,7 +107,6 @@ named!(pub string <String>, map_res!(
 #[cfg(test)]
 mod tests {
 	use super::*;
-	use nom::IResult::*;
 	use nom::{Err, ErrorKind, Needed, Context};
 
 	#[test]
