@@ -156,7 +156,7 @@ named!(label_op <LabelMatchOp>, alt!(
 mod tests {
 	use super::*;
 	use nom::IResult::*;
-	use nom::{Err, ErrorKind};
+	use nom::{Err, ErrorKind, Context};
 
 	#[test]
 	fn instant_vectors() {
@@ -223,7 +223,7 @@ mod tests {
 			offset: None
 		})));
 
-		assert_eq!(vector(&b"{}"[..]), Error(Err::Position(ErrorKind::MapRes, &b"{}"[..])));
+		assert_eq!(vector(&b"{}"[..]), Err(Err::Error(Context::Code(&b"{}"[..], ErrorKind::MapRes))));
 	}
 
 	#[test]

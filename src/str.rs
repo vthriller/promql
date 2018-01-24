@@ -108,7 +108,7 @@ named!(pub string <String>, map_res!(
 mod tests {
 	use super::*;
 	use nom::IResult::*;
-	use nom::{Err, ErrorKind, Needed};
+	use nom::{Err, ErrorKind, Needed, Context};
 
 	#[test]
 	fn strings() {
@@ -131,7 +131,7 @@ mod tests {
 
 		assert_eq!(
 			string(&b"'this\nis not invalid'"[..]),
-			Error(Err::Position(ErrorKind::Alt, &b"'this\nis not invalid'"[..]))
+			Err(Err::Error(Context::Code(&b"'this\nis not invalid'"[..], ErrorKind::Alt)))
 		);
 
 		assert_eq!(
@@ -160,7 +160,7 @@ mod tests {
 		// high surrogate
 		assert_eq!(
 			rune(&b"\\uD801"[..]),
-			Error(Err::Position(ErrorKind::Alt, &b"uD801"[..]))
+			Err(Err::Error(Context::Code(&b"uD801"[..], ErrorKind::Alt)))
 		);
 
 		assert_eq!(
@@ -171,14 +171,14 @@ mod tests {
 		// out of range
 		assert_eq!(
 			rune(&b"\\UdeadDEAD"[..]),
-			Error(Err::Position(ErrorKind::Alt, &b"UdeadDEAD"[..]))
+			Err(Err::Error(Context::Code(&b"UdeadDEAD"[..], ErrorKind::Alt)))
 		);
 
 		// utter nonsense
 
 		assert_eq!(
 			rune(&b"\\xxx"[..]),
-			Error(Err::Position(ErrorKind::Alt, &b"xxx"[..]))
+			Err(Err::Error(Context::Code(&b"xxx"[..], ErrorKind::Alt)))
 		);
 
 		assert_eq!(
