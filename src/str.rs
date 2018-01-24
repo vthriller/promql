@@ -183,7 +183,7 @@ mod tests {
 
 		assert_eq!(
 			rune(&b"\\x1"[..]),
-			Incomplete(Needed::Size(4))
+			Err(Err::Incomplete(Needed::Size(4)))
 		);
 	}
 }
