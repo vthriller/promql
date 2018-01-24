@@ -135,8 +135,8 @@ mod tests {
 		// literal, non-escaped newlines
 
 		assert_eq!(
-			string(cbs("'this\nis not invalid'")),
-			Err(Err::Error(Context::Code(cbs("'this\nis not invalid'"), ErrorKind::Alt)))
+			string(cbs("'this\nis not valid'")),
+			Err(Err::Error(Context::Code(cbs("'this\nis not valid'"), ErrorKind::Alt)))
 		);
 
 		assert_eq!(
