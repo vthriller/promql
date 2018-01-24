@@ -109,7 +109,7 @@ named!(pub string <CompleteByteSlice, String>, map_res!(
 #[cfg(test)]
 mod tests {
 	use super::*;
-	use nom::{Err, ErrorKind, Needed, Context};
+	use nom::{Err, ErrorKind, Context};
 
 	fn cbs(s: &str) -> CompleteByteSlice {
 		CompleteByteSlice(s.as_bytes())
@@ -188,7 +188,7 @@ mod tests {
 
 		assert_eq!(
 			rune(cbs("\\x1")),
-			Err(Err::Incomplete(Needed::Size(4)))
+			Err(Err::Error(Context::Code(cbs("x1"), ErrorKind::Alt)))
 		);
 	}
 }
