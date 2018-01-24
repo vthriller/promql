@@ -1,6 +1,7 @@
 use vec::{vector, label_name, Vector};
 use str::string;
 use nom::{float, digit};
+use nom::types::CompleteByteSlice;
 
 /// PromQL operators
 #[derive(Debug, PartialEq)]
@@ -109,13 +110,13 @@ impl Node {
 	}
 }
 
-named!(label_list <Vec<String>>, ws!(delimited!(
+named!(label_list <CompleteByteSlice, Vec<String>>, ws!(delimited!(
 	char!('('),
 	separated_list!(char!(','), label_name),
 	char!(')')
 )));
 
-named!(function_aggregation <AggregationMod>, ws!(do_parse!(
+named!(function_aggregation <CompleteByteSlice, AggregationMod>, ws!(do_parse!(
 	action: alt!(
 		  tag!("by") => { |_| AggregationAction::By }
 		| tag!("without") => { |_| AggregationAction::Without }
@@ -125,7 +126,7 @@ named!(function_aggregation <AggregationMod>, ws!(do_parse!(
 )));
 
 // it's up to the library user to decide whether argument list is valid or not
-named!(function_args <Vec<Node>>, ws!(delimited!(
+named!(function_args <CompleteByteSlice, Vec<Node>>, ws!(delimited!(
 	char!('('),
 	separated_list!(char!(','), alt!(
 		  expression => { |e| e }
@@ -134,7 +135,7 @@ named!(function_args <Vec<Node>>, ws!(delimited!(
 	char!(')')
 )));
 
-named!(function <Node>, ws!(do_parse!(
+named!(function <CompleteByteSlice, Node>, ws!(do_parse!(
 	// I have no idea what counts as a function name but label_name fits well for what's built into the prometheus so let's use that
 	name: label_name >>
 	args_agg: alt!(
@@ -157,7 +158,7 @@ named!(function <Node>, ws!(do_parse!(
 	})
 )));
 
-named!(atom <Node>, ws!(alt!(
+named!(atom <CompleteByteSlice, Node>, ws!(alt!(
 	map!(tag_no_case!("NaN"), |_| Node::Scalar(::std::f32::NAN)) // XXX define Node::NaN instead?
 	|
 	alt!(
@@ -212,7 +213,7 @@ macro_rules! with_bool_modifier {
 	)
 }
 
-named!(op_modifier <OpMod>, ws!(do_parse!(
+named!(op_modifier <CompleteByteSlice, OpMod>, ws!(do_parse!(
 	action: alt!(
 		  tag!("on") => { |_| OpModAction::RestrictTo }
 		| tag!("ignoring") => { |_| OpModAction::Ignore }
@@ -234,7 +235,7 @@ named!(op_modifier <OpMod>, ws!(do_parse!(
 )));
 
 // ^ is right-associative, so we can actually keep it simple and recursive
-named!(power <Node>, ws!(do_parse!(
+named!(power <CompleteByteSlice, Node>, ws!(do_parse!(
 	x: atom >>
 	y: opt!(complete!(tuple!(
 		with_modifier!("^", Op::Pow),
@@ -250,7 +251,7 @@ named!(power <Node>, ws!(do_parse!(
 macro_rules! left_op {
 	// $next is the parser for operator that takes precenence, or any other kind of non-operator token sequence
 	($name:ident, $next:ident!($($next_args:tt)*), $op:ident!($($op_args:tt)*)) => (
-		named!($name <Node>, ws!(do_parse!(
+		named!($name <CompleteByteSlice, Node>, ws!(do_parse!(
 			x: $next!($($next_args)*) >>
 			ops: many0!(tuple!(
 				$op!($($op_args)*),
@@ -317,7 +318,7 @@ Parse expression string into an AST.
 
 This parser operates on byte sequence instead of `&str` because of the fact that PromQL, like Go, allows raw byte sequences to be included in the string literals (e.g. `{omg='∞'}` is equivalent to both `{omg='\u221e'}` and `{omg='\xe2\x88\x9e'}`).
 */,
-pub expression <Node>, call!(or_op));
+pub expression <CompleteByteSlice, Node>, call!(or_op));
 
 #[allow(unused_imports)]
 #[cfg(test)]

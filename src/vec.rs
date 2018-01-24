@@ -1,4 +1,5 @@
 use nom::{alpha, alphanumeric, digit};
+use nom::types::CompleteByteSlice;
 use str::string;
 
 /// Label filter operators.
@@ -18,7 +19,7 @@ pub struct LabelMatch {
 	pub value: String,
 }
 
-named!(label_set <Vec<LabelMatch>>, delimited!(
+named!(label_set <CompleteByteSlice, Vec<LabelMatch>>, delimited!(
 	char!('{'),
 	ws!(separated_list!(char!(','), do_parse!(
 		name: label_name >>
@@ -67,7 +68,7 @@ pub struct Vector {
 	pub offset: Option<usize>,
 }
 
-named!(instant_vec <Vec<LabelMatch>>, map_res!(ws!(do_parse!(
+named!(instant_vec <CompleteByteSlice, Vec<LabelMatch>>, map_res!(ws!(do_parse!(
 	name: opt!(metric_name) >>
 	labels: opt!(complete!(label_set)) >>
 	({
@@ -89,12 +90,12 @@ named!(instant_vec <Vec<LabelMatch>>, map_res!(ws!(do_parse!(
 	})
 )), |x| x));
 
-named!(range_literal <usize>, do_parse!(
+named!(range_literal <CompleteByteSlice, usize>, do_parse!(
 	num: map!(
 		digit,
 		// from_utf8_unchecked() on [0-9]+ is actually totally safe
 		// FIXME unwrap? FIXME copy-pasted from expr.rs
-		|n| unsafe { String::from_utf8_unchecked(n.to_vec()) }.parse::<usize>().unwrap()
+		|n| unsafe { String::from_utf8_unchecked(n.0.to_vec()) }.parse::<usize>().unwrap()
 	) >>
 	suffix: alt!(
 		  char!('s') => { |_| 1 }
@@ -113,7 +114,7 @@ Parses vector expression into the [`Vector`](struct.Vector.html).
 
 This parser operates on byte sequence instead of `&str` because of the fact that PromQL, like Go, allows raw byte sequences to be included in the string literals (e.g. `{omg='∞'}` is equivalent to both `{omg='\u221e'}` and `{omg='\xe2\x88\x9e'}`).
 */,
-pub vector <Vector>, ws!(do_parse!(
+pub vector <CompleteByteSlice, Vector>, ws!(do_parse!(
 	labels: instant_vec >>
 	range: opt!(complete!(
 		delimited!(char!('['), range_literal, char!(']'))
@@ -127,7 +128,7 @@ pub vector <Vector>, ws!(do_parse!(
 // > The metric name … must match the regex [a-zA-Z_:][a-zA-Z0-9_:]*.
 // > Label names … must match the regex [a-zA-Z_][a-zA-Z0-9_]*. Label names beginning with __ are reserved for internal use.
 
-named!(metric_name <String>, flat_map!(
+named!(metric_name <CompleteByteSlice, String>, flat_map!(
 	recognize!(tuple!(
 		alt!(call!(alpha) | is_a!("_:")),
 		many0!(alt!(call!(alphanumeric) | is_a!("_:")))
@@ -136,7 +137,7 @@ named!(metric_name <String>, flat_map!(
 ));
 
 // XXX nom does not allow pub(crate) here
-named_attr!(#[doc(hidden)], pub label_name <String>, flat_map!(
+named_attr!(#[doc(hidden)], pub label_name <CompleteByteSlice, String>, flat_map!(
 	recognize!(tuple!(
 		alt!(call!(alpha) | is_a!("_")),
 		many0!(alt!(call!(alphanumeric) | is_a!("_")))
@@ -144,7 +145,7 @@ named_attr!(#[doc(hidden)], pub label_name <String>, flat_map!(
 	parse_to!(String)
 ));
 
-named!(label_op <LabelMatchOp>, alt!(
+named!(label_op <CompleteByteSlice, LabelMatchOp>, alt!(
 	  tag!("=~") => { |_| LabelMatchOp::REq }
 	| tag!("!~") => { |_| LabelMatchOp::RNe }
 	| tag!("=")  => { |_| LabelMatchOp::Eq  } // should come after =~

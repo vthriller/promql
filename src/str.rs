@@ -1,3 +1,5 @@
+use nom::types::CompleteByteSlice;
+
 // > Label values may contain any Unicode characters.
 // > PromQL follows the same [escaping rules as Go](https://golang.org/ref/spec#String_literals).
 
@@ -20,9 +22,9 @@ macro_rules! fixed_length_radix {
 	($i:expr, $type:ident, $len:expr, $radix:expr) => {
 		// there's no easy way to combine nom::is_(whatever)_digit with something like length_count
 		// besides u123::from_str_radix will validate chars anyways, so why do extra work?
-		map_res!($i, take!($len), |n: &[u8]| -> Result<_, UnicodeRuneError> {
+		map_res!($i, take!($len), |n: CompleteByteSlice| -> Result<_, UnicodeRuneError> {
 			Ok($type::from_str_radix(
-				&String::from_utf8(n.to_vec())?,
+				&String::from_utf8(n.0.to_vec())?,
 				$radix
 			)?)
 		})
@@ -37,7 +39,7 @@ fn validate_unicode_scalar(n: u32) -> Option<Vec<u8>> {
 	})
 }
 
-named!(rune <Vec<u8>>,
+named!(rune <CompleteByteSlice, Vec<u8>>,
 	preceded!(char!('\\'),
 		alt!(
 			  char!('a') => { |_| vec![0x07] }
@@ -75,7 +77,7 @@ named!(rune <Vec<u8>>,
 // returns Vec<u8> (unlike none_of!() which returns &[char], or is_not!() which returns &[u8])
 macro_rules! is_not_v {
 	($i:expr, $arg:expr) => {
-		map!($i, is_not!($arg), |bytes| bytes.to_vec())
+		map!($i, is_not!($arg), |bytes| bytes.0.to_vec())
 	}
 }
 
@@ -90,7 +92,7 @@ macro_rules! chars_except {
 	}
 }
 
-named!(pub string <String>, map_res!(
+named!(pub string <CompleteByteSlice, String>, map_res!(
 	alt!(
 		// newlines are not allowed in interpreted quotes, but are totally fine in raw string literals
 		delimited!(char!('"'), chars_except!("\n\"\\"), char!('"'))
