@@ -142,7 +142,7 @@ named!(function <CompleteByteSlice, Node>, ws!(do_parse!(
 		// both 'sum by (label, label) (foo)' and 'sum(foo) by (label, label)' are valid
 		do_parse!(
 			args: function_args >>
-			aggregation: opt!(complete!(function_aggregation)) >>
+			aggregation: opt!(function_aggregation) >>
 			((args, aggregation))
 		)
 		|
@@ -173,7 +173,7 @@ named!(atom <CompleteByteSlice, Node>, ws!(alt!(
 	map!(preceded!(char!('-'), atom), |a| Node::negation(a))
 	|
 	// function call is parsed before vector: the latter can actually consume function name as a vector, effectively rendering the rest of the expression invalid
-	complete!(function)
+	function
 	|
 	// FIXME? things like 'and' and 'group_left' are not supposed to parse as a vector: prometheus lexes them unambiguously
 	map!(vector, Node::Vector)
@@ -228,10 +228,10 @@ named!(op_modifier <CompleteByteSlice, OpMod>, ws!(do_parse!(
 // ^ is right-associative, so we can actually keep it simple and recursive
 named!(power <CompleteByteSlice, Node>, ws!(do_parse!(
 	x: atom >>
-	y: opt!(complete!(tuple!(
+	y: opt!(tuple!(
 		with_modifier!("^", Op::Pow),
 		power
-	))) >>
+	)) >>
 	( match y {
 		None => x,
 		Some((op, y)) => Node::operator(x, op, y),

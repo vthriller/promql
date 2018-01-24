@@ -71,7 +71,7 @@ pub struct Vector {
 
 named!(instant_vec <CompleteByteSlice, Vec<LabelMatch>>, map_res!(ws!(do_parse!(
 	name: opt!(metric_name) >>
-	labels: opt!(complete!(label_set)) >>
+	labels: opt!(label_set) >>
 	({
 		let mut ret = match name {
 			Some(name) => vec![ LabelMatch{
@@ -117,12 +117,12 @@ This parser operates on byte sequence instead of `&str` because of the fact that
 */,
 pub vector <CompleteByteSlice, Vector>, ws!(do_parse!(
 	labels: instant_vec >>
-	range: opt!(complete!(
+	range: opt!(
 		delimited!(char!('['), range_literal, char!(']'))
-	)) >>
-	offset: opt!(complete!(
+	) >>
+	offset: opt!(
 		ws!(preceded!(tag!("offset"), range_literal))
-	)) >>
+	) >>
 	(Vector {labels, range, offset})
 )));
 
