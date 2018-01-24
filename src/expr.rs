@@ -1,6 +1,6 @@
 use vec::{vector, label_name, Vector};
 use str::string;
-use nom::{float, digit};
+use nom::recognize_float;
 use nom::types::CompleteByteSlice;
 
 /// PromQL operators
@@ -161,18 +161,9 @@ named!(function <CompleteByteSlice, Node>, ws!(do_parse!(
 named!(atom <CompleteByteSlice, Node>, ws!(alt!(
 	map!(tag_no_case!("NaN"), |_| Node::Scalar(::std::f32::NAN)) // XXX define Node::NaN instead?
 	|
-	alt!(
-		// https://github.com/Geal/nom/issues/437
-		map!(complete!(float), Node::Scalar)
-		|
-		// from_utf8_unchecked() on [0-9]+ is actually totally safe
-		map_res!(
-			recognize!(tuple!(
-				opt!(char!('-')),
-				digit
-			)),
-			|x: &[u8]| unsafe { String::from_utf8_unchecked(x.to_vec()) }.parse::<f32>().map(Node::Scalar)
-		)
+	map!(
+		flat_map!(call!(recognize_float), parse_to!(f32)),
+		Node::Scalar
 	)
 	|
 	// unary + does nothing
