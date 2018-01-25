@@ -10,6 +10,7 @@ pub(crate) mod expr;
 pub use vec::*;
 pub use expr::*;
 
+use nom::{Err, ErrorKind};
 use nom::types::CompleteByteSlice;
 
 /**
@@ -20,7 +21,21 @@ This parser operates on byte sequence instead of `&str` because of the fact that
 pub fn parse(e: &[u8]) -> Result<Node, nom::Err<CompleteByteSlice>> {
 	match expression(CompleteByteSlice(e)) {
 		Ok((CompleteByteSlice(b""), ast)) => Ok(ast),
-		Ok(_) => unimplemented!("random gibberish at the end"),
+		Ok((tail, _)) => Err(Err::Error(error_position!(tail, ErrorKind::Complete::<u32>))),
 		Err(e) => Err(e),
+	}
+}
+
+#[cfg(test)]
+mod tests {
+	use nom::{Err, ErrorKind, Context};
+	use nom::types::CompleteByteSlice;
+
+	#[test]
+	fn completeness() {
+		assert_eq!(
+			super::parse(b"asdf hjkl"),
+			Err(Err::Error(Context::Code(CompleteByteSlice(b"hjkl"), ErrorKind::Complete)))
+		);
 	}
 }
