@@ -7,6 +7,9 @@ pub(crate) mod str;
 pub mod vec;
 pub mod expr;
 
+pub use vec::*;
+pub use expr::*;
+
 use nom::IResult;
 use nom::types::CompleteByteSlice;
 
