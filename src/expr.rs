@@ -303,13 +303,7 @@ left_op!(and_unless, comparison, alt!(
 
 left_op!(or_op, and_unless, with_modifier!("or", Op::Or));
 
-named_attr!(
-/**
-Parse expression string into an AST.
-
-This parser operates on byte sequence instead of `&str` because of the fact that PromQL, like Go, allows raw byte sequences to be included in the string literals (e.g. `{omg='∞'}` is equivalent to both `{omg='\u221e'}` and `{omg='\xe2\x88\x9e'}`).
-*/,
-pub expression <CompleteByteSlice, Node>, call!(or_op));
+named!(pub expression <CompleteByteSlice, Node>, call!(or_op));
 
 #[allow(unused_imports)]
 #[cfg(test)]
