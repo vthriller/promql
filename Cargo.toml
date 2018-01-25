@@ -4,6 +4,7 @@ description = "PromQL parser"
 version = "0.2.0"
 authors = ["vthriller <unixway.drive+rs@gmail.com>"]
 license = "Apache-2.0"
+repository = "https://github.com/vthriller/promql"
 
 [dependencies]
 quick-error = "1.2"
