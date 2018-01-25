@@ -109,13 +109,8 @@ named!(range_literal <CompleteByteSlice, usize>, do_parse!(
 	(num * suffix)
 ));
 
-named_attr!(
-/**
-Parses vector expression into the [`Vector`](struct.Vector.html).
-
-This parser operates on byte sequence instead of `&str` because of the fact that PromQL, like Go, allows raw byte sequences to be included in the string literals (e.g. `{omg='∞'}` is equivalent to both `{omg='\u221e'}` and `{omg='\xe2\x88\x9e'}`).
-*/,
-pub vector <CompleteByteSlice, Vector>, ws!(do_parse!(
+// XXX nom does not allow pub(crate) here
+named_attr!(#[doc(hidden)], pub vector <CompleteByteSlice, Vector>, ws!(do_parse!(
 	labels: instant_vec >>
 	range: opt!(
 		delimited!(char!('['), range_literal, char!(']'))
