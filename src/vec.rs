@@ -39,8 +39,8 @@ Note that there's no field for metric name: not only it is optional (as in `{ins
 # extern crate nom;
 # extern crate promql;
 # fn main() {
-use promql::vec::*;
-use promql::vec::LabelMatchOp::*; // Eq
+use promql::*;
+use promql::LabelMatchOp::*; // Eq
 use nom::types::CompleteByteSlice;
 use nom::IResult;
 
