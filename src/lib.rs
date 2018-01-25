@@ -4,8 +4,8 @@ extern crate nom;
 extern crate quick_error;
 
 pub(crate) mod str;
-pub mod vec;
-pub mod expr;
+pub(crate) mod vec;
+pub(crate) mod expr;
 
 pub use vec::*;
 pub use expr::*;
