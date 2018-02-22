@@ -10,6 +10,5 @@ repository = "https://github.com/vthriller/promql"
 quick-error = "1.2"
 
 [dependencies.nom]
-git = "https://github.com/Geal/nom.git"
-rev = "968ae9f"
+version = "4.0.0-beta1"
 features = ["verbose-errors"]
