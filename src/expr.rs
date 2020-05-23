@@ -1,6 +1,9 @@
 use vec::{vector, label_name, Vector};
 use str::string;
-use nom::recognize_float;
+use nom::{
+	recognize_float,
+	IResult,
+};
 use nom::types::CompleteByteSlice;
 
 /// PromQL operators
@@ -135,7 +138,10 @@ named!(function_args <CompleteByteSlice, Vec<Node>>, ws!(delimited!(
 	char!(')')
 )));
 
-named!(function <CompleteByteSlice, Node>, ws!(do_parse!(
+fn function(input: CompleteByteSlice) -> IResult<CompleteByteSlice, Node> {
+ws!(
+input,
+do_parse!(
 	// I have no idea what counts as a function name but label_name fits well for what's built into the prometheus so let's use that
 	name: label_name >>
 	args_agg: alt!(
@@ -156,7 +162,8 @@ named!(function <CompleteByteSlice, Node>, ws!(do_parse!(
 		let (args, aggregation) = args_agg;
 		Node::Function { name, args, aggregation }
 	})
-)));
+))
+}
 
 named!(atom <CompleteByteSlice, Node>, ws!(alt!(
 	map!(tag_no_case!("NaN"), |_| Node::Scalar(::std::f32::NAN)) // XXX define Node::NaN instead?
