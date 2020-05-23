@@ -1,4 +1,9 @@
-use nom::{alpha, alphanumeric, digit};
+use nom::{
+	alpha,
+	alphanumeric,
+	digit,
+	IResult,
+};
 use nom::types::CompleteByteSlice;
 use str::string;
 
@@ -124,13 +129,16 @@ named_attr!(#[doc(hidden)], pub vector <CompleteByteSlice, Vector>, ws!(do_parse
 // > The metric name … must match the regex [a-zA-Z_:][a-zA-Z0-9_:]*.
 // > Label names … must match the regex [a-zA-Z_][a-zA-Z0-9_]*. Label names beginning with __ are reserved for internal use.
 
-named!(metric_name <CompleteByteSlice, String>, flat_map!(
+fn metric_name(input: CompleteByteSlice) -> IResult<CompleteByteSlice, String> {
+	flat_map!(
+	input,
 	recognize!(tuple!(
 		alt!(call!(alpha) | is_a!("_:")),
 		many0!(alt!(call!(alphanumeric) | is_a!("_:")))
 	)),
 	parse_to!(String)
-));
+	)
+}
 
 // XXX nom does not allow pub(crate) here
 named_attr!(#[doc(hidden)], pub label_name <CompleteByteSlice, String>, flat_map!(
