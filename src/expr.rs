@@ -261,23 +261,23 @@ macro_rules! left_op {
 	// $next is the parser for operator that takes precenence, or any other kind of non-operator token sequence
 	($name:ident, $next:ident!($($next_args:tt)*), $op:ident!($($op_args:tt)*)) => (
 		fn $name(input: CompleteByteSlice) -> IResult<CompleteByteSlice, Node>{
-		ws!(
-		input,
-		do_parse!(
-			x: $next!($($next_args)*) >>
-			ops: many0!(tuple!(
-				$op!($($op_args)*),
-				$next!($($next_args)*)
-			)) >>
-			({
-				let mut x = x;
-				for (op, y) in ops {
-					x = Node::operator(x, op, y);
-				}
-				x
-			})
-		)
-		)
+			ws!(
+				input,
+				do_parse!(
+					x: $next!($($next_args)*) >>
+					ops: many0!(tuple!(
+						$op!($($op_args)*),
+						$next!($($next_args)*)
+					)) >>
+					({
+						let mut x = x;
+						for (op, y) in ops {
+							x = Node::operator(x, op, y);
+						}
+						x
+					})
+				)
+			)
 		}
 	);
 	($name:ident, $next:ident, $op:ident!($($op_args:tt)*)) => ( left_op!(
