@@ -74,7 +74,10 @@ pub struct Vector {
 	pub offset: Option<usize>,
 }
 
-named!(instant_vec <CompleteByteSlice, Vec<LabelMatch>>, map_res!(ws!(do_parse!(
+fn instant_vec(input: CompleteByteSlice) -> IResult<CompleteByteSlice, Vec<LabelMatch>> {
+	map_res!(
+	input,
+	ws!(do_parse!(
 	name: opt!(metric_name) >>
 	labels: opt!(label_set) >>
 	({
@@ -94,7 +97,8 @@ named!(instant_vec <CompleteByteSlice, Vec<LabelMatch>>, map_res!(ws!(do_parse!(
 			Err("vector selector must contain label matchers or metric name")
 		} else { Ok(ret) }
 	})
-)), |x| x));
+)), |x| x)
+}
 
 named!(range_literal <CompleteByteSlice, usize>, do_parse!(
 	num: map!(
