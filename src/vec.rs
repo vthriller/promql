@@ -144,7 +144,7 @@ fn metric_name(input: CompleteByteSlice, allow_periods: bool) -> IResult<Complet
 		input,
 		recognize!(tuple!(
 			alt!(call!(alpha) | is_a!("_:")),
-			many0!(alt!(call!(alphanumeric) | is_a!("_:")))
+			many0!(alt!(call!(alphanumeric) | is_a!(if allow_periods { "_:." } else { "_:" })))
 		)),
 		parse_to!(String)
 	)
@@ -179,12 +179,38 @@ mod tests {
 
 	#[test]
 	fn instant_vectors_period() {
-		instant_vectors(true)
+		instant_vectors(true);
+
+		// matches foo.bar{} entirely
+		assert_eq!(vector(cbs("foo.bar{}"), true), Ok((cbs(""), Vector{
+			labels: vec![
+				LabelMatch{
+					name: "__name__".to_string(),
+					op: LabelMatchOp::Eq,
+					value: "foo.bar".to_string(),
+				},
+			],
+			range: None,
+			offset: None
+		})));
 	}
 
 	#[test]
 	fn instant_vectors_no_period() {
-		instant_vectors(false)
+		instant_vectors(false);
+
+		// matches foo, leaves .bar{}
+		assert_eq!(vector(cbs("foo.bar{}"), false), Ok((cbs(".bar{}"), Vector{
+			labels: vec![
+				LabelMatch{
+					name: "__name__".to_string(),
+					op: LabelMatchOp::Eq,
+					value: "foo".to_string(),
+				},
+			],
+			range: None,
+			offset: None
+		})));
 	}
 
 	fn instant_vectors(allow_periods: bool) {
