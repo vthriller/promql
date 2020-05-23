@@ -85,7 +85,7 @@ mod tests {
 	#[test]
 	fn completeness() {
 		assert_eq!(
-			super::parse(b"asdf hjkl"),
+			super::parse(b"asdf hjkl", false),
 			Err(Err::Error(Context::Code(CompleteByteSlice(b"hjkl"), ErrorKind::Complete)))
 		);
 	}
