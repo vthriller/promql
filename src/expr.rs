@@ -166,7 +166,10 @@ fn function(input: CompleteByteSlice) -> IResult<CompleteByteSlice, Node> {
 	)
 }
 
-named!(atom <CompleteByteSlice, Node>, ws!(alt!(
+fn atom(input: CompleteByteSlice) -> IResult<CompleteByteSlice, Node> {
+ws!(
+input,
+alt!(
 	map!(tag_no_case!("NaN"), |_| Node::Scalar(::std::f32::NAN)) // XXX define Node::NaN instead?
 	|
 	map!(
@@ -187,7 +190,9 @@ named!(atom <CompleteByteSlice, Node>, ws!(alt!(
 	map!(call!(vector, false), Node::Vector)
 	|
 	delimited!(char!('('), expression, char!(')'))
-)));
+)
+)
+}
 
 macro_rules! with_modifier {
 	// this macro mimicks another parser macros, hence implicit input argument, $i
