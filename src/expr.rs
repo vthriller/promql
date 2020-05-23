@@ -176,7 +176,7 @@ named!(atom <CompleteByteSlice, Node>, ws!(alt!(
 	function
 	|
 	// FIXME? things like 'and' and 'group_left' are not supposed to parse as a vector: prometheus lexes them unambiguously
-	map!(vector, Node::Vector)
+	map!(call!(vector, false), Node::Vector)
 	|
 	delimited!(char!('('), expression, char!(')'))
 )));

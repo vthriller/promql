@@ -74,11 +74,11 @@ pub struct Vector {
 	pub offset: Option<usize>,
 }
 
-fn instant_vec(input: CompleteByteSlice) -> IResult<CompleteByteSlice, Vec<LabelMatch>> {
+fn instant_vec(input: CompleteByteSlice, allow_periods: bool) -> IResult<CompleteByteSlice, Vec<LabelMatch>> {
 	map_res!(
 		input,
 		ws!(do_parse!(
-			name: opt!(metric_name) >>
+			name: opt!(call!(metric_name, allow_periods)) >>
 			labels: opt!(label_set) >>
 			({
 				let mut ret = match name {
@@ -120,11 +120,11 @@ named!(range_literal <CompleteByteSlice, usize>, do_parse!(
 	(num * suffix)
 ));
 
-pub(crate) fn vector(input: CompleteByteSlice) -> IResult<CompleteByteSlice, Vector> {
+pub(crate) fn vector(input: CompleteByteSlice, allow_periods: bool) -> IResult<CompleteByteSlice, Vector> {
 	ws!(
 		input,
 		do_parse!(
-			labels: instant_vec >>
+			labels: call!(instant_vec, allow_periods) >>
 			range: opt!(
 				delimited!(char!('['), range_literal, char!(']'))
 			) >>
@@ -139,7 +139,7 @@ pub(crate) fn vector(input: CompleteByteSlice) -> IResult<CompleteByteSlice, Vec
 // > The metric name … must match the regex [a-zA-Z_:][a-zA-Z0-9_:]*.
 // > Label names … must match the regex [a-zA-Z_][a-zA-Z0-9_]*. Label names beginning with __ are reserved for internal use.
 
-fn metric_name(input: CompleteByteSlice) -> IResult<CompleteByteSlice, String> {
+fn metric_name(input: CompleteByteSlice, allow_periods: bool) -> IResult<CompleteByteSlice, String> {
 	flat_map!(
 		input,
 		recognize!(tuple!(
