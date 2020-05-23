@@ -50,8 +50,8 @@ use nom::types::CompleteByteSlice;
 use nom::IResult;
 
 assert_eq!(
-	vector(CompleteByteSlice("foo{bar='baz'}".as_bytes())),
-	Ok((CompleteByteSlice(b""), Vector {
+	parse("foo{bar='baz'}".as_bytes()),
+	Ok(Node::Vector(Vector {
 		labels: vec![
 			// this is the filter for the metric name 'foo'
 			LabelMatch { name: "__name__".to_string(), op: Eq, value: "foo".to_string(), },
