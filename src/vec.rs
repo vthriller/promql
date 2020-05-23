@@ -176,9 +176,19 @@ mod tests {
 		CompleteByteSlice(s.as_bytes())
 	}
 
+
 	#[test]
-	fn instant_vectors() {
-		assert_eq!(vector(cbs("foo")), Ok((cbs(""), Vector{
+	fn instant_vectors_period() {
+		instant_vectors(true)
+	}
+
+	#[test]
+	fn instant_vectors_no_period() {
+		instant_vectors(false)
+	}
+
+	fn instant_vectors(allow_periods: bool) {
+		assert_eq!(vector(cbs("foo"), allow_periods), Ok((cbs(""), Vector{
 			labels: vec![
 				LabelMatch{
 					name: "__name__".to_string(),
@@ -190,7 +200,7 @@ mod tests {
 			offset: None
 		})));
 
-		assert_eq!(vector(cbs("foo { }")), Ok((cbs(""), Vector{
+		assert_eq!(vector(cbs("foo { }"), allow_periods), Ok((cbs(""), Vector{
 			labels: vec![
 				LabelMatch{
 					name: "__name__".to_string(),
@@ -202,7 +212,7 @@ mod tests {
 			offset: None
 		})));
 
-		assert_eq!(vector(cbs("foo { bar = 'baz', quux !~ 'xyzzy', lorem = `ipsum \\n dolor \"sit amet\"` }")), Ok((cbs(""), Vector{
+		assert_eq!(vector(cbs("foo { bar = 'baz', quux !~ 'xyzzy', lorem = `ipsum \\n dolor \"sit amet\"` }"), allow_periods), Ok((cbs(""), Vector{
 			labels: vec![
 				LabelMatch{
 					name: "__name__".to_string(),
@@ -229,7 +239,7 @@ mod tests {
 			offset: None
 		})));
 
-		assert_eq!(vector(cbs("{lorem=~\"ipsum\"}")), Ok((cbs(""), Vector{
+		assert_eq!(vector(cbs("{lorem=~\"ipsum\"}"), allow_periods), Ok((cbs(""), Vector{
 			labels: vec![
 				LabelMatch{
 					name: "lorem".to_string(),
@@ -241,18 +251,28 @@ mod tests {
 			offset: None
 		})));
 
-		assert_eq!(vector(cbs("{}")), Err(Err::Error(Context::Code(cbs("{}"), ErrorKind::MapRes))));
+		assert_eq!(vector(cbs("{}"), allow_periods), Err(Err::Error(Context::Code(cbs("{}"), ErrorKind::MapRes))));
+	}
+
+
+	#[test]
+	fn modified_vectors_period() {
+		modified_vectors(true)
 	}
 
 	#[test]
-	fn modified_vectors() {
+	fn modified_vectors_no_period() {
+		modified_vectors(false)
+	}
+
+	fn modified_vectors(allow_periods: bool) {
 		modified_vectors_for_instant("foo", || vec![
 			LabelMatch{
 				name: "__name__".to_string(),
 				op: LabelMatchOp::Eq,
 				value: "foo".to_string(),
 			},
-		]);
+		], allow_periods);
 
 		modified_vectors_for_instant("foo {bar!~\"baz\"}", || vec![
 			LabelMatch{
@@ -265,7 +285,7 @@ mod tests {
 				op: LabelMatchOp::RNe,
 				value: "baz".to_string(),
 			},
-		]);
+		], allow_periods);
 
 		modified_vectors_for_instant("{instance!=`localhost`}", || vec![
 			LabelMatch{
@@ -273,30 +293,30 @@ mod tests {
 				op: LabelMatchOp::Ne,
 				value: "localhost".to_string(),
 			},
-		]);
+		], allow_periods);
 	}
 
-	fn modified_vectors_for_instant(instant: &str, labels: fn() -> Vec<LabelMatch>) {
-		assert_eq!(vector(cbs(&format!("{} [1m]", instant))), Ok((cbs(""), Vector{
+	fn modified_vectors_for_instant(instant: &str, labels: fn() -> Vec<LabelMatch>, allow_periods: bool) {
+		assert_eq!(vector(cbs(&format!("{} [1m]", instant)), allow_periods), Ok((cbs(""), Vector{
 			labels: labels(),
 			range: Some(60),
 			offset: None,
 		})));
 
-		assert_eq!(vector(cbs(&format!("{} offset 5m", instant))), Ok((cbs(""), Vector{
+		assert_eq!(vector(cbs(&format!("{} offset 5m", instant)), allow_periods), Ok((cbs(""), Vector{
 			labels: labels(),
 			range: None,
 			offset: Some(300),
 		})));
 
-		assert_eq!(vector(cbs(&format!("{} [1m] offset 5m", instant))), Ok((cbs(""), Vector{
+		assert_eq!(vector(cbs(&format!("{} [1m] offset 5m", instant)), allow_periods), Ok((cbs(""), Vector{
 			labels: labels(),
 			range: Some(60),
 			offset: Some(300),
 		})));
 
 		// FIXME should be Error()?
-		assert_eq!(vector(cbs(&format!("{} offset 5m [1m]", instant))), Ok((cbs("[1m]"), Vector{
+		assert_eq!(vector(cbs(&format!("{} offset 5m [1m]", instant)), allow_periods), Ok((cbs("[1m]"), Vector{
 			labels: labels(),
 			range: None,
 			offset: Some(300),
