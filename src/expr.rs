@@ -130,17 +130,17 @@ named!(function_aggregation <CompleteByteSlice, AggregationMod>, ws!(do_parse!(
 
 // it's up to the library user to decide whether argument list is valid or not
 fn function_args(input: CompleteByteSlice) -> IResult<CompleteByteSlice, Vec<Node>> {
-ws!(
-input,
-delimited!(
-	char!('('),
-	separated_list!(char!(','), alt!(
-		  expression => { |e| e }
-		| string => { |s| Node::String(s) }
-	)),
-	char!(')')
-)
-)
+	ws!(
+		input,
+		delimited!(
+			char!('('),
+			separated_list!(char!(','), alt!(
+				  expression => { |e| e }
+				| string => { |s| Node::String(s) }
+			)),
+			char!(')')
+		)
+	)
 }
 
 fn function(input: CompleteByteSlice) -> IResult<CompleteByteSlice, Node> {
