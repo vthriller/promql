@@ -122,17 +122,18 @@ named!(range_literal <CompleteByteSlice, usize>, do_parse!(
 
 pub(crate) fn vector(input: CompleteByteSlice) -> IResult<CompleteByteSlice, Vector> {
 	ws!(
-	input,
-	do_parse!(
-	labels: instant_vec >>
-	range: opt!(
-		delimited!(char!('['), range_literal, char!(']'))
-	) >>
-	offset: opt!(
-		ws!(preceded!(tag!("offset"), range_literal))
-	) >>
-	(Vector {labels, range, offset})
-))
+		input,
+		do_parse!(
+			labels: instant_vec >>
+			range: opt!(
+				delimited!(char!('['), range_literal, char!(']'))
+			) >>
+			offset: opt!(
+				ws!(preceded!(tag!("offset"), range_literal))
+			) >>
+			(Vector {labels, range, offset})
+		)
+	)
 }
 
 // > The metric name … must match the regex [a-zA-Z_:][a-zA-Z0-9_:]*.
