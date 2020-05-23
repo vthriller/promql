@@ -129,13 +129,13 @@ named!(function_aggregation <CompleteByteSlice, AggregationMod>, ws!(do_parse!(
 )));
 
 // it's up to the library user to decide whether argument list is valid or not
-fn function_args(input: CompleteByteSlice) -> IResult<CompleteByteSlice, Vec<Node>> {
+fn function_args(input: CompleteByteSlice, allow_periods: bool) -> IResult<CompleteByteSlice, Vec<Node>> {
 	ws!(
 		input,
 		delimited!(
 			char!('('),
 			separated_list!(char!(','), alt!(
-				  expression => { |e| e }
+				  call!(expression, allow_periods) => { |e| e }
 				| string => { |s| Node::String(s) }
 			)),
 			char!(')')
@@ -143,7 +143,7 @@ fn function_args(input: CompleteByteSlice) -> IResult<CompleteByteSlice, Vec<Nod
 	)
 }
 
-fn function(input: CompleteByteSlice) -> IResult<CompleteByteSlice, Node> {
+fn function(input: CompleteByteSlice, allow_periods: bool) -> IResult<CompleteByteSlice, Node> {
 	ws!(
 		input,
 		do_parse!(
@@ -152,14 +152,14 @@ fn function(input: CompleteByteSlice) -> IResult<CompleteByteSlice, Node> {
 			args_agg: alt!(
 				// both 'sum by (label, label) (foo)' and 'sum(foo) by (label, label)' are valid
 				do_parse!(
-					args: function_args >>
+					args: call!(function_args, allow_periods) >>
 					aggregation: opt!(function_aggregation) >>
 					((args, aggregation))
 				)
 				|
 				do_parse!(
 					aggregation: opt!(function_aggregation) >>
-					args: function_args >>
+					args: call!(function_args, allow_periods) >>
 					((args, aggregation))
 				)
 			) >>
@@ -171,7 +171,7 @@ fn function(input: CompleteByteSlice) -> IResult<CompleteByteSlice, Node> {
 	)
 }
 
-fn atom(input: CompleteByteSlice) -> IResult<CompleteByteSlice, Node> {
+fn atom(input: CompleteByteSlice, allow_periods: bool) -> IResult<CompleteByteSlice, Node> {
 	ws!(
 		input,
 		alt!(
@@ -183,18 +183,18 @@ fn atom(input: CompleteByteSlice) -> IResult<CompleteByteSlice, Node> {
 			)
 			|
 			// unary + does nothing
-			preceded!(char!('+'), atom)
+			preceded!(char!('+'), call!(atom, allow_periods))
 			|
 			// unary -, well, negates whatever is following it
-			map!(preceded!(char!('-'), atom), |a| Node::negation(a))
+			map!(preceded!(char!('-'), call!(atom, allow_periods)), |a| Node::negation(a))
 			|
 			// function call is parsed before vector: the latter can actually consume function name as a vector, effectively rendering the rest of the expression invalid
-			function
+			call!(function, allow_periods)
 			|
 			// FIXME? things like 'and' and 'group_left' are not supposed to parse as a vector: prometheus lexes them unambiguously
-			map!(call!(vector, false), Node::Vector)
+			map!(call!(vector, allow_periods), Node::Vector)
 			|
-			delimited!(char!('('), expression, char!(')'))
+			delimited!(char!('('), call!(expression, allow_periods), char!(')'))
 		)
 	)
 }
@@ -244,14 +244,14 @@ named!(op_modifier <CompleteByteSlice, OpMod>, ws!(do_parse!(
 )));
 
 // ^ is right-associative, so we can actually keep it simple and recursive
-fn power(input: CompleteByteSlice) -> IResult<CompleteByteSlice, Node> {
+fn power(input: CompleteByteSlice, allow_periods: bool) -> IResult<CompleteByteSlice, Node> {
 	ws!(
 		input,
 		do_parse!(
-			x: atom >>
+			x: call!(atom, allow_periods) >>
 			y: opt!(tuple!(
 				with_modifier!("^", Op::Pow),
-				power
+				call!(power, allow_periods)
 			)) >>
 			( match y {
 				None => x,
@@ -265,14 +265,14 @@ fn power(input: CompleteByteSlice) -> IResult<CompleteByteSlice, Node> {
 macro_rules! left_op {
 	// $next is the parser for operator that takes precenence, or any other kind of non-operator token sequence
 	($name:ident, $next:ident, $op:ident!($($op_args:tt)*)) => (
-		fn $name(input: CompleteByteSlice) -> IResult<CompleteByteSlice, Node>{
+		fn $name(input: CompleteByteSlice, allow_periods: bool) -> IResult<CompleteByteSlice, Node>{
 			ws!(
 				input,
 				do_parse!(
-					x: call!($next) >>
+					x: call!($next, allow_periods) >>
 					ops: many0!(tuple!(
 						$op!($($op_args)*),
-						call!($next)
+						call!($next, allow_periods)
 					)) >>
 					({
 						let mut x = x;
@@ -316,8 +316,8 @@ left_op!(and_unless, comparison, alt!(
 
 left_op!(or_op, and_unless, with_modifier!("or", Op::Or));
 
-pub(crate) fn expression(input: CompleteByteSlice) -> IResult<CompleteByteSlice, Node> {
-	call!(input, or_op)
+pub(crate) fn expression(input: CompleteByteSlice, allow_periods: bool) -> IResult<CompleteByteSlice, Node> {
+	call!(input, or_op, allow_periods)
 }
 
 #[allow(unused_imports)]
