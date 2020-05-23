@@ -76,28 +76,30 @@ pub struct Vector {
 
 fn instant_vec(input: CompleteByteSlice) -> IResult<CompleteByteSlice, Vec<LabelMatch>> {
 	map_res!(
-	input,
-	ws!(do_parse!(
-	name: opt!(metric_name) >>
-	labels: opt!(label_set) >>
-	({
-		let mut ret = match name {
-			Some(name) => vec![ LabelMatch{
-				name: "__name__".to_string(),
-				op: LabelMatchOp::Eq,
-				value: name,
-			} ],
-			None => vec![],
-		};
-		if let Some(labels) = labels {
-			ret.extend(labels)
-		}
+		input,
+		ws!(do_parse!(
+			name: opt!(metric_name) >>
+			labels: opt!(label_set) >>
+			({
+				let mut ret = match name {
+					Some(name) => vec![ LabelMatch{
+						name: "__name__".to_string(),
+						op: LabelMatchOp::Eq,
+						value: name,
+					} ],
+					None => vec![],
+				};
+				if let Some(labels) = labels {
+					ret.extend(labels)
+				}
 
-		if ret.is_empty() {
-			Err("vector selector must contain label matchers or metric name")
-		} else { Ok(ret) }
-	})
-)), |x| x)
+				if ret.is_empty() {
+					Err("vector selector must contain label matchers or metric name")
+				} else { Ok(ret) }
+			})
+		)),
+		|x| x
+	)
 }
 
 named!(range_literal <CompleteByteSlice, usize>, do_parse!(
