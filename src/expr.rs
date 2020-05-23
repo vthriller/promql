@@ -285,16 +285,6 @@ macro_rules! left_op {
 		call!($next),
 		$op!($($op_args)*)
 	); );
-	($name:ident, $next:ident!($($next_args:tt)*), $op:ident) => ( left_op!(
-		$name,
-		$next!($($next_args)*),
-		call!($op)
-	); );
-	($name:ident, $next:ident, $op:ident) => ( left_op!(
-		$name,
-		call!($next),
-		call!($op)
-	); );
 }
 
 left_op!(mul_div_mod, power, alt!(
