@@ -139,30 +139,31 @@ named!(function_args <CompleteByteSlice, Vec<Node>>, ws!(delimited!(
 )));
 
 fn function(input: CompleteByteSlice) -> IResult<CompleteByteSlice, Node> {
-ws!(
-input,
-do_parse!(
-	// I have no idea what counts as a function name but label_name fits well for what's built into the prometheus so let's use that
-	name: label_name >>
-	args_agg: alt!(
-		// both 'sum by (label, label) (foo)' and 'sum(foo) by (label, label)' are valid
+	ws!(
+		input,
 		do_parse!(
-			args: function_args >>
-			aggregation: opt!(function_aggregation) >>
-			((args, aggregation))
+			// I have no idea what counts as a function name but label_name fits well for what's built into the prometheus so let's use that
+			name: label_name >>
+			args_agg: alt!(
+				// both 'sum by (label, label) (foo)' and 'sum(foo) by (label, label)' are valid
+				do_parse!(
+					args: function_args >>
+					aggregation: opt!(function_aggregation) >>
+					((args, aggregation))
+				)
+				|
+				do_parse!(
+					aggregation: opt!(function_aggregation) >>
+					args: function_args >>
+					((args, aggregation))
+				)
+			) >>
+			({
+				let (args, aggregation) = args_agg;
+				Node::Function { name, args, aggregation }
+			})
 		)
-		|
-		do_parse!(
-			aggregation: opt!(function_aggregation) >>
-			args: function_args >>
-			((args, aggregation))
-		)
-	) >>
-	({
-		let (args, aggregation) = args_agg;
-		Node::Function { name, args, aggregation }
-	})
-))
+	)
 }
 
 named!(atom <CompleteByteSlice, Node>, ws!(alt!(
