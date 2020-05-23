@@ -16,7 +16,7 @@ let ast = parse(b"
 	sum(1 - something_used{env=\"production\"} / something_total) by (instance)
 	and ignoring (instance)
 	sum(rate(some_queries{instance=~\"localhost\\\\d+\"} [5m])) > 100
-").unwrap(); // or show user that their query is invalid
+", false).unwrap(); // or show user that their query is invalid
 
 // now we can look for all sorts of things
 
