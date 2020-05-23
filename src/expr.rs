@@ -239,7 +239,10 @@ named!(op_modifier <CompleteByteSlice, OpMod>, ws!(do_parse!(
 )));
 
 // ^ is right-associative, so we can actually keep it simple and recursive
-named!(power <CompleteByteSlice, Node>, ws!(do_parse!(
+fn power(input: CompleteByteSlice) -> IResult<CompleteByteSlice, Node> {
+ws!(
+input,
+do_parse!(
 	x: atom >>
 	y: opt!(tuple!(
 		with_modifier!("^", Op::Pow),
@@ -249,7 +252,9 @@ named!(power <CompleteByteSlice, Node>, ws!(do_parse!(
 		None => x,
 		Some((op, y)) => Node::operator(x, op, y),
 	} )
-)));
+)
+)
+}
 
 // foo op bar op baz → Node[Node[foo op bar] op baz]
 macro_rules! left_op {
