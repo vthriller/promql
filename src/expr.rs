@@ -167,31 +167,31 @@ fn function(input: CompleteByteSlice) -> IResult<CompleteByteSlice, Node> {
 }
 
 fn atom(input: CompleteByteSlice) -> IResult<CompleteByteSlice, Node> {
-ws!(
-input,
-alt!(
-	map!(tag_no_case!("NaN"), |_| Node::Scalar(::std::f32::NAN)) // XXX define Node::NaN instead?
-	|
-	map!(
-		flat_map!(call!(recognize_float), parse_to!(f32)),
-		Node::Scalar
+	ws!(
+		input,
+		alt!(
+			map!(tag_no_case!("NaN"), |_| Node::Scalar(::std::f32::NAN)) // XXX define Node::NaN instead?
+			|
+			map!(
+				flat_map!(call!(recognize_float), parse_to!(f32)),
+				Node::Scalar
+			)
+			|
+			// unary + does nothing
+			preceded!(char!('+'), atom)
+			|
+			// unary -, well, negates whatever is following it
+			map!(preceded!(char!('-'), atom), |a| Node::negation(a))
+			|
+			// function call is parsed before vector: the latter can actually consume function name as a vector, effectively rendering the rest of the expression invalid
+			function
+			|
+			// FIXME? things like 'and' and 'group_left' are not supposed to parse as a vector: prometheus lexes them unambiguously
+			map!(call!(vector, false), Node::Vector)
+			|
+			delimited!(char!('('), expression, char!(')'))
+		)
 	)
-	|
-	// unary + does nothing
-	preceded!(char!('+'), atom)
-	|
-	// unary -, well, negates whatever is following it
-	map!(preceded!(char!('-'), atom), |a| Node::negation(a))
-	|
-	// function call is parsed before vector: the latter can actually consume function name as a vector, effectively rendering the rest of the expression invalid
-	function
-	|
-	// FIXME? things like 'and' and 'group_left' are not supposed to parse as a vector: prometheus lexes them unambiguously
-	map!(call!(vector, false), Node::Vector)
-	|
-	delimited!(char!('('), expression, char!(')'))
-)
-)
 }
 
 macro_rules! with_modifier {
