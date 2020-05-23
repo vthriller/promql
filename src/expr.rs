@@ -311,8 +311,9 @@ left_op!(and_unless, comparison, alt!(
 
 left_op!(or_op, and_unless, with_modifier!("or", Op::Or));
 
-// XXX nom does not allow pub(crate) here
-named_attr!(#[doc(hidden)], pub expression <CompleteByteSlice, Node>, call!(or_op));
+pub(crate) fn expression(input: CompleteByteSlice) -> IResult<CompleteByteSlice, Node> {
+	call!(input, or_op)
+}
 
 #[allow(unused_imports)]
 #[cfg(test)]
