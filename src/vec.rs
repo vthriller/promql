@@ -131,12 +131,12 @@ named_attr!(#[doc(hidden)], pub vector <CompleteByteSlice, Vector>, ws!(do_parse
 
 fn metric_name(input: CompleteByteSlice) -> IResult<CompleteByteSlice, String> {
 	flat_map!(
-	input,
-	recognize!(tuple!(
-		alt!(call!(alpha) | is_a!("_:")),
-		many0!(alt!(call!(alphanumeric) | is_a!("_:")))
-	)),
-	parse_to!(String)
+		input,
+		recognize!(tuple!(
+			alt!(call!(alpha) | is_a!("_:")),
+			many0!(alt!(call!(alphanumeric) | is_a!("_:")))
+		)),
+		parse_to!(String)
 	)
 }
 
