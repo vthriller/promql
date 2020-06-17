@@ -58,18 +58,22 @@ assert_eq!(
 			// here go all the other filters
 			LabelMatch { name: "bar".to_string(),      op: Eq, value: "baz".to_string(), },
 		],
-		range: None, offset: None,
+		range: None, resolution: None, offset: None,
 	}))
 );
 # }
 ```
 */
+
 #[derive(Debug, PartialEq)]
 pub struct Vector {
 	/// Set of label filters
 	pub labels: Vec<LabelMatch>,
 	/// Range for range vectors, in seconds, e.g. `Some(300)` for `[5m]`
 	pub range: Option<usize>,
+        /// Resolution for subqueries, defaults to the global evaluation_interval (1m). Same
+        /// time-semantics as range or offset.
+        pub resolution: Option<usize>,
 	/// Offset in seconds, e.g. `Some(3600)` for `offset 1h`
 	pub offset: Option<usize>,
 }
@@ -120,18 +124,44 @@ named!(range_literal <CompleteByteSlice, usize>, do_parse!(
 	(num * suffix)
 ));
 
+type ResolvedRange = (usize, Option<usize>);
+
+fn delimited_range(input: CompleteByteSlice) -> IResult<CompleteByteSlice, Option<ResolvedRange>> {
+    ws!(input,
+        opt!(
+            delimited!(
+                char!('['),
+                do_parse!(
+                    range: range_literal >>
+                    opt!(tag!(":")) >>
+                    resolution: opt!(range_literal) >>
+                    (range, resolution)
+                ),
+                char!(']')
+            )
+        )
+    )
+}
+
 pub(crate) fn vector(input: CompleteByteSlice, allow_periods: bool) -> IResult<CompleteByteSlice, Vector> {
 	ws!(
 		input,
 		do_parse!(
 			labels: call!(instant_vec, allow_periods) >>
-			range: opt!(
-				delimited!(char!('['), range_literal, char!(']'))
-			) >>
-			offset: opt!(
+			range: call!(delimited_range) >>
+                        offset: opt!(
 				ws!(preceded!(tag!("offset"), range_literal))
 			) >>
-			(Vector {labels, range, offset})
+			(
+                            match range {
+                                Some(t) => {
+                                    Vector{ labels, range: Some(t.0), resolution: t.1, offset }
+                                }
+                                None => {
+                                    Vector{ labels, range: None, resolution: None, offset }
+                                }
+                            }
+			)
 		)
 	)
 }
@@ -191,6 +221,7 @@ mod tests {
 				},
 			],
 			range: None,
+			resolution: None,
 			offset: None
 		})));
 	}
@@ -209,6 +240,7 @@ mod tests {
 				},
 			],
 			range: None,
+			resolution: None,
 			offset: None
 		})));
 	}
@@ -223,6 +255,7 @@ mod tests {
 				},
 			],
 			range: None,
+			resolution: None,
 			offset: None
 		})));
 
@@ -235,6 +268,7 @@ mod tests {
 				},
 			],
 			range: None,
+			resolution: None,
 			offset: None
 		})));
 
@@ -262,6 +296,7 @@ mod tests {
 				},
 			],
 			range: None,
+			resolution: None,
 			offset: None
 		})));
 
@@ -274,6 +309,7 @@ mod tests {
 				},
 			],
 			range: None,
+			resolution: None,
 			offset: None
 		})));
 
@@ -326,18 +362,49 @@ mod tests {
 		assert_eq!(vector(cbs(&format!("{} [1m]", instant)), allow_periods), Ok((cbs(""), Vector{
 			labels: labels(),
 			range: Some(60),
+			resolution: None,
+			offset: None,
+		})));
+
+		assert_eq!(vector(cbs(&format!("{} [1m:]", instant)), allow_periods), Ok((cbs(""), Vector{
+			labels: labels(),
+			range: Some(60),
+			resolution: None,
+			offset: None,
+		})));
+
+		assert_eq!(vector(cbs(&format!("{} [1m:10m]", instant)), allow_periods), Ok((cbs(""), Vector{
+			labels: labels(),
+			range: Some(60),
+			resolution: Some(600),
 			offset: None,
 		})));
 
 		assert_eq!(vector(cbs(&format!("{} offset 5m", instant)), allow_periods), Ok((cbs(""), Vector{
 			labels: labels(),
 			range: None,
+			resolution: None,
 			offset: Some(300),
 		})));
 
 		assert_eq!(vector(cbs(&format!("{} [1m] offset 5m", instant)), allow_periods), Ok((cbs(""), Vector{
 			labels: labels(),
 			range: Some(60),
+			resolution: None,
+			offset: Some(300),
+		})));
+
+		assert_eq!(vector(cbs(&format!("{} [1m:] offset 5m", instant)), allow_periods), Ok((cbs(""), Vector{
+			labels: labels(),
+			range: Some(60),
+			resolution: None,
+			offset: Some(300),
+		})));
+
+		assert_eq!(vector(cbs(&format!("{} [1m:5m] offset 5m", instant)), allow_periods), Ok((cbs(""), Vector{
+			labels: labels(),
+			range: Some(60),
+			resolution: Some(300),
 			offset: Some(300),
 		})));
 
@@ -345,6 +412,7 @@ mod tests {
 		assert_eq!(vector(cbs(&format!("{} offset 5m [1m]", instant)), allow_periods), Ok((cbs("[1m]"), Vector{
 			labels: labels(),
 			range: None,
+			resolution: None,
 			offset: Some(300),
 		})));
 	}
