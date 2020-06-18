@@ -71,9 +71,9 @@ pub struct Vector {
 	pub labels: Vec<LabelMatch>,
 	/// Range for range vectors, in seconds, e.g. `Some(300)` for `[5m]`
 	pub range: Option<usize>,
-        /// Resolution for subqueries, defaults to the global evaluation_interval (1m). Same
-        /// time-semantics as range or offset.
-        pub resolution: Option<usize>,
+	/// Resolution for subqueries, defaults to the global evaluation_interval (1m). Same
+	/// time-semantics as range or offset, i.e. `Some(600)` for `[:10m]`.
+	pub resolution: Option<usize>,
 	/// Offset in seconds, e.g. `Some(3600)` for `offset 1h`
 	pub offset: Option<usize>,
 }
@@ -124,23 +124,40 @@ named!(range_literal <CompleteByteSlice, usize>, do_parse!(
 	(num * suffix)
 ));
 
-type ResolvedRange = (usize, Option<usize>);
+enum VectorRange {
+	// A bare range has no subquery associated with it
+	Bare(usize),
+	Subquery(usize, Option<usize>),
+}
 
-fn delimited_range(input: CompleteByteSlice) -> IResult<CompleteByteSlice, Option<ResolvedRange>> {
-    ws!(input,
-        opt!(
-            delimited!(
-                char!('['),
-                do_parse!(
-                    range: range_literal >>
-                    opt!(tag!(":")) >>
-                    resolution: opt!(range_literal) >>
-                    (range, resolution)
-                ),
-                char!(']')
-            )
-        )
-    )
+// Parse a range that must include a subrange selector. That is, the query's range component must
+// be of the form [<range>:] and may include an optional range after the colon. For example, [10m:]
+// and [1m:5m] are allowable, but a "bare" range like [10m] is not.
+fn subquery_range_selector(input: CompleteByteSlice) -> IResult<CompleteByteSlice, VectorRange> {
+	ws!(input,
+		delimited!(char!('['),
+			do_parse!(
+				range: range_literal >>
+				tag!(":") >>
+				resolution: opt!(range_literal) >>
+				( VectorRange::Subquery(range, resolution) )
+			),
+			char!(']')
+		)
+	)
+}
+
+// Parse a range vector selector. No subqueries are allowed here, it must be of the form specified
+// at https://prometheus.io/docs/prometheus/latest/querying/basics/#range-vector-selectors
+fn range_selector(input: CompleteByteSlice) -> IResult<CompleteByteSlice, VectorRange> {
+	do_parse!(input,
+				range: ws!(delimited!(
+								char!('['),
+								range_literal,
+								char!(']')
+							)) >>
+				( VectorRange::Bare(range) )
+	)
 }
 
 pub(crate) fn vector(input: CompleteByteSlice, allow_periods: bool) -> IResult<CompleteByteSlice, Vector> {
@@ -148,19 +165,22 @@ pub(crate) fn vector(input: CompleteByteSlice, allow_periods: bool) -> IResult<C
 		input,
 		do_parse!(
 			labels: call!(instant_vec, allow_periods) >>
-			range: call!(delimited_range) >>
-                        offset: opt!(
+			range: opt!(alt!(call!(range_selector) | call!(subquery_range_selector))) >>
+			offset: opt!(
 				ws!(preceded!(tag!("offset"), range_literal))
 			) >>
 			(
-                            match range {
-                                Some(t) => {
-                                    Vector{ labels, range: Some(t.0), resolution: t.1, offset }
-                                }
-                                None => {
-                                    Vector{ labels, range: None, resolution: None, offset }
-                                }
-                            }
+				match range {
+					Some(VectorRange::Bare(r)) => {
+						Vector{ labels, range: Some(r), resolution: None, offset }
+					}
+					Some(VectorRange::Subquery(range, res)) => {
+						Vector{ labels, range: Some(range), resolution: res, offset }
+					}
+					None => {
+						Vector{ labels, range: None, resolution: None, offset }
+					}
+				}
 			)
 		)
 	)
