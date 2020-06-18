@@ -52,15 +52,15 @@ extern crate nom;
 #[macro_use]
 extern crate quick_error;
 
+pub(crate) mod expr;
 pub(crate) mod str;
 pub(crate) mod vec;
-pub(crate) mod expr;
 
-pub use vec::*;
 pub use expr::*;
+pub use vec::*;
 
-use nom::{Err, ErrorKind};
 use nom::types::CompleteByteSlice;
+use nom::{Err, ErrorKind};
 
 /**
 Parse expression string into an AST.
@@ -72,21 +72,27 @@ Set `allow_periods` to `true` to allow vector names with periods (like `foo.bar`
 pub fn parse(e: &[u8], allow_periods: bool) -> Result<Node, nom::Err<CompleteByteSlice>> {
 	match expression(CompleteByteSlice(e), allow_periods) {
 		Ok((CompleteByteSlice(b""), ast)) => Ok(ast),
-		Ok((tail, _)) => Err(Err::Error(error_position!(tail, ErrorKind::Complete::<u32>))),
+		Ok((tail, _)) => Err(Err::Error(error_position!(
+			tail,
+			ErrorKind::Complete::<u32>
+		))),
 		Err(e) => Err(e),
 	}
 }
 
 #[cfg(test)]
 mod tests {
-	use nom::{Err, ErrorKind, Context};
 	use nom::types::CompleteByteSlice;
+	use nom::{Context, Err, ErrorKind};
 
 	#[test]
 	fn completeness() {
 		assert_eq!(
 			super::parse(b"asdf hjkl", false),
-			Err(Err::Error(Context::Code(CompleteByteSlice(b"hjkl"), ErrorKind::Complete)))
+			Err(Err::Error(Context::Code(
+				CompleteByteSlice(b"hjkl"),
+				ErrorKind::Complete
+			)))
 		);
 	}
 }

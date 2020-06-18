@@ -1,22 +1,25 @@
-use vec::{vector, label_name, Vector};
-use str::string;
-use nom::{
-	recognize_float,
-	IResult,
-};
 use nom::types::CompleteByteSlice;
+use nom::{recognize_float, IResult};
+use str::string;
+use vec::{label_name, vector, Vector};
 
 /// PromQL operators
 #[derive(Debug, PartialEq)]
 pub enum Op {
-	/** `^` */ Pow(Option<OpMod>),
+	/** `^` */
+	Pow(Option<OpMod>),
 
-	/** `*` */ Mul(Option<OpMod>),
-	/** `/` */ Div(Option<OpMod>),
-	/** `%` */ Mod(Option<OpMod>),
+	/** `*` */
+	Mul(Option<OpMod>),
+	/** `/` */
+	Div(Option<OpMod>),
+	/** `%` */
+	Mod(Option<OpMod>),
 
-	/** `+` */ Plus(Option<OpMod>),
-	/** `-` */ Minus(Option<OpMod>),
+	/** `+` */
+	Plus(Option<OpMod>),
+	/** `-` */
+	Minus(Option<OpMod>),
 
 	/// `==`, with optional `bool` modifier in addition to regular operator modifiers
 	Eq(bool, Option<OpMod>),
@@ -31,14 +34,20 @@ pub enum Op {
 	/// `>=`, with optional `bool` modifier in addition to regular operator modifiers
 	Ge(bool, Option<OpMod>),
 
-	/** `and` */ And(Option<OpMod>),
-	/** `unless` */ Unless(Option<OpMod>),
+	/** `and` */
+	And(Option<OpMod>),
+	/** `unless` */
+	Unless(Option<OpMod>),
 
-	/** `or` */ Or(Option<OpMod>),
+	/** `or` */
+	Or(Option<OpMod>),
 }
 
 #[derive(Debug, PartialEq)]
-pub enum OpModAction { RestrictTo, Ignore }
+pub enum OpModAction {
+	RestrictTo,
+	Ignore,
+}
 /// Vector matching operator modifier (`on (…)`/`ignoring (…)`).
 #[derive(Debug, PartialEq)]
 pub struct OpMod {
@@ -51,7 +60,10 @@ pub struct OpMod {
 }
 
 #[derive(Debug, PartialEq)]
-pub enum OpGroupSide { Left, Right }
+pub enum OpGroupSide {
+	Left,
+	Right,
+}
 /// Vector grouping operator modifier (`group_left(…)`/`group_right(…)`).
 #[derive(Debug, PartialEq)]
 pub struct OpGroupMod {
@@ -60,7 +72,10 @@ pub struct OpGroupMod {
 }
 
 #[derive(Debug, PartialEq)]
-pub enum AggregationAction { Without, By }
+pub enum AggregationAction {
+	Without,
+	By,
+}
 #[derive(Debug, PartialEq)]
 pub struct AggregationMod {
 	// Action applied to a list of vectors; whether `by (…)` or `without (…)` is used.
@@ -78,7 +93,7 @@ pub enum Node {
 		/// Operator itself.
 		op: Op,
 		/// Second operand.
-		y: Box<Node>
+		y: Box<Node>,
 	},
 	/// Time series vector.
 	Vector(Vector),
@@ -105,7 +120,7 @@ impl Node {
 		Node::Operator {
 			x: Box::new(x),
 			op,
-			y: Box::new(y)
+			y: Box::new(y),
 		}
 	}
 	fn negation(x: Node) -> Node {
@@ -129,15 +144,21 @@ named!(function_aggregation <CompleteByteSlice, AggregationMod>, ws!(do_parse!(
 )));
 
 // it's up to the library user to decide whether argument list is valid or not
-fn function_args(input: CompleteByteSlice, allow_periods: bool) -> IResult<CompleteByteSlice, Vec<Node>> {
+fn function_args(
+	input: CompleteByteSlice,
+	allow_periods: bool,
+) -> IResult<CompleteByteSlice, Vec<Node>> {
 	ws!(
 		input,
 		delimited!(
 			char!('('),
-			separated_list!(char!(','), alt!(
-				  call!(expression, allow_periods) => { |e| e }
-				| string => { |s| Node::String(s) }
-			)),
+			separated_list!(
+				char!(','),
+				alt!(
+					  call!(expression, allow_periods) => { |e| e }
+					| string => { |s| Node::String(s) }
+				)
+			),
 			char!(')')
 		)
 	)
@@ -148,24 +169,26 @@ fn function(input: CompleteByteSlice, allow_periods: bool) -> IResult<CompleteBy
 		input,
 		do_parse!(
 			// I have no idea what counts as a function name but label_name fits well for what's built into the prometheus so let's use that
-			name: label_name >>
-			args_agg: alt!(
-				// both 'sum by (label, label) (foo)' and 'sum(foo) by (label, label)' are valid
-				do_parse!(
-					args: call!(function_args, allow_periods) >>
-					aggregation: opt!(function_aggregation) >>
-					((args, aggregation))
-				)
-				|
-				do_parse!(
-					aggregation: opt!(function_aggregation) >>
-					args: call!(function_args, allow_periods) >>
-					((args, aggregation))
-				)
-			) >>
-			({
+			name: label_name
+				>> args_agg:
+					alt!(
+						// both 'sum by (label, label) (foo)' and 'sum(foo) by (label, label)' are valid
+						do_parse!(
+							args: call!(function_args, allow_periods)
+								>> aggregation: opt!(function_aggregation)
+								>> ((args, aggregation))
+						) | do_parse!(
+							aggregation: opt!(function_aggregation)
+								>> args: call!(function_args, allow_periods)
+								>> ((args, aggregation))
+						)
+					) >> ({
 				let (args, aggregation) = args_agg;
-				Node::Function { name, args, aggregation }
+				Node::Function {
+					name,
+					args,
+					aggregation,
+				}
 			})
 		)
 	)
@@ -202,24 +225,25 @@ fn atom(input: CompleteByteSlice, allow_periods: bool) -> IResult<CompleteByteSl
 macro_rules! with_modifier {
 	// this macro mimicks another parser macros, hence implicit input argument, $i
 	// for comparison, see nom's call!()
-	($i:expr, $literal:expr, $op:expr) => (
-		map!(
-			$i,
-			preceded!(tag!($literal), opt!(op_modifier)),
-			|op_mod| $op(op_mod)
-		)
-	)
+	($i:expr, $literal:expr, $op:expr) => {
+		map!($i, preceded!(tag!($literal), opt!(op_modifier)), |op_mod| {
+			$op(op_mod)
+			})
+	};
 }
 
 macro_rules! with_bool_modifier {
-	($i:expr, $literal:expr, $op:expr) => (
-		ws!($i, do_parse!(
-			tag!($literal) >>
-			boolness: opt!(tag!("bool")) >>
-			op_mod: opt!(op_modifier) >>
-			($op(boolness.is_some(), op_mod))
-		))
-	)
+	($i:expr, $literal:expr, $op:expr) => {
+		ws!(
+			$i,
+			do_parse!(
+				tag!($literal)
+					>> boolness: opt!(tag!("bool"))
+					>> op_mod: opt!(op_modifier)
+					>> ($op(boolness.is_some(), op_mod))
+				)
+			)
+	};
 }
 
 named!(op_modifier <CompleteByteSlice, OpMod>, ws!(do_parse!(
@@ -248,15 +272,14 @@ fn power(input: CompleteByteSlice, allow_periods: bool) -> IResult<CompleteByteS
 	ws!(
 		input,
 		do_parse!(
-			x: call!(atom, allow_periods) >>
-			y: opt!(tuple!(
-				with_modifier!("^", Op::Pow),
-				call!(power, allow_periods)
-			)) >>
-			( match y {
+			x: call!(atom, allow_periods)
+				>> y: opt!(tuple!(
+					with_modifier!("^", Op::Pow),
+					call!(power, allow_periods)
+				)) >> (match y {
 				None => x,
 				Some((op, y)) => Node::operator(x, op, y),
-			} )
+			})
 		)
 	)
 }
@@ -287,36 +310,47 @@ macro_rules! left_op {
 	);
 }
 
-left_op!(mul_div_mod, power, alt!(
-	  with_modifier!("*", Op::Mul)
-	| with_modifier!("/", Op::Div)
-	| with_modifier!("%", Op::Mod)
-));
+left_op!(
+	mul_div_mod,
+	power,
+	alt!(
+		with_modifier!("*", Op::Mul) | with_modifier!("/", Op::Div) | with_modifier!("%", Op::Mod)
+	)
+);
 
-left_op!(plus_minus, mul_div_mod, alt!(
-	  with_modifier!("+", Op::Plus)
-	| with_modifier!("-", Op::Minus)
-));
+left_op!(
+	plus_minus,
+	mul_div_mod,
+	alt!(with_modifier!("+", Op::Plus) | with_modifier!("-", Op::Minus))
+);
 
 // if you thing this kind of operator chaining makes little to no sense, think again: it actually matches 'foo' that is both '> bar' and '!= baz'.
 // or, speaking another way: comparison operators are really just filters for values in a vector, and this is a chain of filters.
-left_op!(comparison, plus_minus, alt!(
-	  with_bool_modifier!("==", Op::Eq)
-	| with_bool_modifier!("!=", Op::Ne)
-	| with_bool_modifier!("<=", Op::Le)
-	| with_bool_modifier!(">=", Op::Ge)
-	| with_bool_modifier!("<",  Op::Lt)
-	| with_bool_modifier!(">",  Op::Gt)
-));
+left_op!(
+	comparison,
+	plus_minus,
+	alt!(
+		with_bool_modifier!("==", Op::Eq)
+			| with_bool_modifier!("!=", Op::Ne)
+			| with_bool_modifier!("<=", Op::Le)
+			| with_bool_modifier!(">=", Op::Ge)
+			| with_bool_modifier!("<", Op::Lt)
+			| with_bool_modifier!(">", Op::Gt)
+	)
+);
 
-left_op!(and_unless, comparison, alt!(
-	  with_modifier!("and", Op::And)
-	| with_modifier!("unless", Op::Unless)
-));
+left_op!(
+	and_unless,
+	comparison,
+	alt!(with_modifier!("and", Op::And) | with_modifier!("unless", Op::Unless))
+);
 
 left_op!(or_op, and_unless, with_modifier!("or", Op::Or));
 
-pub(crate) fn expression(input: CompleteByteSlice, allow_periods: bool) -> IResult<CompleteByteSlice, Node> {
+pub(crate) fn expression(
+	input: CompleteByteSlice,
+	allow_periods: bool,
+) -> IResult<CompleteByteSlice, Node> {
 	call!(input, or_op, allow_periods)
 }
 
@@ -324,10 +358,10 @@ pub(crate) fn expression(input: CompleteByteSlice, allow_periods: bool) -> IResu
 #[cfg(test)]
 mod tests {
 	use super::*;
-	use vec;
 	use nom::ErrorKind;
+	use vec;
 
-	use self::Node::{Scalar, Function};
+	use self::Node::{Function, Scalar};
 	use self::Op::*;
 
 	// cannot 'use self::Node::operator' for some reason
@@ -340,7 +374,7 @@ mod tests {
 	fn vector(expr: &str) -> Node {
 		match vec::vector(cbs(expr), false) {
 			Ok((CompleteByteSlice(b""), x)) => Node::Vector(x),
-			_ => panic!("failed to parse label correctly")
+			_ => panic!("failed to parse label correctly"),
 		}
 	}
 
@@ -350,25 +384,25 @@ mod tests {
 
 	#[test]
 	fn scalar() {
-		scalar_single("123",       123.);
-		scalar_single("-123",     -123.);
+		scalar_single("123", 123.);
+		scalar_single("-123", -123.);
 
-		scalar_single("123.",      123.);
-		scalar_single("-123.",    -123.);
+		scalar_single("123.", 123.);
+		scalar_single("-123.", -123.);
 
-		scalar_single("123.45",    123.45);
-		scalar_single("-123.45",  -123.45);
+		scalar_single("123.45", 123.45);
+		scalar_single("-123.45", -123.45);
 
-		scalar_single(".123",      0.123);
-		scalar_single("-.123",    -0.123);
+		scalar_single(".123", 0.123);
+		scalar_single("-.123", -0.123);
 
-		scalar_single("123e5",     123e5);
-		scalar_single("-123e5",   -123e5);
+		scalar_single("123e5", 123e5);
+		scalar_single("-123e5", -123e5);
 
-		scalar_single("1.23e5",    1.23e5);
-		scalar_single("-1.23e5",  -1.23e5);
+		scalar_single("1.23e5", 1.23e5);
+		scalar_single("-1.23e5", -1.23e5);
 
-		scalar_single("1.23e-5",   1.23e-5);
+		scalar_single("1.23e-5", 1.23e-5);
 		scalar_single("-1.23e-5", -1.23e-5);
 	}
 
@@ -380,79 +414,100 @@ mod tests {
 	fn ops() {
 		assert_eq!(
 			expression(cbs("foo > bar != 0 and 15.5 < xyzzy"), false),
-			Ok((cbs(""), operator(
+			Ok((
+				cbs(""),
 				operator(
-					operator(vector("foo"), Gt(false, None), vector("bar")),
-					Ne(false, None),
-					Scalar(0.)
-				),
-				And(None),
-				operator(Scalar(15.5), Lt(false, None), vector("xyzzy")),
-			)))
+					operator(
+						operator(vector("foo"), Gt(false, None), vector("bar")),
+						Ne(false, None),
+						Scalar(0.)
+					),
+					And(None),
+					operator(Scalar(15.5), Lt(false, None), vector("xyzzy")),
+				)
+			))
 		);
 
 		assert_eq!(
 			expression(cbs("foo + bar - baz <= quux + xyzzy"), false),
-			Ok((cbs(""), operator(
+			Ok((
+				cbs(""),
 				operator(
-					operator(vector("foo"), Plus(None), vector("bar")),
-					Minus(None),
-					vector("baz"),
-				),
-				Le(false, None),
-				operator(vector("quux"), Plus(None), vector("xyzzy")),
-			)))
+					operator(
+						operator(vector("foo"), Plus(None), vector("bar")),
+						Minus(None),
+						vector("baz"),
+					),
+					Le(false, None),
+					operator(vector("quux"), Plus(None), vector("xyzzy")),
+				)
+			))
 		);
 
 		assert_eq!(
 			expression(cbs("foo + bar % baz"), false),
-			Ok((cbs(""), operator(
-				vector("foo"),
-				Plus(None),
-				operator(vector("bar"), Mod(None), vector("baz")),
-			)))
+			Ok((
+				cbs(""),
+				operator(
+					vector("foo"),
+					Plus(None),
+					operator(vector("bar"), Mod(None), vector("baz")),
+				)
+			))
 		);
 
 		assert_eq!(
 			expression(cbs("x^y^z"), false),
-			Ok((cbs(""), operator(
-				vector("x"),
-				Pow(None),
-				operator(vector("y"), Pow(None), vector("z")),
-			)))
+			Ok((
+				cbs(""),
+				operator(
+					vector("x"),
+					Pow(None),
+					operator(vector("y"), Pow(None), vector("z")),
+				)
+			))
 		);
 
 		assert_eq!(
 			expression(cbs("(a+b)*c"), false),
-			Ok((cbs(""), operator(
-				operator(vector("a"), Plus(None), vector("b")),
-				Mul(None),
-				vector("c"),
-			)))
+			Ok((
+				cbs(""),
+				operator(
+					operator(vector("a"), Plus(None), vector("b")),
+					Mul(None),
+					vector("c"),
+				)
+			))
 		);
 	}
 
 	#[test]
 	fn op_mods() {
 		assert_eq!(
-			expression(cbs("foo + ignoring (instance) bar / on (cluster) baz"), false),
-			Ok((cbs(""), operator(
-				vector("foo"),
-				Plus(Some(OpMod {
-					action: OpModAction::Ignore,
-					labels: vec!["instance".to_string()],
-					group: None,
-				})),
+			expression(
+				cbs("foo + ignoring (instance) bar / on (cluster) baz"),
+				false
+			),
+			Ok((
+				cbs(""),
 				operator(
-					vector("bar"),
-					Div(Some(OpMod {
-						action: OpModAction::RestrictTo,
-						labels: vec!["cluster".to_string()],
+					vector("foo"),
+					Plus(Some(OpMod {
+						action: OpModAction::Ignore,
+						labels: vec!["instance".to_string()],
 						group: None,
 					})),
-					vector("baz"),
+					operator(
+						vector("bar"),
+						Div(Some(OpMod {
+							action: OpModAction::RestrictTo,
+							labels: vec!["cluster".to_string()],
+							group: None,
+						})),
+						vector("baz"),
+					)
 				)
-			)))
+			))
 		);
 
 		assert_eq!(
@@ -477,16 +532,25 @@ mod tests {
 		);
 
 		assert_eq!(
-			expression(cbs("node_cpu{cpu='cpu0'} > bool ignoring (cpu) node_cpu{cpu='cpu1'}"), false),
-			Ok((cbs(""), operator(
-				vector("node_cpu{cpu='cpu0'}"),
-				Gt(true, Some(OpMod {
-					action: OpModAction::Ignore,
-					labels: vec!["cpu".to_string()],
-					group: None,
-				})),
-				vector("node_cpu{cpu='cpu1'}"),
-			)))
+			expression(
+				cbs("node_cpu{cpu='cpu0'} > bool ignoring (cpu) node_cpu{cpu='cpu1'}"),
+				false
+			),
+			Ok((
+				cbs(""),
+				operator(
+					vector("node_cpu{cpu='cpu0'}"),
+					Gt(
+						true,
+						Some(OpMod {
+							action: OpModAction::Ignore,
+							labels: vec!["cpu".to_string()],
+							group: None,
+						})
+					),
+					vector("node_cpu{cpu='cpu1'}"),
+				)
+			))
 		);
 	}
 
@@ -494,57 +558,53 @@ mod tests {
 	fn unary() {
 		assert_eq!(
 			expression(cbs("a + -b"), false),
-			Ok((cbs(""), operator(
-				vector("a"),
-				Plus(None),
-				negation(vector("b")),
-			)))
+			Ok((
+				cbs(""),
+				operator(vector("a"), Plus(None), negation(vector("b")),)
+			))
 		);
 
 		assert_eq!(
 			expression(cbs("a ^ - 1 - b"), false),
-			Ok((cbs(""), operator(
+			Ok((
+				cbs(""),
 				operator(
-					vector("a"),
-					Pow(None),
-					negation(Scalar(1.)),
-				),
-				Minus(None),
-				vector("b"),
-			)))
+					operator(vector("a"), Pow(None), negation(Scalar(1.)),),
+					Minus(None),
+					vector("b"),
+				)
+			))
 		);
 
 		assert_eq!(
 			expression(cbs("a ^ - (1 - b)"), false),
-			Ok((cbs(""), operator(
-				vector("a"),
-				Pow(None),
-				negation(operator(
-					Scalar(1.),
-					Minus(None),
-					vector("b"),
-				)),
-			)))
+			Ok((
+				cbs(""),
+				operator(
+					vector("a"),
+					Pow(None),
+					negation(operator(Scalar(1.), Minus(None), vector("b"),)),
+				)
+			))
 		);
 
 		// yes, these are also valid
 
 		assert_eq!(
 			expression(cbs("a +++++++ b"), false),
-			Ok((cbs(""), operator(
-				vector("a"),
-				Plus(None),
-				vector("b"),
-			)))
+			Ok((cbs(""), operator(vector("a"), Plus(None), vector("b"),)))
 		);
 
 		assert_eq!(
 			expression(cbs("a * --+-b"), false),
-			Ok((cbs(""), operator(
-				vector("a"),
-				Mul(None),
-				negation(negation(negation(vector("b")))),
-			)))
+			Ok((
+				cbs(""),
+				operator(
+					vector("a"),
+					Mul(None),
+					negation(negation(negation(vector("b")))),
+				)
+			))
 		);
 	}
 
@@ -552,35 +612,36 @@ mod tests {
 	fn functions() {
 		assert_eq!(
 			expression(cbs("foo() + bar(baz) + quux(xyzzy, plough)"), false),
-			Ok((cbs(""), operator(
+			Ok((
+				cbs(""),
 				operator(
-					Function {
-						name: "foo".to_string(),
-						args: vec![],
-						aggregation: None,
-					},
+					operator(
+						Function {
+							name: "foo".to_string(),
+							args: vec![],
+							aggregation: None,
+						},
+						Plus(None),
+						Function {
+							name: "bar".to_string(),
+							args: vec![vector("baz")],
+							aggregation: None,
+						},
+					),
 					Plus(None),
 					Function {
-						name: "bar".to_string(),
-						args: vec![vector("baz")],
+						name: "quux".to_string(),
+						args: vec![vector("xyzzy"), vector("plough"),],
 						aggregation: None,
 					},
-				),
-				Plus(None),
-				Function {
-					name: "quux".to_string(),
-					args: vec![
-						vector("xyzzy"),
-						vector("plough"),
-					],
-					aggregation: None,
-				},
-			)))
+				)
+			))
 		);
 
 		assert_eq!(
 			expression(cbs("round(rate(whatever [5m]) > 0, 0.2)"), false),
-			Ok((cbs(""),
+			Ok((
+				cbs(""),
 				Function {
 					name: "round".to_string(),
 					args: vec![
@@ -601,18 +662,24 @@ mod tests {
 		);
 
 		assert_eq!(
-			expression(cbs("label_replace(up, 'instance', '', 'instance', '.*')"), false),
-			Ok((cbs(""), Function {
-				name: "label_replace".to_string(),
-				args: vec![
-					vector("up"),
-					Node::String("instance".to_string()),
-					Node::String("".to_string()),
-					Node::String("instance".to_string()),
-					Node::String(".*".to_string()),
-				],
-				aggregation: None,
-			}))
+			expression(
+				cbs("label_replace(up, 'instance', '', 'instance', '.*')"),
+				false
+			),
+			Ok((
+				cbs(""),
+				Function {
+					name: "label_replace".to_string(),
+					args: vec![
+						vector("up"),
+						Node::String("instance".to_string()),
+						Node::String("".to_string()),
+						Node::String("instance".to_string()),
+						Node::String(".*".to_string()),
+					],
+					aggregation: None,
+				}
+			))
 		);
 	}
 
@@ -620,48 +687,54 @@ mod tests {
 	fn agg_functions() {
 		assert_eq!(
 			expression(cbs("sum(foo) by (bar) * count(foo) without (bar)"), false),
-			Ok((cbs(""), operator(
-				Function {
-					name: "sum".to_string(),
-					args: vec![vector("foo")],
-					aggregation: Some(AggregationMod {
-						action: AggregationAction::By,
-						labels: vec!["bar".to_string()]
-					}),
-				},
-				Mul(None),
-				Function {
-					name: "count".to_string(),
-					args: vec![vector("foo")],
-					aggregation: Some(AggregationMod {
-						action: AggregationAction::Without,
-						labels: vec!["bar".to_string()]
-					}),
-				},
-			)))
+			Ok((
+				cbs(""),
+				operator(
+					Function {
+						name: "sum".to_string(),
+						args: vec![vector("foo")],
+						aggregation: Some(AggregationMod {
+							action: AggregationAction::By,
+							labels: vec!["bar".to_string()]
+						}),
+					},
+					Mul(None),
+					Function {
+						name: "count".to_string(),
+						args: vec![vector("foo")],
+						aggregation: Some(AggregationMod {
+							action: AggregationAction::Without,
+							labels: vec!["bar".to_string()]
+						}),
+					},
+				)
+			))
 		);
 
 		assert_eq!(
 			expression(cbs("sum by (bar) (foo) * count without (bar) (foo)"), false),
-			Ok((cbs(""), operator(
-				Function {
-					name: "sum".to_string(),
-					args: vec![vector("foo")],
-					aggregation: Some(AggregationMod {
-						action: AggregationAction::By,
-						labels: vec!["bar".to_string()]
-					}),
-				},
-				Mul(None),
-				Function {
-					name: "count".to_string(),
-					args: vec![vector("foo")],
-					aggregation: Some(AggregationMod {
-						action: AggregationAction::Without,
-						labels: vec!["bar".to_string()]
-					}),
-				},
-			)))
+			Ok((
+				cbs(""),
+				operator(
+					Function {
+						name: "sum".to_string(),
+						args: vec![vector("foo")],
+						aggregation: Some(AggregationMod {
+							action: AggregationAction::By,
+							labels: vec!["bar".to_string()]
+						}),
+					},
+					Mul(None),
+					Function {
+						name: "count".to_string(),
+						args: vec![vector("foo")],
+						aggregation: Some(AggregationMod {
+							action: AggregationAction::Without,
+							labels: vec!["bar".to_string()]
+						}),
+					},
+				)
+			))
 		);
 	}
 }

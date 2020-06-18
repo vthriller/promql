@@ -1,19 +1,18 @@
-use nom::{
-	alpha,
-	alphanumeric,
-	digit,
-	IResult,
-};
 use nom::types::CompleteByteSlice;
+use nom::{alpha, alphanumeric, digit, IResult};
 use str::string;
 
 /// Label filter operators.
 #[derive(Debug, PartialEq)]
 pub enum LabelMatchOp {
-	/** `=`  */ Eq,
-	/** `!=` */ Ne,
-	/** `=~` */ REq,
-	/** `!~` */ RNe,
+	/** `=`  */
+	Eq,
+	/** `!=` */
+	Ne,
+	/** `=~` */
+	REq,
+	/** `!~` */
+	RNe,
 }
 
 /// Single label filter.
@@ -74,29 +73,34 @@ pub struct Vector {
 	pub offset: Option<usize>,
 }
 
-fn instant_vec(input: CompleteByteSlice, allow_periods: bool) -> IResult<CompleteByteSlice, Vec<LabelMatch>> {
+fn instant_vec(
+	input: CompleteByteSlice,
+	allow_periods: bool,
+) -> IResult<CompleteByteSlice, Vec<LabelMatch>> {
 	map_res!(
 		input,
 		ws!(do_parse!(
-			name: opt!(call!(metric_name, allow_periods)) >>
-			labels: opt!(label_set) >>
-			({
-				let mut ret = match name {
-					Some(name) => vec![ LabelMatch{
-						name: "__name__".to_string(),
-						op: LabelMatchOp::Eq,
-						value: name,
-					} ],
-					None => vec![],
-				};
-				if let Some(labels) = labels {
-					ret.extend(labels)
-				}
+			name: opt!(call!(metric_name, allow_periods))
+				>> labels: opt!(label_set)
+				>> ({
+					let mut ret = match name {
+						Some(name) => vec![LabelMatch {
+							name: "__name__".to_string(),
+							op: LabelMatchOp::Eq,
+							value: name,
+						}],
+						None => vec![],
+					};
+					if let Some(labels) = labels {
+						ret.extend(labels)
+					}
 
-				if ret.is_empty() {
-					Err("vector selector must contain label matchers or metric name")
-				} else { Ok(ret) }
-			})
+					if ret.is_empty() {
+						Err("vector selector must contain label matchers or metric name")
+					} else {
+						Ok(ret)
+					}
+				})
 		)),
 		|x| x
 	)
@@ -120,18 +124,21 @@ named!(range_literal <CompleteByteSlice, usize>, do_parse!(
 	(num * suffix)
 ));
 
-pub(crate) fn vector(input: CompleteByteSlice, allow_periods: bool) -> IResult<CompleteByteSlice, Vector> {
+pub(crate) fn vector(
+	input: CompleteByteSlice,
+	allow_periods: bool,
+) -> IResult<CompleteByteSlice, Vector> {
 	ws!(
 		input,
 		do_parse!(
-			labels: call!(instant_vec, allow_periods) >>
-			range: opt!(
-				delimited!(char!('['), range_literal, char!(']'))
-			) >>
-			offset: opt!(
-				ws!(preceded!(tag!("offset"), range_literal))
-			) >>
-			(Vector {labels, range, offset})
+			labels: call!(instant_vec, allow_periods)
+				>> range: opt!(delimited!(char!('['), range_literal, char!(']')))
+				>> offset: opt!(ws!(preceded!(tag!("offset"), range_literal)))
+				>> (Vector {
+					labels,
+					range,
+					offset
+				})
 		)
 	)
 }
@@ -139,12 +146,17 @@ pub(crate) fn vector(input: CompleteByteSlice, allow_periods: bool) -> IResult<C
 // > The metric name … must match the regex [a-zA-Z_:][a-zA-Z0-9_:]*.
 // > Label names … must match the regex [a-zA-Z_][a-zA-Z0-9_]*. Label names beginning with __ are reserved for internal use.
 
-fn metric_name(input: CompleteByteSlice, allow_periods: bool) -> IResult<CompleteByteSlice, String> {
+fn metric_name(
+	input: CompleteByteSlice,
+	allow_periods: bool,
+) -> IResult<CompleteByteSlice, String> {
 	flat_map!(
 		input,
 		recognize!(tuple!(
 			alt!(call!(alpha) | is_a!("_:")),
-			many0!(alt!(call!(alphanumeric) | is_a!(if allow_periods { "_:." } else { "_:" })))
+			many0!(alt!(
+				call!(alphanumeric) | is_a!(if allow_periods { "_:." } else { "_:" })
+			))
 		)),
 		parse_to!(String)
 	)
@@ -170,29 +182,32 @@ named!(label_op <CompleteByteSlice, LabelMatchOp>, alt!(
 #[cfg(test)]
 mod tests {
 	use super::*;
-	use nom::{Err, ErrorKind, Context};
+	use nom::{Context, Err, ErrorKind};
 
 	fn cbs(s: &str) -> CompleteByteSlice {
 		CompleteByteSlice(s.as_bytes())
 	}
-
 
 	#[test]
 	fn instant_vectors_period() {
 		instant_vectors(true);
 
 		// matches foo.bar{} entirely
-		assert_eq!(vector(cbs("foo.bar{}"), true), Ok((cbs(""), Vector{
-			labels: vec![
-				LabelMatch{
-					name: "__name__".to_string(),
-					op: LabelMatchOp::Eq,
-					value: "foo.bar".to_string(),
-				},
-			],
-			range: None,
-			offset: None
-		})));
+		assert_eq!(
+			vector(cbs("foo.bar{}"), true),
+			Ok((
+				cbs(""),
+				Vector {
+					labels: vec![LabelMatch {
+						name: "__name__".to_string(),
+						op: LabelMatchOp::Eq,
+						value: "foo.bar".to_string(),
+					},],
+					range: None,
+					offset: None
+				}
+			))
+		);
 	}
 
 	#[test]
@@ -200,86 +215,113 @@ mod tests {
 		instant_vectors(false);
 
 		// matches foo, leaves .bar{}
-		assert_eq!(vector(cbs("foo.bar{}"), false), Ok((cbs(".bar{}"), Vector{
-			labels: vec![
-				LabelMatch{
-					name: "__name__".to_string(),
-					op: LabelMatchOp::Eq,
-					value: "foo".to_string(),
-				},
-			],
-			range: None,
-			offset: None
-		})));
+		assert_eq!(
+			vector(cbs("foo.bar{}"), false),
+			Ok((
+				cbs(".bar{}"),
+				Vector {
+					labels: vec![LabelMatch {
+						name: "__name__".to_string(),
+						op: LabelMatchOp::Eq,
+						value: "foo".to_string(),
+					},],
+					range: None,
+					offset: None
+				}
+			))
+		);
 	}
 
 	fn instant_vectors(allow_periods: bool) {
-		assert_eq!(vector(cbs("foo"), allow_periods), Ok((cbs(""), Vector{
-			labels: vec![
-				LabelMatch{
-					name: "__name__".to_string(),
-					op: LabelMatchOp::Eq,
-					value: "foo".to_string(),
-				},
-			],
-			range: None,
-			offset: None
-		})));
+		assert_eq!(
+			vector(cbs("foo"), allow_periods),
+			Ok((
+				cbs(""),
+				Vector {
+					labels: vec![LabelMatch {
+						name: "__name__".to_string(),
+						op: LabelMatchOp::Eq,
+						value: "foo".to_string(),
+					},],
+					range: None,
+					offset: None
+				}
+			))
+		);
 
-		assert_eq!(vector(cbs("foo { }"), allow_periods), Ok((cbs(""), Vector{
-			labels: vec![
-				LabelMatch{
-					name: "__name__".to_string(),
-					op: LabelMatchOp::Eq,
-					value: "foo".to_string(),
-				},
-			],
-			range: None,
-			offset: None
-		})));
+		assert_eq!(
+			vector(cbs("foo { }"), allow_periods),
+			Ok((
+				cbs(""),
+				Vector {
+					labels: vec![LabelMatch {
+						name: "__name__".to_string(),
+						op: LabelMatchOp::Eq,
+						value: "foo".to_string(),
+					},],
+					range: None,
+					offset: None
+				}
+			))
+		);
 
-		assert_eq!(vector(cbs("foo { bar = 'baz', quux !~ 'xyzzy', lorem = `ipsum \\n dolor \"sit amet\"` }"), allow_periods), Ok((cbs(""), Vector{
-			labels: vec![
-				LabelMatch{
-					name: "__name__".to_string(),
-					op: LabelMatchOp::Eq,
-					value: "foo".to_string(),
-				},
-				LabelMatch{
-					name: "bar".to_string(),
-					op: LabelMatchOp::Eq,
-					value: "baz".to_string(),
-				},
-				LabelMatch{
-					name: "quux".to_string(),
-					op: LabelMatchOp::RNe,
-					value: "xyzzy".to_string(),
-				},
-				LabelMatch{
-					name: "lorem".to_string(),
-					op: LabelMatchOp::Eq,
-					value: "ipsum \\n dolor \"sit amet\"".to_string(),
-				},
-			],
-			range: None,
-			offset: None
-		})));
+		assert_eq!(
+			vector(
+				cbs("foo { bar = 'baz', quux !~ 'xyzzy', lorem = `ipsum \\n dolor \"sit amet\"` }"),
+				allow_periods
+			),
+			Ok((
+				cbs(""),
+				Vector {
+					labels: vec![
+						LabelMatch {
+							name: "__name__".to_string(),
+							op: LabelMatchOp::Eq,
+							value: "foo".to_string(),
+						},
+						LabelMatch {
+							name: "bar".to_string(),
+							op: LabelMatchOp::Eq,
+							value: "baz".to_string(),
+						},
+						LabelMatch {
+							name: "quux".to_string(),
+							op: LabelMatchOp::RNe,
+							value: "xyzzy".to_string(),
+						},
+						LabelMatch {
+							name: "lorem".to_string(),
+							op: LabelMatchOp::Eq,
+							value: "ipsum \\n dolor \"sit amet\"".to_string(),
+						},
+					],
+					range: None,
+					offset: None
+				}
+			))
+		);
 
-		assert_eq!(vector(cbs("{lorem=~\"ipsum\"}"), allow_periods), Ok((cbs(""), Vector{
-			labels: vec![
-				LabelMatch{
-					name: "lorem".to_string(),
-					op: LabelMatchOp::REq,
-					value: "ipsum".to_string(),
-				},
-			],
-			range: None,
-			offset: None
-		})));
+		assert_eq!(
+			vector(cbs("{lorem=~\"ipsum\"}"), allow_periods),
+			Ok((
+				cbs(""),
+				Vector {
+					labels: vec![LabelMatch {
+						name: "lorem".to_string(),
+						op: LabelMatchOp::REq,
+						value: "ipsum".to_string(),
+					},],
+					range: None,
+					offset: None
+				}
+			))
+		);
 
-		assert_eq!(vector(cbs("{}"), allow_periods), Err(Err::Error(Context::Code(cbs("{}"), ErrorKind::MapRes))));
+		assert_eq!(
+			vector(cbs("{}"), allow_periods),
+			Err(Err::Error(Context::Code(cbs("{}"), ErrorKind::MapRes)))
+		);
 	}
-
 
 	#[test]
 	fn modified_vectors_period() {
@@ -292,60 +334,102 @@ mod tests {
 	}
 
 	fn modified_vectors(allow_periods: bool) {
-		modified_vectors_for_instant("foo", || vec![
-			LabelMatch{
-				name: "__name__".to_string(),
-				op: LabelMatchOp::Eq,
-				value: "foo".to_string(),
+		modified_vectors_for_instant(
+			"foo",
+			|| {
+				vec![LabelMatch {
+					name: "__name__".to_string(),
+					op: LabelMatchOp::Eq,
+					value: "foo".to_string(),
+				}]
 			},
-		], allow_periods);
+			allow_periods,
+		);
 
-		modified_vectors_for_instant("foo {bar!~\"baz\"}", || vec![
-			LabelMatch{
-				name: "__name__".to_string(),
-				op: LabelMatchOp::Eq,
-				value: "foo".to_string(),
+		modified_vectors_for_instant(
+			"foo {bar!~\"baz\"}",
+			|| {
+				vec![
+					LabelMatch {
+						name: "__name__".to_string(),
+						op: LabelMatchOp::Eq,
+						value: "foo".to_string(),
+					},
+					LabelMatch {
+						name: "bar".to_string(),
+						op: LabelMatchOp::RNe,
+						value: "baz".to_string(),
+					},
+				]
 			},
-			LabelMatch{
-				name: "bar".to_string(),
-				op: LabelMatchOp::RNe,
-				value: "baz".to_string(),
-			},
-		], allow_periods);
+			allow_periods,
+		);
 
-		modified_vectors_for_instant("{instance!=`localhost`}", || vec![
-			LabelMatch{
-				name: "instance".to_string(),
-				op: LabelMatchOp::Ne,
-				value: "localhost".to_string(),
+		modified_vectors_for_instant(
+			"{instance!=`localhost`}",
+			|| {
+				vec![LabelMatch {
+					name: "instance".to_string(),
+					op: LabelMatchOp::Ne,
+					value: "localhost".to_string(),
+				}]
 			},
-		], allow_periods);
+			allow_periods,
+		);
 	}
 
-	fn modified_vectors_for_instant(instant: &str, labels: fn() -> Vec<LabelMatch>, allow_periods: bool) {
-		assert_eq!(vector(cbs(&format!("{} [1m]", instant)), allow_periods), Ok((cbs(""), Vector{
-			labels: labels(),
-			range: Some(60),
-			offset: None,
-		})));
+	fn modified_vectors_for_instant(
+		instant: &str,
+		labels: fn() -> Vec<LabelMatch>,
+		allow_periods: bool,
+	) {
+		assert_eq!(
+			vector(cbs(&format!("{} [1m]", instant)), allow_periods),
+			Ok((
+				cbs(""),
+				Vector {
+					labels: labels(),
+					range: Some(60),
+					offset: None,
+				}
+			))
+		);
 
-		assert_eq!(vector(cbs(&format!("{} offset 5m", instant)), allow_periods), Ok((cbs(""), Vector{
-			labels: labels(),
-			range: None,
-			offset: Some(300),
-		})));
+		assert_eq!(
+			vector(cbs(&format!("{} offset 5m", instant)), allow_periods),
+			Ok((
+				cbs(""),
+				Vector {
+					labels: labels(),
+					range: None,
+					offset: Some(300),
+				}
+			))
+		);
 
-		assert_eq!(vector(cbs(&format!("{} [1m] offset 5m", instant)), allow_periods), Ok((cbs(""), Vector{
-			labels: labels(),
-			range: Some(60),
-			offset: Some(300),
-		})));
+		assert_eq!(
+			vector(cbs(&format!("{} [1m] offset 5m", instant)), allow_periods),
+			Ok((
+				cbs(""),
+				Vector {
+					labels: labels(),
+					range: Some(60),
+					offset: Some(300),
+				}
+			))
+		);
 
 		// FIXME should be Error()?
-		assert_eq!(vector(cbs(&format!("{} offset 5m [1m]", instant)), allow_periods), Ok((cbs("[1m]"), Vector{
-			labels: labels(),
-			range: None,
-			offset: Some(300),
-		})));
+		assert_eq!(
+			vector(cbs(&format!("{} offset 5m [1m]", instant)), allow_periods),
+			Ok((
+				cbs("[1m]"),
+				Vector {
+					labels: labels(),
+					range: None,
+					offset: Some(300),
+				}
+			))
+		);
 	}
 }

@@ -22,13 +22,17 @@ macro_rules! fixed_length_radix {
 	($i:expr, $type:ident, $len:expr, $radix:expr) => {
 		// there's no easy way to combine nom::is_(whatever)_digit with something like length_count
 		// besides u123::from_str_radix will validate chars anyways, so why do extra work?
-		map_res!($i, take!($len), |n: CompleteByteSlice| -> Result<_, UnicodeRuneError> {
-			Ok($type::from_str_radix(
-				&String::from_utf8(n.0.to_vec())?,
-				$radix
-			)?)
-		})
-	}
+		map_res!(
+			$i,
+			take!($len),
+			|n: CompleteByteSlice| -> Result<_, UnicodeRuneError> {
+				Ok($type::from_str_radix(
+					&String::from_utf8(n.0.to_vec())?,
+					$radix,
+				)?)
+				}
+			)
+	};
 }
 
 // go does not allow invalid unicode scalars (surrogates, chars beyond U+10ffff), and the same applies to from_u32()
@@ -78,18 +82,14 @@ named!(rune <CompleteByteSlice, Vec<u8>>,
 macro_rules! is_not_v {
 	($i:expr, $arg:expr) => {
 		map!($i, is_not!($arg), |bytes| bytes.0.to_vec())
-	}
+	};
 }
 
 // sequence of chars (except those marked as invalid in $arg) or rune literals, parsed into Vec<u8>
 macro_rules! chars_except {
 	($i:expr, $arg:expr) => {
-			map!(
-				$i,
-				many0!(alt!(rune | is_not_v!($arg))),
-				|s| s.concat()
-			)
-	}
+		map!($i, many0!(alt!(rune | is_not_v!($arg))), |s| s.concat())
+	};
 }
 
 named!(pub string <CompleteByteSlice, String>, map_res!(
@@ -109,7 +109,7 @@ named!(pub string <CompleteByteSlice, String>, map_res!(
 #[cfg(test)]
 mod tests {
 	use super::*;
-	use nom::{Err, ErrorKind, Context};
+	use nom::{Context, Err, ErrorKind};
 
 	fn cbs(s: &str) -> CompleteByteSlice {
 		CompleteByteSlice(s.as_bytes())
@@ -129,14 +129,20 @@ mod tests {
 
 		assert_eq!(
 			string(cbs("`lorem ipsum \\\"dolor\\nsit\\tamet\\\"`")),
-			Ok((cbs(""), "lorem ipsum \\\"dolor\\nsit\\tamet\\\"".to_string()))
+			Ok((
+				cbs(""),
+				"lorem ipsum \\\"dolor\\nsit\\tamet\\\"".to_string()
+			))
 		);
 
 		// literal, non-escaped newlines
 
 		assert_eq!(
 			string(cbs("'this\nis not valid'")),
-			Err(Err::Error(Context::Code(cbs("'this\nis not valid'"), ErrorKind::Alt)))
+			Err(Err::Error(Context::Code(
+				cbs("'this\nis not valid'"),
+				ErrorKind::Alt
+			)))
 		);
 
 		assert_eq!(
@@ -147,15 +153,9 @@ mod tests {
 
 	#[test]
 	fn runes() {
-		assert_eq!(
-			rune(cbs("\\123")),
-			Ok((cbs(""), vec![0o123]))
-		);
+		assert_eq!(rune(cbs("\\123")), Ok((cbs(""), vec![0o123])));
 
-		assert_eq!(
-			rune(cbs("\\x23")),
-			Ok((cbs(""), vec![0x23]))
-		);
+		assert_eq!(rune(cbs("\\x23")), Ok((cbs(""), vec![0x23])));
 
 		assert_eq!(
 			rune(cbs("\\uabcd")),
