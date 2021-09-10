@@ -1,4 +1,5 @@
 use nom::IResult;
+use nom::bytes::complete::is_a;
 use nom::character::complete::{
 	alpha1,
 	alphanumeric1,
@@ -156,9 +157,9 @@ fn metric_name(
 	flat_map!(
 		input,
 		recognize!(tuple!(
-			alt!(call!(alpha1) | is_a!("_:")),
+			alt!(call!(alpha1) | call!(is_a("_:"))),
 			many0!(alt!(
-				call!(alphanumeric1) | is_a!(if allow_periods { "_:." } else { "_:" })
+				call!(alphanumeric1) | call!(is_a(if allow_periods { "_:." } else { "_:" }))
 			))
 		)),
 		parse_to!(String)
@@ -168,8 +169,8 @@ fn metric_name(
 // XXX nom does not allow pub(crate) here
 named_attr!(#[doc(hidden)], pub label_name <&[u8], String>, flat_map!(
 	recognize!(tuple!(
-		alt!(call!(alpha1) | is_a!("_")),
-		many0!(alt!(call!(alphanumeric1) | is_a!("_")))
+		alt!(call!(alpha1) | call!(is_a("_"))),
+		many0!(alt!(call!(alphanumeric1) | call!(is_a("_"))))
 	)),
 	parse_to!(String)
 ));
