@@ -1,5 +1,8 @@
 use nom::IResult;
-use nom::bytes::complete::is_a;
+use nom::bytes::complete::{
+	is_a,
+	tag,
+};
 use nom::character::complete::{
 	alpha1,
 	alphanumeric1,
@@ -137,7 +140,7 @@ pub(crate) fn vector(
 		do_parse!(
 			labels: call!(instant_vec, allow_periods)
 				>> range: opt!(delimited!(char!('['), range_literal, char!(']')))
-				>> offset: opt!(ws!(preceded!(tag!("offset"), range_literal)))
+				>> offset: opt!(ws!(preceded!(call!(tag("offset")), range_literal)))
 				>> (Vector {
 					labels,
 					range,
@@ -176,10 +179,10 @@ named_attr!(#[doc(hidden)], pub label_name <&[u8], String>, flat_map!(
 ));
 
 named!(label_op <&[u8], LabelMatchOp>, alt!(
-	  tag!("=~") => { |_| LabelMatchOp::REq }
-	| tag!("!~") => { |_| LabelMatchOp::RNe }
-	| tag!("=")  => { |_| LabelMatchOp::Eq  } // should come after =~
-	| tag!("!=") => { |_| LabelMatchOp::Ne  }
+	  call!(tag("=~")) => { |_| LabelMatchOp::REq }
+	| call!(tag("!~")) => { |_| LabelMatchOp::RNe }
+	| call!(tag("="))  => { |_| LabelMatchOp::Eq  } // should come after =~
+	| call!(tag("!=")) => { |_| LabelMatchOp::Ne  }
 ));
 
 #[allow(unused_imports)]

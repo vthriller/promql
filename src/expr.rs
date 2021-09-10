@@ -1,4 +1,5 @@
 use nom::IResult;
+use nom::bytes::complete::tag;
 use nom::number::complete::recognize_float;
 use str::string;
 use vec::{label_name, vector, Vector};
@@ -136,8 +137,8 @@ named!(label_list <&[u8], Vec<String>>, ws!(delimited!(
 
 named!(function_aggregation <&[u8], AggregationMod>, ws!(do_parse!(
 	action: alt!(
-		  tag!("by") => { |_| AggregationAction::By }
-		| tag!("without") => { |_| AggregationAction::Without }
+		  call!(tag("by")) => { |_| AggregationAction::By }
+		| call!(tag("without")) => { |_| AggregationAction::Without }
 	) >>
 	labels: label_list >>
 	(AggregationMod { action, labels })
@@ -226,7 +227,7 @@ macro_rules! with_modifier {
 	// this macro mimicks another parser macros, hence implicit input argument, $i
 	// for comparison, see nom's call!()
 	($i:expr, $literal:expr, $op:expr) => {
-		map!($i, preceded!(tag!($literal), opt!(op_modifier)), |op_mod| {
+		map!($i, preceded!(call!(tag($literal)), opt!(op_modifier)), |op_mod| {
 			$op(op_mod)
 			})
 	};
@@ -237,8 +238,8 @@ macro_rules! with_bool_modifier {
 		ws!(
 			$i,
 			do_parse!(
-				tag!($literal)
-					>> boolness: opt!(tag!("bool"))
+				call!(tag($literal))
+					>> boolness: opt!(call!(tag("bool")))
 					>> op_mod: opt!(op_modifier)
 					>> ($op(boolness.is_some(), op_mod))
 				)
@@ -248,15 +249,15 @@ macro_rules! with_bool_modifier {
 
 named!(op_modifier <&[u8], OpMod>, ws!(do_parse!(
 	action: alt!(
-		  tag!("on") => { |_| OpModAction::RestrictTo }
-		| tag!("ignoring") => { |_| OpModAction::Ignore }
+		  call!(tag("on")) => { |_| OpModAction::RestrictTo }
+		| call!(tag("ignoring")) => { |_| OpModAction::Ignore }
 	) >>
 	labels: label_list >>
 	// TODO > Grouping modifiers can only be used for comparison and arithmetic. Operations as and, unless and or operations match with all possible entries in the right vector by default.
 	group: opt!(ws!(do_parse!(
 		side: alt!(
-			  tag!("group_left") => { |_| OpGroupSide::Left }
-			| tag!("group_right") => { |_| OpGroupSide::Right }
+			  call!(tag("group_left")) => { |_| OpGroupSide::Left }
+			| call!(tag("group_right")) => { |_| OpGroupSide::Right }
 		) >>
 		labels: map!(
 			opt!(label_list),
