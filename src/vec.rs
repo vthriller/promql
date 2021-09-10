@@ -109,7 +109,7 @@ named!(range_literal <&[u8], usize>, do_parse!(
 		digit,
 		// from_utf8_unchecked() on [0-9]+ is actually totally safe
 		// FIXME unwrap? FIXME copy-pasted from expr.rs
-		|n| unsafe { String::from_utf8_unchecked(n.0.to_vec()) }.parse::<usize>().unwrap()
+		|n| unsafe { String::from_utf8_unchecked(n.to_vec()) }.parse::<usize>().unwrap()
 	) >>
 	suffix: alt!(
 		  char!('s') => { |_| 1 }
