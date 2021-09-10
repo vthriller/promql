@@ -59,7 +59,8 @@ pub(crate) mod vec;
 pub use expr::*;
 pub use vec::*;
 
-use nom::{Err, ErrorKind};
+use nom::Err;
+use nom::error::ErrorKind;
 
 /**
 Parse expression string into an AST.
@@ -81,13 +82,14 @@ pub fn parse(e: &[u8], allow_periods: bool) -> Result<Node, nom::Err<&[u8]>> {
 
 #[cfg(test)]
 mod tests {
-	use nom::{Context, Err, ErrorKind};
+	use nom::Err;
+	use nom::error::ErrorKind;
 
 	#[test]
 	fn completeness() {
 		assert_eq!(
 			super::parse(b"asdf hjkl", false),
-			Err(Err::Error(Context::Code(
+			Err(Err::Error((
 				b"hjkl",
 				ErrorKind::Complete
 			)))

@@ -107,7 +107,8 @@ named!(pub string <&[u8], String>, map_res!(
 #[cfg(test)]
 mod tests {
 	use super::*;
-	use nom::{Context, Err, ErrorKind};
+	use nom::Err;
+	use nom::error::ErrorKind;
 
 	fn cbs(s: &str) -> &[u8] {
 		s.as_bytes()
@@ -137,7 +138,7 @@ mod tests {
 
 		assert_eq!(
 			string(cbs("'this\nis not valid'")),
-			Err(Err::Error(Context::Code(
+			Err(Err::Error((
 				cbs("'this\nis not valid'"),
 				ErrorKind::Alt
 			)))
@@ -163,7 +164,7 @@ mod tests {
 		// high surrogate
 		assert_eq!(
 			rune(cbs("\\uD801")),
-			Err(Err::Error(Context::Code(cbs("uD801"), ErrorKind::Alt)))
+			Err(Err::Error((cbs("uD801"), ErrorKind::Alt)))
 		);
 
 		assert_eq!(
@@ -174,19 +175,19 @@ mod tests {
 		// out of range
 		assert_eq!(
 			rune(cbs("\\UdeadDEAD")),
-			Err(Err::Error(Context::Code(cbs("UdeadDEAD"), ErrorKind::Alt)))
+			Err(Err::Error((cbs("UdeadDEAD"), ErrorKind::Alt)))
 		);
 
 		// utter nonsense
 
 		assert_eq!(
 			rune(cbs("\\xxx")),
-			Err(Err::Error(Context::Code(cbs("xxx"), ErrorKind::Alt)))
+			Err(Err::Error((cbs("xxx"), ErrorKind::Alt)))
 		);
 
 		assert_eq!(
 			rune(cbs("\\x1")),
-			Err(Err::Error(Context::Code(cbs("x1"), ErrorKind::Alt)))
+			Err(Err::Error((cbs("x1"), ErrorKind::Alt)))
 		);
 	}
 }

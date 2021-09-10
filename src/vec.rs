@@ -185,7 +185,8 @@ named!(label_op <&[u8], LabelMatchOp>, alt!(
 #[cfg(test)]
 mod tests {
 	use super::*;
-	use nom::{Context, Err, ErrorKind};
+	use nom::Err;
+	use nom::error::ErrorKind;
 
 	fn cbs(s: &str) -> &[u8] {
 		s.as_bytes()
@@ -322,7 +323,7 @@ mod tests {
 
 		assert_eq!(
 			vector(cbs("{}"), allow_periods),
-			Err(Err::Error(Context::Code(cbs("{}"), ErrorKind::MapRes)))
+			Err(Err::Error((cbs("{}"), ErrorKind::MapRes)))
 		);
 	}
 
