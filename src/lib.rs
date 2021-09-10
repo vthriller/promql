@@ -69,8 +69,8 @@ This parser operates on byte sequence instead of `&str` because of the fact that
 Set `allow_periods` to `true` to allow vector names with periods (like `foo.bar`).
 */
 pub fn parse(e: &[u8], allow_periods: bool) -> Result<Node, nom::Err<CompleteByteSlice>> {
-	match expression(CompleteByteSlice(e), allow_periods) {
-		Ok((CompleteByteSlice(b""), ast)) => Ok(ast),
+	match expression(e, allow_periods) {
+		Ok((b"", ast)) => Ok(ast),
 		Ok((tail, _)) => Err(Err::Error(error_position!(
 			tail,
 			ErrorKind::Complete::<u32>
@@ -88,7 +88,7 @@ mod tests {
 		assert_eq!(
 			super::parse(b"asdf hjkl", false),
 			Err(Err::Error(Context::Code(
-				CompleteByteSlice(b"hjkl"),
+				b"hjkl",
 				ErrorKind::Complete
 			)))
 		);

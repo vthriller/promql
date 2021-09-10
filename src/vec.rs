@@ -183,7 +183,7 @@ mod tests {
 	use nom::{Context, Err, ErrorKind};
 
 	fn cbs(s: &str) -> CompleteByteSlice {
-		CompleteByteSlice(s.as_bytes())
+		s.as_bytes()
 	}
 
 	#[test]
