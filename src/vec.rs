@@ -22,7 +22,7 @@ pub struct LabelMatch {
 	pub value: String,
 }
 
-named!(label_set <CompleteByteSlice, Vec<LabelMatch>>, delimited!(
+named!(label_set <&[u8], Vec<LabelMatch>>, delimited!(
 	char!('{'),
 	ws!(separated_list!(char!(','), do_parse!(
 		name: label_name >>
@@ -72,9 +72,9 @@ pub struct Vector {
 }
 
 fn instant_vec(
-	input: CompleteByteSlice,
+	input: &[u8],
 	allow_periods: bool,
-) -> IResult<CompleteByteSlice, Vec<LabelMatch>> {
+) -> IResult<&[u8], Vec<LabelMatch>> {
 	map_res!(
 		input,
 		ws!(do_parse!(
@@ -104,7 +104,7 @@ fn instant_vec(
 	)
 }
 
-named!(range_literal <CompleteByteSlice, usize>, do_parse!(
+named!(range_literal <&[u8], usize>, do_parse!(
 	num: map!(
 		digit,
 		// from_utf8_unchecked() on [0-9]+ is actually totally safe
@@ -123,9 +123,9 @@ named!(range_literal <CompleteByteSlice, usize>, do_parse!(
 ));
 
 pub(crate) fn vector(
-	input: CompleteByteSlice,
+	input: &[u8],
 	allow_periods: bool,
-) -> IResult<CompleteByteSlice, Vector> {
+) -> IResult<&[u8], Vector> {
 	ws!(
 		input,
 		do_parse!(
@@ -145,9 +145,9 @@ pub(crate) fn vector(
 // > Label names … must match the regex [a-zA-Z_][a-zA-Z0-9_]*. Label names beginning with __ are reserved for internal use.
 
 fn metric_name(
-	input: CompleteByteSlice,
+	input: &[u8],
 	allow_periods: bool,
-) -> IResult<CompleteByteSlice, String> {
+) -> IResult<&[u8], String> {
 	flat_map!(
 		input,
 		recognize!(tuple!(
@@ -161,7 +161,7 @@ fn metric_name(
 }
 
 // XXX nom does not allow pub(crate) here
-named_attr!(#[doc(hidden)], pub label_name <CompleteByteSlice, String>, flat_map!(
+named_attr!(#[doc(hidden)], pub label_name <&[u8], String>, flat_map!(
 	recognize!(tuple!(
 		alt!(call!(alpha) | is_a!("_")),
 		many0!(alt!(call!(alphanumeric) | is_a!("_")))
@@ -169,7 +169,7 @@ named_attr!(#[doc(hidden)], pub label_name <CompleteByteSlice, String>, flat_map
 	parse_to!(String)
 ));
 
-named!(label_op <CompleteByteSlice, LabelMatchOp>, alt!(
+named!(label_op <&[u8], LabelMatchOp>, alt!(
 	  tag!("=~") => { |_| LabelMatchOp::REq }
 	| tag!("!~") => { |_| LabelMatchOp::RNe }
 	| tag!("=")  => { |_| LabelMatchOp::Eq  } // should come after =~
@@ -182,7 +182,7 @@ mod tests {
 	use super::*;
 	use nom::{Context, Err, ErrorKind};
 
-	fn cbs(s: &str) -> CompleteByteSlice {
+	fn cbs(s: &str) -> &[u8] {
 		s.as_bytes()
 	}
 

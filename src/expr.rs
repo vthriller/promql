@@ -127,13 +127,13 @@ impl Node {
 	}
 }
 
-named!(label_list <CompleteByteSlice, Vec<String>>, ws!(delimited!(
+named!(label_list <&[u8], Vec<String>>, ws!(delimited!(
 	char!('('),
 	separated_list!(char!(','), label_name),
 	char!(')')
 )));
 
-named!(function_aggregation <CompleteByteSlice, AggregationMod>, ws!(do_parse!(
+named!(function_aggregation <&[u8], AggregationMod>, ws!(do_parse!(
 	action: alt!(
 		  tag!("by") => { |_| AggregationAction::By }
 		| tag!("without") => { |_| AggregationAction::Without }
@@ -144,9 +144,9 @@ named!(function_aggregation <CompleteByteSlice, AggregationMod>, ws!(do_parse!(
 
 // it's up to the library user to decide whether argument list is valid or not
 fn function_args(
-	input: CompleteByteSlice,
+	input: &[u8],
 	allow_periods: bool,
-) -> IResult<CompleteByteSlice, Vec<Node>> {
+) -> IResult<&[u8], Vec<Node>> {
 	ws!(
 		input,
 		delimited!(
@@ -163,7 +163,7 @@ fn function_args(
 	)
 }
 
-fn function(input: CompleteByteSlice, allow_periods: bool) -> IResult<CompleteByteSlice, Node> {
+fn function(input: &[u8], allow_periods: bool) -> IResult<&[u8], Node> {
 	ws!(
 		input,
 		do_parse!(
@@ -193,7 +193,7 @@ fn function(input: CompleteByteSlice, allow_periods: bool) -> IResult<CompleteBy
 	)
 }
 
-fn atom(input: CompleteByteSlice, allow_periods: bool) -> IResult<CompleteByteSlice, Node> {
+fn atom(input: &[u8], allow_periods: bool) -> IResult<&[u8], Node> {
 	ws!(
 		input,
 		alt!(
@@ -245,7 +245,7 @@ macro_rules! with_bool_modifier {
 	};
 }
 
-named!(op_modifier <CompleteByteSlice, OpMod>, ws!(do_parse!(
+named!(op_modifier <&[u8], OpMod>, ws!(do_parse!(
 	action: alt!(
 		  tag!("on") => { |_| OpModAction::RestrictTo }
 		| tag!("ignoring") => { |_| OpModAction::Ignore }
@@ -267,7 +267,7 @@ named!(op_modifier <CompleteByteSlice, OpMod>, ws!(do_parse!(
 )));
 
 // ^ is right-associative, so we can actually keep it simple and recursive
-fn power(input: CompleteByteSlice, allow_periods: bool) -> IResult<CompleteByteSlice, Node> {
+fn power(input: &[u8], allow_periods: bool) -> IResult<&[u8], Node> {
 	ws!(
 		input,
 		do_parse!(
@@ -287,7 +287,7 @@ fn power(input: CompleteByteSlice, allow_periods: bool) -> IResult<CompleteByteS
 macro_rules! left_op {
 	// $next is the parser for operator that takes precenence, or any other kind of non-operator token sequence
 	($name:ident, $next:ident, $op:ident!($($op_args:tt)*)) => (
-		fn $name(input: CompleteByteSlice, allow_periods: bool) -> IResult<CompleteByteSlice, Node>{
+		fn $name(input: &[u8], allow_periods: bool) -> IResult<&[u8], Node>{
 			ws!(
 				input,
 				do_parse!(
@@ -347,9 +347,9 @@ left_op!(
 left_op!(or_op, and_unless, with_modifier!("or", Op::Or));
 
 pub(crate) fn expression(
-	input: CompleteByteSlice,
+	input: &[u8],
 	allow_periods: bool,
-) -> IResult<CompleteByteSlice, Node> {
+) -> IResult<&[u8], Node> {
 	call!(input, or_op, allow_periods)
 }
 
@@ -377,7 +377,7 @@ mod tests {
 		}
 	}
 
-	fn cbs(s: &str) -> CompleteByteSlice {
+	fn cbs(s: &str) -> &[u8] {
 		s.as_bytes()
 	}
 

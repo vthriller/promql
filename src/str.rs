@@ -23,7 +23,7 @@ macro_rules! fixed_length_radix {
 		map_res!(
 			$i,
 			take!($len),
-			|n: CompleteByteSlice| -> Result<_, UnicodeRuneError> {
+			|n: &[u8]| -> Result<_, UnicodeRuneError> {
 				Ok($type::from_str_radix(
 					&String::from_utf8(n.0.to_vec())?,
 					$radix,
@@ -41,7 +41,7 @@ fn validate_unicode_scalar(n: u32) -> Option<Vec<u8>> {
 	})
 }
 
-named!(rune <CompleteByteSlice, Vec<u8>>,
+named!(rune <&[u8], Vec<u8>>,
 	preceded!(char!('\\'),
 		alt!(
 			  char!('a') => { |_| vec![0x07] }
@@ -90,7 +90,7 @@ macro_rules! chars_except {
 	};
 }
 
-named!(pub string <CompleteByteSlice, String>, map_res!(
+named!(pub string <&[u8], String>, map_res!(
 	alt!(
 		// newlines are not allowed in interpreted quotes, but are totally fine in raw string literals
 		delimited!(char!('"'), chars_except!("\n\"\\"), char!('"'))
@@ -109,7 +109,7 @@ mod tests {
 	use super::*;
 	use nom::{Context, Err, ErrorKind};
 
-	fn cbs(s: &str) -> CompleteByteSlice {
+	fn cbs(s: &str) -> &[u8] {
 		s.as_bytes()
 	}
 
