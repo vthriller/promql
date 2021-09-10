@@ -7,6 +7,7 @@ use nom::character::complete::{
 	alpha1,
 	alphanumeric1,
 	digit1,
+	char,
 };
 use str::string;
 
@@ -32,14 +33,14 @@ pub struct LabelMatch {
 }
 
 named!(label_set <&[u8], Vec<LabelMatch>>, delimited!(
-	char!('{'),
-	ws!(separated_list!(char!(','), do_parse!(
+	call!(char('{')),
+	ws!(separated_list!(call!(char(',')), do_parse!(
 		name: label_name >>
 		op: label_op >>
 		value: string >>
 		(LabelMatch { name, op, value })
 	))),
-	char!('}')
+	call!(char('}'))
 ));
 
 /**
@@ -121,12 +122,12 @@ named!(range_literal <&[u8], usize>, do_parse!(
 		|n| unsafe { String::from_utf8_unchecked(n.to_vec()) }.parse::<usize>().unwrap()
 	) >>
 	suffix: alt!(
-		  char!('s') => { |_| 1 }
-		| char!('m') => { |_| 60 }
-		| char!('h') => { |_| 60 * 60 }
-		| char!('d') => { |_| 60 * 60 * 24 }
-		| char!('w') => { |_| 60 * 60 * 24 * 7 }
-		| char!('y') => { |_| 60 * 60 * 24 * 365 } // XXX leap years?
+		  call!(char('s')) => { |_| 1 }
+		| call!(char('m')) => { |_| 60 }
+		| call!(char('h')) => { |_| 60 * 60 }
+		| call!(char('d')) => { |_| 60 * 60 * 24 }
+		| call!(char('w')) => { |_| 60 * 60 * 24 * 7 }
+		| call!(char('y')) => { |_| 60 * 60 * 24 * 365 } // XXX leap years?
 	) >>
 	(num * suffix)
 ));
@@ -139,7 +140,7 @@ pub(crate) fn vector(
 		input,
 		do_parse!(
 			labels: call!(instant_vec, allow_periods)
-				>> range: opt!(delimited!(char!('['), range_literal, char!(']')))
+				>> range: opt!(delimited!(call!(char('[')), range_literal, call!(char(']'))))
 				>> offset: opt!(ws!(preceded!(call!(tag("offset")), range_literal)))
 				>> (Vector {
 					labels,

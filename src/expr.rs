@@ -1,5 +1,6 @@
 use nom::IResult;
 use nom::bytes::complete::tag;
+use nom::character::complete::char;
 use nom::number::complete::recognize_float;
 use str::string;
 use vec::{label_name, vector, Vector};
@@ -130,9 +131,9 @@ impl Node {
 }
 
 named!(label_list <&[u8], Vec<String>>, ws!(delimited!(
-	char!('('),
-	separated_list!(char!(','), label_name),
-	char!(')')
+	call!(char('(')),
+	separated_list!(call!(char(',')), label_name),
+	call!(char(')'))
 )));
 
 named!(function_aggregation <&[u8], AggregationMod>, ws!(do_parse!(
@@ -152,15 +153,15 @@ fn function_args(
 	ws!(
 		input,
 		delimited!(
-			char!('('),
+			call!(char('(')),
 			separated_list!(
-				char!(','),
+				call!(char(',')),
 				alt!(
 					  call!(expression, allow_periods) => { |e| e }
 					| string => { |s| Node::String(s) }
 				)
 			),
-			char!(')')
+			call!(char(')'))
 		)
 	)
 }
@@ -207,10 +208,10 @@ fn atom(input: &[u8], allow_periods: bool) -> IResult<&[u8], Node> {
 			)
 			|
 			// unary + does nothing
-			preceded!(char!('+'), call!(atom, allow_periods))
+			preceded!(call!(char('+')), call!(atom, allow_periods))
 			|
 			// unary -, well, negates whatever is following it
-			map!(preceded!(char!('-'), call!(atom, allow_periods)), |a| Node::negation(a))
+			map!(preceded!(call!(char('-')), call!(atom, allow_periods)), |a| Node::negation(a))
 			|
 			// function call is parsed before vector: the latter can actually consume function name as a vector, effectively rendering the rest of the expression invalid
 			call!(function, allow_periods)
@@ -218,7 +219,7 @@ fn atom(input: &[u8], allow_periods: bool) -> IResult<&[u8], Node> {
 			// FIXME? things like 'and' and 'group_left' are not supposed to parse as a vector: prometheus lexes them unambiguously
 			map!(call!(vector, allow_periods), Node::Vector)
 			|
-			delimited!(char!('('), call!(expression, allow_periods), char!(')'))
+			delimited!(call!(char('(')), call!(expression, allow_periods), call!(char(')')))
 		)
 	)
 }

@@ -1,3 +1,5 @@
+use nom::character::complete::char;
+
 // > Label values may contain any Unicode characters.
 // > PromQL follows the same [escaping rules as Go](https://golang.org/ref/spec#String_literals).
 
@@ -42,33 +44,33 @@ fn validate_unicode_scalar(n: u32) -> Option<Vec<u8>> {
 }
 
 named!(rune <&[u8], Vec<u8>>,
-	preceded!(char!('\\'),
+	preceded!(call!(char('\\')),
 		alt!(
-			  char!('a') => { |_| vec![0x07] }
-			| char!('b') => { |_| vec![0x08] }
-			| char!('f') => { |_| vec![0x0c] }
-			| char!('n') => { |_| vec![0x0a] }
-			| char!('r') => { |_| vec![0x0d] }
-			| char!('t') => { |_| vec![0x09] }
-			| char!('v') => { |_| vec![0x0b] }
+			  call!(char('a')) => { |_| vec![0x07] }
+			| call!(char('b')) => { |_| vec![0x08] }
+			| call!(char('f')) => { |_| vec![0x0c] }
+			| call!(char('n')) => { |_| vec![0x0a] }
+			| call!(char('r')) => { |_| vec![0x0d] }
+			| call!(char('t')) => { |_| vec![0x09] }
+			| call!(char('v')) => { |_| vec![0x0b] }
 			// TODO? should we really care whether \' is used in ""-strings or vice versa? (Prometheus itself does…)
-			| char!('\\') => { |_| vec![0x5c] }
-			| char!('\'') => { |_| vec![0x27] }
-			| char!('"') => { |_| vec![0x22] }
+			| call!(char('\\')) => { |_| vec![0x5c] }
+			| call!(char('\'')) => { |_| vec![0x27] }
+			| call!(char('"')) => { |_| vec![0x22] }
 			| map!(
 				fixed_length_radix!(u8, 3, 8),
 				|n| vec![n]
 			)
 			| map!(
-				preceded!(char!('x'), fixed_length_radix!(u8, 2, 16)),
+				preceded!(call!(char('x')), fixed_length_radix!(u8, 2, 16)),
 				|n| vec![n]
 			)
 			| map_opt!(
-				preceded!(char!('u'), fixed_length_radix!(u32, 4, 16)),
+				preceded!(call!(char('u')), fixed_length_radix!(u32, 4, 16)),
 				validate_unicode_scalar
 			)
 			| map_opt!(
-				preceded!(char!('U'), fixed_length_radix!(u32, 8, 16)),
+				preceded!(call!(char('U')), fixed_length_radix!(u32, 8, 16)),
 				validate_unicode_scalar
 			)
 		)
@@ -93,12 +95,12 @@ macro_rules! chars_except {
 named!(pub string <&[u8], String>, map_res!(
 	alt!(
 		// newlines are not allowed in interpreted quotes, but are totally fine in raw string literals
-		delimited!(char!('"'), chars_except!("\n\"\\"), char!('"'))
+		delimited!(call!(char('"')), chars_except!("\n\"\\"), call!(char('"')))
 		|
-		delimited!(char!('\''), chars_except!("\n'\\"), char!('\''))
+		delimited!(call!(char('\'')), chars_except!("\n'\\"), call!(char('\'')))
 		|
 		// raw string literals, where "backslashes have no special meaning"
-		delimited!(char!('`'), is_not_v!("`"), char!('`') )
+		delimited!(call!(char('`')), is_not_v!("`"), call!(char('`')))
 	),
 	|s: Vec<u8>| String::from_utf8(s)
 ));
