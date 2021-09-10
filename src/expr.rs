@@ -1,4 +1,5 @@
-use nom::{recognize_float, IResult};
+use nom::IResult;
+use nom::number::complete::recognize_float;
 use str::string;
 use vec::{label_name, vector, Vector};
 

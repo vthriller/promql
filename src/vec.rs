@@ -1,4 +1,9 @@
-use nom::{alpha, alphanumeric, digit, IResult};
+use nom::IResult;
+use nom::character::complete::{
+	alpha1,
+	alphanumeric1,
+	digit1,
+};
 use str::string;
 
 /// Label filter operators.
@@ -106,7 +111,7 @@ fn instant_vec(
 
 named!(range_literal <&[u8], usize>, do_parse!(
 	num: map!(
-		digit,
+		digit1,
 		// from_utf8_unchecked() on [0-9]+ is actually totally safe
 		// FIXME unwrap? FIXME copy-pasted from expr.rs
 		|n| unsafe { String::from_utf8_unchecked(n.to_vec()) }.parse::<usize>().unwrap()
@@ -151,9 +156,9 @@ fn metric_name(
 	flat_map!(
 		input,
 		recognize!(tuple!(
-			alt!(call!(alpha) | is_a!("_:")),
+			alt!(call!(alpha1) | is_a!("_:")),
 			many0!(alt!(
-				call!(alphanumeric) | is_a!(if allow_periods { "_:." } else { "_:" })
+				call!(alphanumeric1) | is_a!(if allow_periods { "_:." } else { "_:" })
 			))
 		)),
 		parse_to!(String)
@@ -163,8 +168,8 @@ fn metric_name(
 // XXX nom does not allow pub(crate) here
 named_attr!(#[doc(hidden)], pub label_name <&[u8], String>, flat_map!(
 	recognize!(tuple!(
-		alt!(call!(alpha) | is_a!("_")),
-		many0!(alt!(call!(alphanumeric) | is_a!("_")))
+		alt!(call!(alpha1) | is_a!("_")),
+		many0!(alt!(call!(alphanumeric1) | is_a!("_")))
 	)),
 	parse_to!(String)
 ));
