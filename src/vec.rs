@@ -1,4 +1,3 @@
-use nom::types::CompleteByteSlice;
 use nom::{alpha, alphanumeric, digit, IResult};
 use str::string;
 
@@ -45,7 +44,6 @@ Note that there's no field for metric name: not only it is optional (as in `{ins
 # fn main() {
 use promql::*;
 use promql::LabelMatchOp::*; // Eq
-use nom::types::CompleteByteSlice;
 use nom::IResult;
 
 assert_eq!(

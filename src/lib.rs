@@ -59,7 +59,6 @@ pub(crate) mod vec;
 pub use expr::*;
 pub use vec::*;
 
-use nom::types::CompleteByteSlice;
 use nom::{Err, ErrorKind};
 
 /**
@@ -82,7 +81,6 @@ pub fn parse(e: &[u8], allow_periods: bool) -> Result<Node, nom::Err<CompleteByt
 
 #[cfg(test)]
 mod tests {
-	use nom::types::CompleteByteSlice;
 	use nom::{Context, Err, ErrorKind};
 
 	#[test]

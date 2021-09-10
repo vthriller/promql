@@ -1,4 +1,3 @@
-use nom::types::CompleteByteSlice;
 use nom::{recognize_float, IResult};
 use str::string;
 use vec::{label_name, vector, Vector};
