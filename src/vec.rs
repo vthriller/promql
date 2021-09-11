@@ -39,7 +39,9 @@ fn label_set(input: &[u8]) -> IResult<&[u8], Vec<LabelMatch>> {
 	delimited(
 		char('{'),
 		// TODO ws!
-		separated_list(char(','), |input: &[u8]| {
+		separated_list(
+			delimited(multispace0, char(','), multispace0),
+			|input: &[u8]| {
 			let (input, _) = multispace0(input)?;
 			let (input, name) = label_name(input)?;
 			let (input, _) = multispace0(input)?;
