@@ -69,12 +69,12 @@ This parser operates on byte sequence instead of `&str` because of the fact that
 
 Set `allow_periods` to `true` to allow vector names with periods (like `foo.bar`).
 */
-pub fn parse(e: &[u8], allow_periods: bool) -> Result<Node, nom::Err<&[u8]>> {
+pub fn parse(e: &[u8], allow_periods: bool) -> Result<Node, nom::Err<(&[u8], ErrorKind)>> {
 	match expression(e, allow_periods) {
 		Ok((b"", ast)) => Ok(ast),
 		Ok((tail, _)) => Err(Err::Error(error_position!(
 			tail,
-			ErrorKind::Complete::<u32>
+			ErrorKind::Complete
 		))),
 		Err(e) => Err(e),
 	}
@@ -90,7 +90,7 @@ mod tests {
 		assert_eq!(
 			super::parse(b"asdf hjkl", false),
 			Err(Err::Error((
-				b"hjkl",
+				&b"hjkl"[..],
 				ErrorKind::Complete
 			)))
 		);
