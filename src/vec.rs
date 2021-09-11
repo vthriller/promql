@@ -9,6 +9,7 @@ use nom::character::complete::{
 	digit1,
 	char,
 };
+use nom::multi::separated_list;
 use nom::sequence::delimited;
 use str::string;
 
@@ -37,7 +38,7 @@ fn label_set(input: &[u8]) -> IResult<&[u8], Vec<LabelMatch>> {
 	delimited(
 		char('{'),
 		// TODO ws!
-		|input: &[u8]| separated_list!(input, call!(char(',')), do_parse!(
+		separated_list(char(','), |input: &[u8]| do_parse!(input,
 			name: label_name >>
 			op: label_op >>
 			value: string >>
