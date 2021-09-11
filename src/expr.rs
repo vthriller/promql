@@ -11,7 +11,10 @@ use nom::combinator::{
 };
 use nom::multi::separated_list;
 use nom::number::complete::recognize_float;
-use nom::sequence::tuple;
+use nom::sequence::{
+	delimited,
+	tuple,
+};
 use str::string;
 use vec::{label_name, vector, Vector};
 use crate::tuple_ws;
@@ -221,13 +224,13 @@ fn atom<'a>(input: &'a [u8], allow_periods: bool) -> IResult<&[u8], Node> {
 	ws!(
 		input,
 		call!(|input| alt((
-			|input: &'a [u8]| map!(input,
-				call!(tag_no_case("NaN")),
+			map(
+				tag_no_case("NaN"),
 				|_| Node::Scalar(::std::f32::NAN)
 			) // XXX define Node::NaN instead?
 			,
-			|input: &'a [u8]| map!(input,
-				flat_map!(call!(recognize_float), parse_to!(f32)),
+			map(
+				|input: &[u8]| flat_map!(input, call!(recognize_float), parse_to!(f32)),
 				Node::Scalar
 			)
 			,
@@ -238,8 +241,8 @@ fn atom<'a>(input: &'a [u8], allow_periods: bool) -> IResult<&[u8], Node> {
 			)
 			,
 			// unary -, well, negates whatever is following it
-			|input| map!(input,
-				preceded!(call!(char('-')), call!(atom, allow_periods)),
+			map(
+				|input| preceded!(input, call!(char('-')), call!(atom, allow_periods)),
 				|a| Node::negation(a)
 			)
 			,
@@ -247,15 +250,15 @@ fn atom<'a>(input: &'a [u8], allow_periods: bool) -> IResult<&[u8], Node> {
 			|input| function(input, allow_periods)
 			,
 			// FIXME? things like 'and' and 'group_left' are not supposed to parse as a vector: prometheus lexes them unambiguously
-			|input| map!(input,
-				call!(vector, allow_periods),
+			map(
+				|input| vector(input, allow_periods),
 				Node::Vector
 			)
 			,
-			|input| delimited!(input,
-				call!(char('(')),
-				call!(expression, allow_periods),
-				call!(char(')'))
+			delimited(
+				char('('),
+				|input| expression(input, allow_periods),
+				char(')')
 			)
 		))(input))
 	)
