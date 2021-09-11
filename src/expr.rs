@@ -278,15 +278,15 @@ macro_rules! with_modifier {
 }
 
 fn with_bool_modifier<'a, O: Fn(bool, Option<OpMod>) -> Op>(literal: &'a str, op: O) -> impl Fn(&'a [u8]) -> IResult<&[u8], Op> {
-			map(
-				tuple_ws!((
-					tag(literal),
-					opt(tag("bool")),
-					opt(op_modifier),
-				)),
-				move |(_, boolness, op_mod)|
-					op(boolness.is_some(), op_mod)
-			)
+	map(
+		tuple_ws!((
+			tag(literal),
+			opt(tag("bool")),
+			opt(op_modifier),
+		)),
+		move |(_, boolness, op_mod)|
+			op(boolness.is_some(), op_mod)
+	)
 }
 
 fn op_modifier(input: &[u8]) -> IResult<&[u8], OpMod> {
