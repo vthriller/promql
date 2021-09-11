@@ -177,11 +177,11 @@ fn function_args(
 fn function(input: &[u8], allow_periods: bool) -> IResult<&[u8], Node> {
 	ws!(
 		input,
-		do_parse!(
+		call!(|input| {
 			// I have no idea what counts as a function name but label_name fits well for what's built into the prometheus so let's use that
-			name: label_name
-				>> args_agg:
-					alt!(
+			let (input, name) = label_name(input)?;
+			let (input, args_agg) =
+					alt!(input,
 						// both 'sum by (label, label) (foo)' and 'sum(foo) by (label, label)' are valid
 						do_parse!(
 							args: call!(function_args, allow_periods)
@@ -192,15 +192,15 @@ fn function(input: &[u8], allow_periods: bool) -> IResult<&[u8], Node> {
 								>> args: call!(function_args, allow_periods)
 								>> ((args, aggregation))
 						)
-					) >> ({
+					)?;
+
 				let (args, aggregation) = args_agg;
-				Node::Function {
+				Ok((input, Node::Function {
 					name,
 					args,
 					aggregation,
-				}
-			})
-		)
+				}))
+		})
 	)
 }
 
