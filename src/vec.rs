@@ -104,8 +104,11 @@ fn instant_vec(
 	allow_periods: bool,
 ) -> IResult<&[u8], Vec<LabelMatch>> {
 		ws!(input, call!(|input| {
-					let (input, name) = opt!(input, call!(metric_name, allow_periods))?;
-					let (input, labels) = opt!(input, label_set)?;
+					let (input, (_, name, _, labels, _))  = tuple((
+						multispace0, |input| opt!(input, call!(metric_name, allow_periods)),
+						multispace0, |input| opt!(input, label_set),
+						multispace0,
+					))(input)?;
 
 					let mut ret = match name {
 						Some(name) => vec![LabelMatch {
