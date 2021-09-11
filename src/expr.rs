@@ -292,7 +292,7 @@ fn with_bool_modifier<'a, O: Fn(bool, Option<OpMod>) -> Op>(literal: &'a str, op
 }
 
 fn op_modifier(input: &[u8]) -> IResult<&[u8], OpMod> {
-	ws!(input, do_parse!(
+	surrounded_ws(|input: &[u8]| do_parse!(input,
 		action: call!(alt((
 			map(tag("on"), |_| OpModAction::RestrictTo),
 			map(tag("ignoring"), |_| OpModAction::Ignore),
@@ -311,7 +311,7 @@ fn op_modifier(input: &[u8]) -> IResult<&[u8], OpMod> {
 			(OpGroupMod { side, labels })
 		)) >>
 		(OpMod { action, labels, group })
-	))
+	))(input)
 }
 
 // ^ is right-associative, so we can actually keep it simple and recursive
