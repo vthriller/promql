@@ -104,7 +104,6 @@ fn instant_vec(
 	input: &[u8],
 	allow_periods: bool,
 ) -> IResult<&[u8], Vec<LabelMatch>> {
-		ws!(input, call!(|input| {
 					let orig = input;
 					let (input, (_, name, _, labels, _))  = tuple((
 						multispace0, opt(|input| metric_name(input, allow_periods)),
@@ -134,7 +133,6 @@ fn instant_vec(
 					} else {
 						Ok((input, ret))
 					}
-		}))
 }
 
 fn range_literal(input: &[u8]) -> IResult<&[u8], usize> {
