@@ -134,22 +134,22 @@ impl Node {
 }
 
 fn label_list(input: &[u8]) -> IResult<&[u8], Vec<String>> {
-ws!(input, delimited!(
-	call!(char('(')),
-	separated_list!(call!(char(',')), label_name),
-	call!(char(')'))
-))
+	ws!(input, delimited!(
+		call!(char('(')),
+		separated_list!(call!(char(',')), label_name),
+		call!(char(')'))
+	))
 }
 
 fn function_aggregation(input: &[u8]) -> IResult<&[u8], AggregationMod> {
-ws!(input, do_parse!(
-	action: alt!(
-		  call!(tag("by")) => { |_| AggregationAction::By }
-		| call!(tag("without")) => { |_| AggregationAction::Without }
-	) >>
-	labels: label_list >>
-	(AggregationMod { action, labels })
-))
+	ws!(input, do_parse!(
+		action: alt!(
+			  call!(tag("by")) => { |_| AggregationAction::By }
+			| call!(tag("without")) => { |_| AggregationAction::Without }
+		) >>
+		labels: label_list >>
+		(AggregationMod { action, labels })
+	))
 }
 
 // it's up to the library user to decide whether argument list is valid or not
@@ -256,26 +256,26 @@ macro_rules! with_bool_modifier {
 }
 
 fn op_modifier(input: &[u8]) -> IResult<&[u8], OpMod> {
-ws!(input, do_parse!(
-	action: alt!(
-		  call!(tag("on")) => { |_| OpModAction::RestrictTo }
-		| call!(tag("ignoring")) => { |_| OpModAction::Ignore }
-	) >>
-	labels: label_list >>
-	// TODO > Grouping modifiers can only be used for comparison and arithmetic. Operations as and, unless and or operations match with all possible entries in the right vector by default.
-	group: opt!(ws!(do_parse!(
-		side: alt!(
-			  call!(tag("group_left")) => { |_| OpGroupSide::Left }
-			| call!(tag("group_right")) => { |_| OpGroupSide::Right }
+	ws!(input, do_parse!(
+		action: alt!(
+			  call!(tag("on")) => { |_| OpModAction::RestrictTo }
+			| call!(tag("ignoring")) => { |_| OpModAction::Ignore }
 		) >>
-		labels: map!(
-			opt!(label_list),
-			|labels| labels.unwrap_or(vec![])
-		) >>
-		(OpGroupMod { side, labels })
-	))) >>
-	(OpMod { action, labels, group })
-))
+		labels: label_list >>
+		// TODO > Grouping modifiers can only be used for comparison and arithmetic. Operations as and, unless and or operations match with all possible entries in the right vector by default.
+		group: opt!(ws!(do_parse!(
+			side: alt!(
+				  call!(tag("group_left")) => { |_| OpGroupSide::Left }
+				| call!(tag("group_right")) => { |_| OpGroupSide::Right }
+			) >>
+			labels: map!(
+				opt!(label_list),
+				|labels| labels.unwrap_or(vec![])
+			) >>
+			(OpGroupMod { side, labels })
+		))) >>
+		(OpMod { action, labels, group })
+	))
 }
 
 // ^ is right-associative, so we can actually keep it simple and recursive

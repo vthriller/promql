@@ -33,16 +33,16 @@ pub struct LabelMatch {
 }
 
 fn label_set(input: &[u8]) -> IResult<&[u8], Vec<LabelMatch>> {
-delimited!(input,
-	call!(char('{')),
-	ws!(separated_list!(call!(char(',')), do_parse!(
-		name: label_name >>
-		op: label_op >>
-		value: string >>
-		(LabelMatch { name, op, value })
-	))),
-	call!(char('}'))
-)
+	delimited!(input,
+		call!(char('{')),
+		ws!(separated_list!(call!(char(',')), do_parse!(
+			name: label_name >>
+			op: label_op >>
+			value: string >>
+			(LabelMatch { name, op, value })
+		))),
+		call!(char('}'))
+	)
 }
 
 /**
@@ -117,23 +117,23 @@ fn instant_vec(
 }
 
 fn range_literal(input: &[u8]) -> IResult<&[u8], usize> {
-do_parse!(input,
-	num: map!(
-		digit1,
-		// from_utf8_unchecked() on [0-9]+ is actually totally safe
-		// FIXME unwrap? FIXME copy-pasted from expr.rs
-		|n| unsafe { String::from_utf8_unchecked(n.to_vec()) }.parse::<usize>().unwrap()
-	) >>
-	suffix: alt!(
-		  call!(char('s')) => { |_| 1 }
-		| call!(char('m')) => { |_| 60 }
-		| call!(char('h')) => { |_| 60 * 60 }
-		| call!(char('d')) => { |_| 60 * 60 * 24 }
-		| call!(char('w')) => { |_| 60 * 60 * 24 * 7 }
-		| call!(char('y')) => { |_| 60 * 60 * 24 * 365 } // XXX leap years?
-	) >>
-	(num * suffix)
-)
+	do_parse!(input,
+		num: map!(
+			digit1,
+			// from_utf8_unchecked() on [0-9]+ is actually totally safe
+			// FIXME unwrap? FIXME copy-pasted from expr.rs
+			|n| unsafe { String::from_utf8_unchecked(n.to_vec()) }.parse::<usize>().unwrap()
+		) >>
+		suffix: alt!(
+			  call!(char('s')) => { |_| 1 }
+			| call!(char('m')) => { |_| 60 }
+			| call!(char('h')) => { |_| 60 * 60 }
+			| call!(char('d')) => { |_| 60 * 60 * 24 }
+			| call!(char('w')) => { |_| 60 * 60 * 24 * 7 }
+			| call!(char('y')) => { |_| 60 * 60 * 24 * 365 } // XXX leap years?
+		) >>
+		(num * suffix)
+	)
 }
 
 pub(crate) fn vector(
@@ -184,12 +184,12 @@ named_attr!(#[doc(hidden)], pub label_name <&[u8], String>, flat_map!(
 ));
 
 fn label_op(input: &[u8]) -> IResult<&[u8], LabelMatchOp> {
-alt!(input,
-	  call!(tag("=~")) => { |_| LabelMatchOp::REq }
-	| call!(tag("!~")) => { |_| LabelMatchOp::RNe }
-	| call!(tag("="))  => { |_| LabelMatchOp::Eq  } // should come after =~
-	| call!(tag("!=")) => { |_| LabelMatchOp::Ne  }
-)
+	alt!(input,
+		  call!(tag("=~")) => { |_| LabelMatchOp::REq }
+		| call!(tag("!~")) => { |_| LabelMatchOp::RNe }
+		| call!(tag("="))  => { |_| LabelMatchOp::Eq  } // should come after =~
+		| call!(tag("!=")) => { |_| LabelMatchOp::Ne  }
+	)
 }
 
 #[allow(unused_imports)]
