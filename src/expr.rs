@@ -181,18 +181,19 @@ fn function(input: &[u8], allow_periods: bool) -> IResult<&[u8], Node> {
 			// I have no idea what counts as a function name but label_name fits well for what's built into the prometheus so let's use that
 			let (input, name) = label_name(input)?;
 			let (input, args_agg) =
-					alt!(input,
+					alt((
 						// both 'sum by (label, label) (foo)' and 'sum(foo) by (label, label)' are valid
-						call!(|input| {
+						|input| {
 							let (input, args) = call!(input, function_args, allow_periods)?;
 							let (input,	aggregation) = opt!(input, function_aggregation)?;
 							Ok((input, (args, aggregation)))
-						}) | call!(|input| {
+						},
+						|input| {
 							let (input,	aggregation) = opt!(input, function_aggregation)?;
 							let (input, args) = call!(input, function_args, allow_periods)?;
 							Ok((input, (args, aggregation)))
-						})
-					)?;
+						},
+					))(input)?;
 
 				let (args, aggregation) = args_agg;
 				Ok((input, Node::Function {
