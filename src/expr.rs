@@ -279,9 +279,7 @@ macro_rules! with_modifier {
 
 macro_rules! with_bool_modifier {
 	($i:expr, $literal:expr, $op:expr) => {
-		ws!(
-			$i,
-			call!(map(
+			map(
 				tuple_ws!((
 					tag($literal),
 					opt(tag("bool")),
@@ -289,8 +287,7 @@ macro_rules! with_bool_modifier {
 				)),
 				|(_, boolness, op_mod)|
 					$op(boolness.is_some(), op_mod)
-			))
-			)
+			)($i)
 	};
 }
 
