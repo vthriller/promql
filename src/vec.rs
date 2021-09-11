@@ -38,7 +38,8 @@ pub struct LabelMatch {
 fn label_set(input: &[u8]) -> IResult<&[u8], Vec<LabelMatch>> {
 	delimited(
 		char('{'),
-		// TODO ws!
+		delimited(
+		multispace0,
 		separated_list(
 			delimited(multispace0, char(','), multispace0),
 			|input: &[u8]| {
@@ -51,6 +52,8 @@ fn label_set(input: &[u8]) -> IResult<&[u8], Vec<LabelMatch>> {
 			let (input, _) = multispace0(input)?;
 			Ok((input, LabelMatch { name, op, value }))
 		}),
+		multispace0,
+		),
 		char('}')
 	)(input)
 }
