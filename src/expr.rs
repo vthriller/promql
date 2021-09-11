@@ -175,7 +175,7 @@ fn function_args(allow_periods: bool) -> impl Fn(&[u8]) -> IResult<&[u8], Vec<No
 		separated_list(
 			surrounded_ws(char(',')),
 			alt((
-				|input| expression(input, allow_periods),
+				expression(allow_periods),
 				map(string, |s| Node::String(s)),
 			))
 		),
@@ -261,7 +261,7 @@ fn atom(allow_periods: bool) -> impl Fn(&[u8]) -> IResult<&[u8], Node> {
 			,
 			delimited(
 				char('('),
-				|input| expression(input, allow_periods),
+				expression(allow_periods),
 				char(')')
 			)
 		))(input))
@@ -396,10 +396,9 @@ left_op!(
 left_op!(or_op, and_unless, with_modifier!("or", Op::Or));
 
 pub(crate) fn expression(
-	input: &[u8],
 	allow_periods: bool,
-) -> IResult<&[u8], Node> {
-	call!(input, or_op, allow_periods)
+) -> impl Fn(&[u8]) -> IResult<&[u8], Node> {
+	move |input| or_op(input, allow_periods)
 }
 
 #[allow(unused_imports)]
@@ -455,13 +454,13 @@ mod tests {
 	}
 
 	fn scalar_single(input: &str, output: f32) {
-		assert_eq!(expression(cbs(input), false), Ok((cbs(""), Scalar(output))));
+		assert_eq!(expression(false)(cbs(input)), Ok((cbs(""), Scalar(output))));
 	}
 
 	#[test]
 	fn ops() {
 		assert_eq!(
-			expression(cbs("foo > bar != 0 and 15.5 < xyzzy"), false),
+			expression(false)(cbs("foo > bar != 0 and 15.5 < xyzzy")),
 			Ok((
 				cbs(""),
 				operator(
@@ -477,7 +476,7 @@ mod tests {
 		);
 
 		assert_eq!(
-			expression(cbs("foo + bar - baz <= quux + xyzzy"), false),
+			expression(false)(cbs("foo + bar - baz <= quux + xyzzy")),
 			Ok((
 				cbs(""),
 				operator(
@@ -493,7 +492,7 @@ mod tests {
 		);
 
 		assert_eq!(
-			expression(cbs("foo + bar % baz"), false),
+			expression(false)(cbs("foo + bar % baz")),
 			Ok((
 				cbs(""),
 				operator(
@@ -505,7 +504,7 @@ mod tests {
 		);
 
 		assert_eq!(
-			expression(cbs("x^y^z"), false),
+			expression(false)(cbs("x^y^z")),
 			Ok((
 				cbs(""),
 				operator(
@@ -517,7 +516,7 @@ mod tests {
 		);
 
 		assert_eq!(
-			expression(cbs("(a+b)*c"), false),
+			expression(false)(cbs("(a+b)*c")),
 			Ok((
 				cbs(""),
 				operator(
@@ -532,9 +531,8 @@ mod tests {
 	#[test]
 	fn op_mods() {
 		assert_eq!(
-			expression(
+			expression(false)(
 				cbs("foo + ignoring (instance) bar / on (cluster) baz"),
-				false
 			),
 			Ok((
 				cbs(""),
@@ -559,7 +557,7 @@ mod tests {
 		);
 
 		assert_eq!(
-			expression(cbs("foo + ignoring (instance) group_right bar / on (cluster, shmuster) group_left (job) baz"), false),
+			expression(false)(cbs("foo + ignoring (instance) group_right bar / on (cluster, shmuster) group_left (job) baz")),
 			Ok((cbs(""), operator(
 				vector("foo"),
 				Plus(Some(OpMod {
@@ -580,9 +578,8 @@ mod tests {
 		);
 
 		assert_eq!(
-			expression(
+			expression(false)(
 				cbs("node_cpu{cpu='cpu0'} > bool ignoring (cpu) node_cpu{cpu='cpu1'}"),
-				false
 			),
 			Ok((
 				cbs(""),
@@ -605,7 +602,7 @@ mod tests {
 	#[test]
 	fn unary() {
 		assert_eq!(
-			expression(cbs("a + -b"), false),
+			expression(false)(cbs("a + -b")),
 			Ok((
 				cbs(""),
 				operator(vector("a"), Plus(None), negation(vector("b")),)
@@ -613,7 +610,7 @@ mod tests {
 		);
 
 		assert_eq!(
-			expression(cbs("a ^ - 1 - b"), false),
+			expression(false)(cbs("a ^ - 1 - b")),
 			Ok((
 				cbs(""),
 				operator(
@@ -625,7 +622,7 @@ mod tests {
 		);
 
 		assert_eq!(
-			expression(cbs("a ^ - (1 - b)"), false),
+			expression(false)(cbs("a ^ - (1 - b)")),
 			Ok((
 				cbs(""),
 				operator(
@@ -639,12 +636,12 @@ mod tests {
 		// yes, these are also valid
 
 		assert_eq!(
-			expression(cbs("a +++++++ b"), false),
+			expression(false)(cbs("a +++++++ b")),
 			Ok((cbs(""), operator(vector("a"), Plus(None), vector("b"),)))
 		);
 
 		assert_eq!(
-			expression(cbs("a * --+-b"), false),
+			expression(false)(cbs("a * --+-b")),
 			Ok((
 				cbs(""),
 				operator(
@@ -659,7 +656,7 @@ mod tests {
 	#[test]
 	fn functions() {
 		assert_eq!(
-			expression(cbs("foo() + bar(baz) + quux(xyzzy, plough)"), false),
+			expression(false)(cbs("foo() + bar(baz) + quux(xyzzy, plough)")),
 			Ok((
 				cbs(""),
 				operator(
@@ -687,7 +684,7 @@ mod tests {
 		);
 
 		assert_eq!(
-			expression(cbs("round(rate(whatever [5m]) > 0, 0.2)"), false),
+			expression(false)(cbs("round(rate(whatever [5m]) > 0, 0.2)")),
 			Ok((
 				cbs(""),
 				Function {
@@ -710,9 +707,8 @@ mod tests {
 		);
 
 		assert_eq!(
-			expression(
+			expression(false)(
 				cbs("label_replace(up, 'instance', '', 'instance', '.*')"),
-				false
 			),
 			Ok((
 				cbs(""),
@@ -734,7 +730,7 @@ mod tests {
 	#[test]
 	fn agg_functions() {
 		assert_eq!(
-			expression(cbs("sum(foo) by (bar) * count(foo) without (bar)"), false),
+			expression(false)(cbs("sum(foo) by (bar) * count(foo) without (bar)")),
 			Ok((
 				cbs(""),
 				operator(
@@ -760,7 +756,7 @@ mod tests {
 		);
 
 		assert_eq!(
-			expression(cbs("sum by (bar) (foo) * count without (bar) (foo)"), false),
+			expression(false)(cbs("sum by (bar) (foo) * count without (bar) (foo)")),
 			Ok((
 				cbs(""),
 				operator(
