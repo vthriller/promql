@@ -4,6 +4,7 @@ use nom::bytes::complete::{
 	tag_no_case,
 };
 use nom::character::complete::char;
+use nom::multi::separated_list;
 use nom::number::complete::recognize_float;
 use str::string;
 use vec::{label_name, vector, Vector};
@@ -138,7 +139,7 @@ impl Node {
 fn label_list(input: &[u8]) -> IResult<&[u8], Vec<String>> {
 	tuple_ws!((
 		char('('),
-		|input| separated_list!(input, call!(delim_ws(char(','))), label_name),
+		separated_list(delim_ws(char(',')), label_name),
 		char(')')
 	))(input).map(|(input, result)| (input, result.1))
 }
