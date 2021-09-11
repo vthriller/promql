@@ -10,6 +10,7 @@ use nom::character::complete::{
 	char,
 	multispace0,
 };
+use nom::combinator::opt;
 use nom::multi::separated_list;
 use nom::sequence::{
 	delimited,
@@ -105,8 +106,8 @@ fn instant_vec(
 ) -> IResult<&[u8], Vec<LabelMatch>> {
 		ws!(input, call!(|input| {
 					let (input, (_, name, _, labels, _))  = tuple((
-						multispace0, |input| opt!(input, call!(metric_name, allow_periods)),
-						multispace0, |input| opt!(input, label_set),
+						multispace0, opt(|input| metric_name(input, allow_periods)),
+						multispace0, opt(label_set),
 						multispace0,
 					))(input)?;
 
