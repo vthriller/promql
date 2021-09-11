@@ -11,7 +11,7 @@ use nom::character::complete::{
 	multispace0,
 };
 use nom::combinator::opt;
-use nom::multi::separated_list;
+use nom::multi::separated_list0;
 use nom::sequence::{
 	delimited,
 	preceded,
@@ -49,7 +49,7 @@ fn label_set(input: &[u8]) -> IResult<&[u8], Vec<LabelMatch>> {
 	delimited(
 		char('{'),
 		surrounded_ws(
-			separated_list(
+			separated_list0(
 				surrounded_ws(char(',')),
 				|input: &[u8]| {
 					let (input, (name, op, value))  = tuple_ws!((

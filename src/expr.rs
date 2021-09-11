@@ -9,7 +9,7 @@ use nom::combinator::{
 	map,
 	opt,
 };
-use nom::multi::separated_list;
+use nom::multi::separated_list0;
 use nom::number::complete::float;
 use nom::sequence::{
 	delimited,
@@ -152,7 +152,7 @@ impl Node {
 fn label_list(input: &[u8]) -> IResult<&[u8], Vec<String>> {
 	delimited_ws(
 		char('('),
-		separated_list(surrounded_ws(char(',')), label_name),
+		separated_list0(surrounded_ws(char(',')), label_name),
 		char(')')
 	)(input)
 }
@@ -174,7 +174,7 @@ fn function_aggregation(input: &[u8]) -> IResult<&[u8], AggregationMod> {
 fn function_args(allow_periods: bool) -> impl Fn(&[u8]) -> IResult<&[u8], Vec<Node>> {
 	move |input| delimited_ws(
 		char('('),
-		separated_list(
+		separated_list0(
 			surrounded_ws(char(',')),
 			alt((
 				expression(allow_periods),
