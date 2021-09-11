@@ -162,21 +162,21 @@ pub(crate) fn vector<'a>(
 	allow_periods: bool,
 ) -> impl Fn(&[u8]) -> IResult<&[u8], Vector> {
 	move |input: &[u8]| {
-	// labels and offset parsers already handle whitespace, no need to use ws!() here
-	let (input, (labels, range, offset, _)) = tuple((
-		instant_vec(allow_periods),
-		opt(delimited(char('['), range_literal, char(']'))),
-		opt(preceded(
-			surrounded_ws(tag("offset")),
-			range_literal
-		)),
-		multispace0,
-	))(input)?;
-	Ok((input, Vector {
-		labels,
-		range,
-		offset
-	}))
+		// labels and offset parsers already handle whitespace, no need to use ws!() here
+		let (input, (labels, range, offset, _)) = tuple((
+			instant_vec(allow_periods),
+			opt(delimited(char('['), range_literal, char(']'))),
+			opt(preceded(
+				surrounded_ws(tag("offset")),
+				range_literal
+			)),
+			multispace0,
+		))(input)?;
+		Ok((input, Vector {
+			labels,
+			range,
+			offset
+		}))
 	}
 }
 
