@@ -8,6 +8,7 @@ use nom::character::complete::char;
 use nom::combinator::opt;
 use nom::multi::separated_list;
 use nom::number::complete::recognize_float;
+use nom::sequence::tuple;
 use str::string;
 use vec::{label_name, vector, Vector};
 use crate::tuple_ws;
@@ -182,13 +183,17 @@ fn function(input: &[u8], allow_periods: bool) -> IResult<&[u8], Node> {
 					alt((
 						// both 'sum by (label, label) (foo)' and 'sum(foo) by (label, label)' are valid
 						|input| {
-							let (input, args) = function_args(input, allow_periods)?;
-							let (input, agg) = opt(function_aggregation)(input)?;
+							let (input, (args, agg)) = tuple((
+								|input| function_args(input, allow_periods),
+								opt(function_aggregation),
+							))(input)?;
 							Ok((input, (args, agg)))
 						},
 						|input| {
-							let (input, agg) = opt(function_aggregation)(input)?;
-							let (input, args) = function_args(input, allow_periods)?;
+							let (input, (agg, args)) = tuple((
+								opt(function_aggregation),
+								|input| function_args(input, allow_periods),
+							))(input)?;
 							Ok((input, (args, agg)))
 						},
 					))(input)?;
