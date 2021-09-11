@@ -221,8 +221,8 @@ fn function(input: &[u8], allow_periods: bool) -> IResult<&[u8], Node> {
 	)(input)
 }
 
-fn atom(input: &[u8], allow_periods: bool) -> IResult<&[u8], Node> {
-	ws!(
+fn atom(allow_periods: bool) -> impl Fn(&[u8]) -> IResult<&[u8], Node> {
+	move |input| ws!(
 		input,
 		call!(|input| alt((
 			map(
@@ -238,14 +238,14 @@ fn atom(input: &[u8], allow_periods: bool) -> IResult<&[u8], Node> {
 			// unary + does nothing
 			preceded(
 				char('+'),
-				|input| atom(input, allow_periods)
+				atom(allow_periods)
 			)
 			,
 			// unary -, well, negates whatever is following it
 			map(
 				preceded(
 					char('-'),
-					|input| atom(input, allow_periods)
+					atom(allow_periods)
 				),
 				|a| Node::negation(a)
 			)
@@ -320,7 +320,7 @@ fn power(input: &[u8], allow_periods: bool) -> IResult<&[u8], Node> {
 	ws!(
 		input,
 		do_parse!(
-			x: call!(atom, allow_periods)
+			x: call!(atom(allow_periods))
 				>> y: opt!(tuple!(
 					with_modifier!("^", Op::Pow),
 					call!(power, allow_periods)
