@@ -155,14 +155,16 @@ fn range_literal(input: &[u8]) -> IResult<&[u8], usize> {
 	)
 }
 
-pub(crate) fn vector(
-	input: &[u8],
+pub(crate) fn vector<'a>(
+	input: &'a [u8],
 	allow_periods: bool,
 ) -> IResult<&[u8], Vector> {
 			// labels and offset parsers already handle whitespace, no need to use ws!() here
-			let (input, labels) = instant_vec(input, allow_periods)?;
-			let (input, range) = opt!(input, delimited!(call!(char('[')), range_literal, call!(char(']'))))?;
-			let (input, offset) = opt!(input, ws!(preceded!(call!(tag("offset")), range_literal)))?;
+			let (input, (labels, range, offset)) = tuple((
+				|input: &'a [u8]| instant_vec(input, allow_periods),
+				|input: &'a [u8]| opt!(input, delimited!(call!(char('[')), range_literal, call!(char(']')))),
+				|input: &'a [u8]| opt!(input, ws!(preceded!(call!(tag("offset")), range_literal))),
+			))(input)?;
 			Ok((input, Vector {
 					labels,
 					range,
