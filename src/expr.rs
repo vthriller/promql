@@ -15,7 +15,10 @@ use nom::sequence::tuple;
 use str::string;
 use vec::{label_name, vector, Vector};
 use crate::tuple_ws;
-use crate::utils::surrounded_ws;
+use crate::utils::{
+	surrounded_ws,
+	delimited_ws,
+};
 
 /// PromQL operators
 #[derive(Debug, PartialEq)]
@@ -143,11 +146,11 @@ impl Node {
 }
 
 fn label_list(input: &[u8]) -> IResult<&[u8], Vec<String>> {
-	map(tuple_ws!((
+	delimited_ws(
 		char('('),
 		separated_list(surrounded_ws(char(',')), label_name),
 		char(')')
-	)), |result| result.1)(input)
+	)(input)
 }
 
 fn function_aggregation(input: &[u8]) -> IResult<&[u8], AggregationMod> {
@@ -163,7 +166,7 @@ fn function_aggregation(input: &[u8]) -> IResult<&[u8], AggregationMod> {
 
 // it's up to the library user to decide whether argument list is valid or not
 fn function_args(allow_periods: bool) -> impl Fn(&[u8]) -> IResult<&[u8], Vec<Node>> {
-	move |input| map(tuple_ws!((
+	move |input| delimited_ws(
 		char('('),
 		separated_list(
 			surrounded_ws(char(',')),
@@ -173,7 +176,7 @@ fn function_args(allow_periods: bool) -> impl Fn(&[u8]) -> IResult<&[u8], Vec<No
 			))
 		),
 		char(')')
-	)), |result| result.1)(input)
+	)(input)
 }
 
 fn function(input: &[u8], allow_periods: bool) -> IResult<&[u8], Node> {

@@ -1,4 +1,5 @@
 use nom::character::complete::multispace0;
+use nom::combinator::map;
 use nom::sequence::delimited;
 
 use nom::{
@@ -41,4 +42,26 @@ macro_rules! tuple_ws {
 			tuple_separated!(multispace0, ($($args,)*)),
 		)
 	}};
+}
+
+/**
+Whitespace-agnostic version of `nom::sequence::delimited`.
+
+Ignores whitespace before and after each of passed parsers.
+
+Unlike `ws!`, it does not affect whitespace handling within passed parsers.
+*/
+pub(crate) fn delimited_ws<I, O1, O2, O3, E, P1, P2, P3>(p1: P1, p2: P2, p3: P3) -> impl Fn(I) -> IResult<I, O2, E>
+where
+	I: InputTakeAtPosition + Clone,
+	E: ParseError<I>,
+	<I as InputTakeAtPosition>::Item: AsChar + Clone,
+	P1: Fn(I) -> IResult<I, O1, E>,
+	P2: Fn(I) -> IResult<I, O2, E>,
+	P3: Fn(I) -> IResult<I, O3, E>,
+{
+	map(
+		tuple_ws!((p1, p2, p3)),
+		|result| result.1
+	)
 }
