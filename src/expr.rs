@@ -374,14 +374,14 @@ left_op!(
 left_op!(
 	comparison,
 	plus_minus,
-	alt!(
-		call!(with_bool_modifier("==", Op::Eq))
-			| call!(with_bool_modifier("!=", Op::Ne))
-			| call!(with_bool_modifier("<=", Op::Le))
-			| call!(with_bool_modifier(">=", Op::Ge))
-			| call!(with_bool_modifier("<", Op::Lt))
-			| call!(with_bool_modifier(">", Op::Gt))
-	)
+	call!(alt((
+		with_bool_modifier("==", Op::Eq),
+		with_bool_modifier("!=", Op::Ne),
+		with_bool_modifier("<=", Op::Le),
+		with_bool_modifier(">=", Op::Ge),
+		with_bool_modifier("<", Op::Lt),
+		with_bool_modifier(">", Op::Gt),
+	)))
 );
 
 left_op!(
