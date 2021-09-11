@@ -183,15 +183,15 @@ fn function(input: &[u8], allow_periods: bool) -> IResult<&[u8], Node> {
 			let (input, args_agg) =
 					alt!(input,
 						// both 'sum by (label, label) (foo)' and 'sum(foo) by (label, label)' are valid
-						do_parse!(
-							args: call!(function_args, allow_periods)
-								>> aggregation: opt!(function_aggregation)
-								>> ((args, aggregation))
-						) | do_parse!(
-							aggregation: opt!(function_aggregation)
-								>> args: call!(function_args, allow_periods)
-								>> ((args, aggregation))
-						)
+						call!(|input| {
+							let (input, args) = call!(input, function_args, allow_periods)?;
+							let (input,	aggregation) = opt!(input, function_aggregation)?;
+							Ok((input, (args, aggregation)))
+						}) | call!(|input| {
+							let (input,	aggregation) = opt!(input, function_aggregation)?;
+							let (input, args) = call!(input, function_args, allow_periods)?;
+							Ok((input, (args, aggregation)))
+						})
 					)?;
 
 				let (args, aggregation) = args_agg;
