@@ -1,4 +1,5 @@
 use nom::IResult;
+use nom::branch::alt;
 use nom::bytes::complete::{
 	tag,
 	tag_no_case,
@@ -164,10 +165,10 @@ fn function_args(
 			char('('),
 			separated_list(
 				delim_ws(char(',')),
-				|input: &[u8]| alt!(input,
-					  call!(expression, allow_periods) => { |e| e }
-					| string => { |s| Node::String(s) }
-				)
+				alt((
+					|input| expression(input, allow_periods),
+					|input| string(input).map(|(input, s)| (input, Node::String(s))),
+				))
 			),
 			char(')')
 		))(input).map(|(input, result)| (input, result.1))
