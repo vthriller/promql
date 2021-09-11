@@ -1,3 +1,7 @@
+use nom::bytes::complete::{
+	is_not,
+	take,
+};
 use nom::character::complete::char;
 
 // > Label values may contain any Unicode characters.
@@ -24,7 +28,7 @@ macro_rules! fixed_length_radix {
 		// besides u123::from_str_radix will validate chars anyways, so why do extra work?
 		map_res!(
 			$i,
-			take!($len),
+			call!(take($len)),
 			|n: &[u8]| -> Result<_, UnicodeRuneError> {
 				Ok($type::from_str_radix(
 					&String::from_utf8(n.to_vec())?,
@@ -58,19 +62,19 @@ named!(rune <&[u8], Vec<u8>>,
 			| call!(char('\'')) => { |_| vec![0x27] }
 			| call!(char('"')) => { |_| vec![0x22] }
 			| map!(
-				fixed_length_radix!(u8, 3, 8),
+				fixed_length_radix!(u8, 3u8, 8),
 				|n| vec![n]
 			)
 			| map!(
-				preceded!(call!(char('x')), fixed_length_radix!(u8, 2, 16)),
+				preceded!(call!(char('x')), fixed_length_radix!(u8, 2u8, 16)),
 				|n| vec![n]
 			)
 			| map_opt!(
-				preceded!(call!(char('u')), fixed_length_radix!(u32, 4, 16)),
+				preceded!(call!(char('u')), fixed_length_radix!(u32, 4u8, 16)),
 				validate_unicode_scalar
 			)
 			| map_opt!(
-				preceded!(call!(char('U')), fixed_length_radix!(u32, 8, 16)),
+				preceded!(call!(char('U')), fixed_length_radix!(u32, 8u8, 16)),
 				validate_unicode_scalar
 			)
 		)
@@ -81,7 +85,7 @@ named!(rune <&[u8], Vec<u8>>,
 // returns Vec<u8> (unlike none_of!() which returns &[char], or is_not!() which returns &[u8])
 macro_rules! is_not_v {
 	($i:expr, $arg:expr) => {
-		map!($i, is_not!($arg), |bytes| bytes.to_vec())
+		map!($i, call!(is_not($arg)), |bytes| bytes.to_vec())
 	};
 }
 

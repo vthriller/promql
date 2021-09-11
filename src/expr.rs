@@ -1,5 +1,8 @@
 use nom::IResult;
-use nom::bytes::complete::tag;
+use nom::bytes::complete::{
+	tag,
+	tag_no_case,
+};
 use nom::character::complete::char;
 use nom::number::complete::recognize_float;
 use str::string;
@@ -200,7 +203,7 @@ fn atom(input: &[u8], allow_periods: bool) -> IResult<&[u8], Node> {
 	ws!(
 		input,
 		alt!(
-			map!(tag_no_case!("NaN"), |_| Node::Scalar(::std::f32::NAN)) // XXX define Node::NaN instead?
+			map!(call!(tag_no_case("NaN")), |_| Node::Scalar(::std::f32::NAN)) // XXX define Node::NaN instead?
 			|
 			map!(
 				flat_map!(call!(recognize_float), parse_to!(f32)),
