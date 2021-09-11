@@ -104,35 +104,35 @@ fn instant_vec(
 	input: &[u8],
 	allow_periods: bool,
 ) -> IResult<&[u8], Vec<LabelMatch>> {
-					let orig = input;
-					let (input, (_, name, _, labels, _))  = tuple((
-						multispace0, opt(|input| metric_name(input, allow_periods)),
-						multispace0, opt(label_set),
-						multispace0,
-					))(input)?;
+	let orig = input;
+	let (input, (_, name, _, labels, _))  = tuple((
+		multispace0, opt(|input| metric_name(input, allow_periods)),
+		multispace0, opt(label_set),
+		multispace0,
+	))(input)?;
 
-					let mut ret = match name {
-						Some(name) => vec![LabelMatch {
-							name: "__name__".to_string(),
-							op: LabelMatchOp::Eq,
-							value: name,
-						}],
-						None => vec![],
-					};
-					if let Some(labels) = labels {
-						ret.extend(labels)
-					}
+	let mut ret = match name {
+		Some(name) => vec![LabelMatch {
+			name: "__name__".to_string(),
+			op: LabelMatchOp::Eq,
+			value: name,
+		}],
+		None => vec![],
+	};
+	if let Some(labels) = labels {
+		ret.extend(labels)
+	}
 
-					if ret.is_empty() {
-						Err(nom::Err::Error((
-							orig,
-							// XXX FIXME
-							// "vector selector must contain label matchers or metric name",
-							nom::error::ErrorKind::MapRes,
-						)))
-					} else {
-						Ok((input, ret))
-					}
+	if ret.is_empty() {
+		Err(nom::Err::Error((
+			orig,
+			// XXX FIXME
+			// "vector selector must contain label matchers or metric name",
+			nom::error::ErrorKind::MapRes,
+		)))
+	} else {
+		Ok((input, ret))
+	}
 }
 
 fn range_literal(input: &[u8]) -> IResult<&[u8], usize> {
