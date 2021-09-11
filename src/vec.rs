@@ -9,6 +9,7 @@ use nom::character::complete::{
 	digit1,
 	char,
 };
+use nom::sequence::delimited;
 use str::string;
 
 /// Label filter operators.
@@ -33,16 +34,16 @@ pub struct LabelMatch {
 }
 
 fn label_set(input: &[u8]) -> IResult<&[u8], Vec<LabelMatch>> {
-	delimited!(input,
-		call!(char('{')),
-		ws!(separated_list!(call!(char(',')), do_parse!(
+	delimited(
+		char('{'),
+		|input| ws!(input, separated_list!(call!(char(',')), do_parse!(
 			name: label_name >>
 			op: label_op >>
 			value: string >>
 			(LabelMatch { name, op, value })
 		))),
-		call!(char('}'))
-	)
+		char('}')
+	)(input)
 }
 
 /**
