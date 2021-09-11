@@ -161,17 +161,17 @@ fn function_args(
 	input: &[u8],
 	allow_periods: bool,
 ) -> IResult<&[u8], Vec<Node>> {
-		tuple_ws!((
-			char('('),
-			separated_list(
-				delim_ws(char(',')),
-				alt((
-					|input| expression(input, allow_periods),
-					|input| string(input).map(|(input, s)| (input, Node::String(s))),
-				))
-			),
-			char(')')
-		))(input).map(|(input, result)| (input, result.1))
+	tuple_ws!((
+		char('('),
+		separated_list(
+			delim_ws(char(',')),
+			alt((
+				|input| expression(input, allow_periods),
+				|input| string(input).map(|(input, s)| (input, Node::String(s))),
+			))
+		),
+		char(')')
+	))(input).map(|(input, result)| (input, result.1))
 }
 
 fn function(input: &[u8], allow_periods: bool) -> IResult<&[u8], Node> {
