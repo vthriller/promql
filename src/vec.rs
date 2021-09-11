@@ -32,7 +32,8 @@ pub struct LabelMatch {
 	pub value: String,
 }
 
-named!(label_set <&[u8], Vec<LabelMatch>>, delimited!(
+fn label_set(input: &[u8]) -> IResult<&[u8], Vec<LabelMatch>> {
+delimited!(input,
 	call!(char('{')),
 	ws!(separated_list!(call!(char(',')), do_parse!(
 		name: label_name >>
@@ -41,7 +42,8 @@ named!(label_set <&[u8], Vec<LabelMatch>>, delimited!(
 		(LabelMatch { name, op, value })
 	))),
 	call!(char('}'))
-));
+)
+}
 
 /**
 This struct represents both instant and range vectors.
@@ -114,7 +116,8 @@ fn instant_vec(
 	)
 }
 
-named!(range_literal <&[u8], usize>, do_parse!(
+fn range_literal(input: &[u8]) -> IResult<&[u8], usize> {
+do_parse!(input,
 	num: map!(
 		digit1,
 		// from_utf8_unchecked() on [0-9]+ is actually totally safe
@@ -130,7 +133,8 @@ named!(range_literal <&[u8], usize>, do_parse!(
 		| call!(char('y')) => { |_| 60 * 60 * 24 * 365 } // XXX leap years?
 	) >>
 	(num * suffix)
-));
+)
+}
 
 pub(crate) fn vector(
 	input: &[u8],
@@ -179,12 +183,14 @@ named_attr!(#[doc(hidden)], pub label_name <&[u8], String>, flat_map!(
 	parse_to!(String)
 ));
 
-named!(label_op <&[u8], LabelMatchOp>, alt!(
+fn label_op(input: &[u8]) -> IResult<&[u8], LabelMatchOp> {
+alt!(input,
 	  call!(tag("=~")) => { |_| LabelMatchOp::REq }
 	| call!(tag("!~")) => { |_| LabelMatchOp::RNe }
 	| call!(tag("="))  => { |_| LabelMatchOp::Eq  } // should come after =~
 	| call!(tag("!=")) => { |_| LabelMatchOp::Ne  }
-));
+)
+}
 
 #[allow(unused_imports)]
 #[cfg(test)]

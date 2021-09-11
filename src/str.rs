@@ -1,3 +1,4 @@
+use nom::IResult;
 use nom::bytes::complete::{
 	is_not,
 	take,
@@ -47,8 +48,8 @@ fn validate_unicode_scalar(n: u32) -> Option<Vec<u8>> {
 	})
 }
 
-named!(rune <&[u8], Vec<u8>>,
-	preceded!(call!(char('\\')),
+fn rune(input: &[u8]) -> IResult<&[u8], Vec<u8>> {
+	preceded!(input, call!(char('\\')),
 		alt!(
 			  call!(char('a')) => { |_| vec![0x07] }
 			| call!(char('b')) => { |_| vec![0x08] }
@@ -79,7 +80,7 @@ named!(rune <&[u8], Vec<u8>>,
 			)
 		)
 	)
-);
+}
 
 // parses sequence of chars that are not in $arg
 // returns Vec<u8> (unlike none_of!() which returns &[char], or is_not!() which returns &[u8])
@@ -96,7 +97,8 @@ macro_rules! chars_except {
 	};
 }
 
-named!(pub string <&[u8], String>, map_res!(
+pub fn string(input: &[u8]) -> IResult<&[u8], String> {
+map_res!(input,
 	alt!(
 		// newlines are not allowed in interpreted quotes, but are totally fine in raw string literals
 		delimited!(call!(char('"')), chars_except!("\n\"\\"), call!(char('"')))
@@ -107,7 +109,8 @@ named!(pub string <&[u8], String>, map_res!(
 		delimited!(call!(char('`')), is_not_v!("`"), call!(char('`')))
 	),
 	|s: Vec<u8>| String::from_utf8(s)
-));
+)
+}
 
 #[allow(unused_imports)]
 #[cfg(test)]

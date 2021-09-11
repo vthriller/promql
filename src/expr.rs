@@ -133,20 +133,24 @@ impl Node {
 	}
 }
 
-named!(label_list <&[u8], Vec<String>>, ws!(delimited!(
+fn label_list(input: &[u8]) -> IResult<&[u8], Vec<String>> {
+ws!(input, delimited!(
 	call!(char('(')),
 	separated_list!(call!(char(',')), label_name),
 	call!(char(')'))
-)));
+))
+}
 
-named!(function_aggregation <&[u8], AggregationMod>, ws!(do_parse!(
+fn function_aggregation(input: &[u8]) -> IResult<&[u8], AggregationMod> {
+ws!(input, do_parse!(
 	action: alt!(
 		  call!(tag("by")) => { |_| AggregationAction::By }
 		| call!(tag("without")) => { |_| AggregationAction::Without }
 	) >>
 	labels: label_list >>
 	(AggregationMod { action, labels })
-)));
+))
+}
 
 // it's up to the library user to decide whether argument list is valid or not
 fn function_args(
@@ -251,7 +255,8 @@ macro_rules! with_bool_modifier {
 	};
 }
 
-named!(op_modifier <&[u8], OpMod>, ws!(do_parse!(
+fn op_modifier(input: &[u8]) -> IResult<&[u8], OpMod> {
+ws!(input, do_parse!(
 	action: alt!(
 		  call!(tag("on")) => { |_| OpModAction::RestrictTo }
 		| call!(tag("ignoring")) => { |_| OpModAction::Ignore }
@@ -270,7 +275,8 @@ named!(op_modifier <&[u8], OpMod>, ws!(do_parse!(
 		(OpGroupMod { side, labels })
 	))) >>
 	(OpMod { action, labels, group })
-)));
+))
+}
 
 // ^ is right-associative, so we can actually keep it simple and recursive
 fn power(input: &[u8], allow_periods: bool) -> IResult<&[u8], Node> {
