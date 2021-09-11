@@ -104,9 +104,9 @@ pub struct Vector {
 }
 
 fn instant_vec(
-	input: &[u8],
 	allow_periods: bool,
-) -> IResult<&[u8], Vec<LabelMatch>> {
+) -> impl Fn(&[u8]) -> IResult<&[u8], Vec<LabelMatch>> {
+	move |input| {
 	let orig = input;
 	let (input, (name, labels))  = tuple_ws!((
 		opt(|input| metric_name(input, allow_periods)),
@@ -134,6 +134,7 @@ fn instant_vec(
 		)))
 	} else {
 		Ok((input, ret))
+	}
 	}
 }
 
@@ -163,7 +164,7 @@ pub(crate) fn vector<'a>(
 ) -> IResult<&[u8], Vector> {
 	// labels and offset parsers already handle whitespace, no need to use ws!() here
 	let (input, (labels, range, offset, _)) = tuple((
-		|input: &'a [u8]| instant_vec(input, allow_periods),
+		instant_vec(allow_periods),
 		opt(delimited(char('['), range_literal, char(']'))),
 		opt(preceded(
 			surrounded_ws(tag("offset")),
