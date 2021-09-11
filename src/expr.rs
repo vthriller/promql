@@ -220,7 +220,7 @@ fn function(input: &[u8], allow_periods: bool) -> IResult<&[u8], Node> {
 	)(input)
 }
 
-fn atom<'a>(input: &'a [u8], allow_periods: bool) -> IResult<&[u8], Node> {
+fn atom(input: &[u8], allow_periods: bool) -> IResult<&[u8], Node> {
 	ws!(
 		input,
 		call!(|input| alt((
