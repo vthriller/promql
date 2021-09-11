@@ -22,7 +22,7 @@ use crate::{
 	tuple_ws,
 	tuple_separated,
 };
-use crate::utils::delim_ws;
+use crate::utils::surrounded_ws;
 
 /// Label filter operators.
 #[derive(Debug, PartialEq)]
@@ -48,9 +48,9 @@ pub struct LabelMatch {
 fn label_set(input: &[u8]) -> IResult<&[u8], Vec<LabelMatch>> {
 	delimited(
 		char('{'),
-		delim_ws(
+		surrounded_ws(
 			separated_list(
-				delim_ws(char(',')),
+				surrounded_ws(char(',')),
 				|input: &[u8]| {
 					let (input, (name, op, value))  = tuple_ws!((
 						label_name,
@@ -166,7 +166,7 @@ pub(crate) fn vector<'a>(
 		|input: &'a [u8]| instant_vec(input, allow_periods),
 		opt(delimited(char('['), range_literal, char(']'))),
 		opt(preceded(
-			delim_ws(tag("offset")),
+			surrounded_ws(tag("offset")),
 			range_literal
 		)),
 		multispace0,

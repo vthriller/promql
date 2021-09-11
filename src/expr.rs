@@ -15,7 +15,7 @@ use nom::sequence::tuple;
 use str::string;
 use vec::{label_name, vector, Vector};
 use crate::tuple_ws;
-use crate::utils::delim_ws;
+use crate::utils::surrounded_ws;
 
 /// PromQL operators
 #[derive(Debug, PartialEq)]
@@ -145,7 +145,7 @@ impl Node {
 fn label_list(input: &[u8]) -> IResult<&[u8], Vec<String>> {
 	map(tuple_ws!((
 		char('('),
-		separated_list(delim_ws(char(',')), label_name),
+		separated_list(surrounded_ws(char(',')), label_name),
 		char(')')
 	)), |result| result.1)(input)
 }
@@ -166,7 +166,7 @@ fn function_args(allow_periods: bool) -> impl Fn(&[u8]) -> IResult<&[u8], Vec<No
 	move |input| map(tuple_ws!((
 		char('('),
 		separated_list(
-			delim_ws(char(',')),
+			surrounded_ws(char(',')),
 			alt((
 				|input| expression(input, allow_periods),
 				map(string, |s| Node::String(s)),

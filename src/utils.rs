@@ -21,7 +21,7 @@ macro_rules! tuple_separated {
 	}};
 }
 
-pub(crate) fn delim_ws<I, O, E, P: Fn(I) -> IResult<I, O, E>>(parser: P) -> impl Fn(I) -> IResult<I, O, E>
+pub(crate) fn surrounded_ws<I, O, E, P: Fn(I) -> IResult<I, O, E>>(parser: P) -> impl Fn(I) -> IResult<I, O, E>
 where
 	I: InputTakeAtPosition,
 	E: ParseError<I>,
@@ -34,10 +34,10 @@ where
 macro_rules! tuple_ws {
 	(($($args:expr),* $(,)?)) => {{
 		use nom::character::complete::multispace0;
-		use $crate::utils::delim_ws;
+		use $crate::utils::surrounded_ws;
 		use $crate::tuple_separated;
 
-		delim_ws(
+		surrounded_ws(
 			tuple_separated!(multispace0, ($($args,)*)),
 		)
 	}};
