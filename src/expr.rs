@@ -5,7 +5,10 @@ use nom::bytes::complete::{
 	tag_no_case,
 };
 use nom::character::complete::char;
-use nom::combinator::opt;
+use nom::combinator::{
+	map,
+	opt,
+};
 use nom::multi::separated_list;
 use nom::number::complete::recognize_float;
 use nom::sequence::tuple;
@@ -140,11 +143,11 @@ impl Node {
 }
 
 fn label_list(input: &[u8]) -> IResult<&[u8], Vec<String>> {
-	tuple_ws!((
+	map(tuple_ws!((
 		char('('),
 		separated_list(delim_ws(char(',')), label_name),
 		char(')')
-	))(input).map(|(input, result)| (input, result.1))
+	)), |result| result.1)(input)
 }
 
 fn function_aggregation(input: &[u8]) -> IResult<&[u8], AggregationMod> {
@@ -160,17 +163,17 @@ fn function_aggregation(input: &[u8]) -> IResult<&[u8], AggregationMod> {
 
 // it's up to the library user to decide whether argument list is valid or not
 fn function_args(allow_periods: bool) -> impl Fn(&[u8]) -> IResult<&[u8], Vec<Node>> {
-	move |input| tuple_ws!((
+	move |input| map(tuple_ws!((
 		char('('),
 		separated_list(
 			delim_ws(char(',')),
 			alt((
 				|input| expression(input, allow_periods),
-				|input| string(input).map(|(input, s)| (input, Node::String(s))),
+				map(string, |s| Node::String(s)),
 			))
 		),
 		char(')')
-	))(input).map(|(input, result)| (input, result.1))
+	)), |result| result.1)(input)
 }
 
 fn function(input: &[u8], allow_periods: bool) -> IResult<&[u8], Node> {
