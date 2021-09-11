@@ -160,11 +160,11 @@ fn label_list(input: &[u8]) -> IResult<&[u8], Vec<String>> {
 fn function_aggregation(input: &[u8]) -> IResult<&[u8], AggregationMod> {
 	surrounded_ws(map(
 		tuple((
-		alt((
-			map(tag("by"), |_| AggregationAction::By),
-			map(tag("without"), |_| AggregationAction::Without),
-		)),
-		label_list,
+			alt((
+				map(tag("by"), |_| AggregationAction::By),
+				map(tag("without"), |_| AggregationAction::Without),
+			)),
+			label_list,
 		)),
 		|(action, labels)| (AggregationMod { action, labels })
 	))(input)
