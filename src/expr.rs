@@ -13,6 +13,7 @@ use nom::multi::separated_list;
 use nom::number::complete::recognize_float;
 use nom::sequence::{
 	delimited,
+	preceded,
 	tuple,
 };
 use str::string;
@@ -235,14 +236,17 @@ fn atom(input: &[u8], allow_periods: bool) -> IResult<&[u8], Node> {
 			)
 			,
 			// unary + does nothing
-			|input| preceded!(input,
-				call!(char('+')),
-				call!(atom, allow_periods)
+			preceded(
+				char('+'),
+				|input| atom(input, allow_periods)
 			)
 			,
 			// unary -, well, negates whatever is following it
 			map(
-				|input| preceded!(input, call!(char('-')), call!(atom, allow_periods)),
+				preceded(
+					char('-'),
+					|input| atom(input, allow_periods)
+				),
 				|a| Node::negation(a)
 			)
 			,
