@@ -316,14 +316,14 @@ fn op_modifier(input: &[u8]) -> IResult<&[u8], OpMod> {
 }
 
 // ^ is right-associative, so we can actually keep it simple and recursive
-fn power(input: &[u8], allow_periods: bool) -> IResult<&[u8], Node> {
-	ws!(
+fn power(allow_periods: bool) -> impl Fn(&[u8]) -> IResult<&[u8], Node> {
+	move |input| ws!(
 		input,
 		do_parse!(
 			x: call!(atom(allow_periods))
 				>> y: opt!(tuple!(
 					with_modifier!("^", Op::Pow),
-					call!(power, allow_periods)
+					call!(power(allow_periods))
 				)) >> (match y {
 				None => x,
 				Some((op, y)) => Node::operator(x, op, y),
@@ -336,14 +336,14 @@ fn power(input: &[u8], allow_periods: bool) -> IResult<&[u8], Node> {
 macro_rules! left_op {
 	// $next is the parser for operator that takes precenence, or any other kind of non-operator token sequence
 	($name:ident, $next:ident, $op:ident!($($op_args:tt)*)) => (
-		fn $name(input: &[u8], allow_periods: bool) -> IResult<&[u8], Node>{
-			ws!(
+		fn $name(allow_periods: bool) -> impl Fn(&[u8]) -> IResult<&[u8], Node> {
+			move |input| ws!(
 				input,
 				do_parse!(
-					x: call!($next, allow_periods) >>
+					x: call!($next(allow_periods)) >>
 					ops: many0!(tuple!(
 						$op!($($op_args)*),
-						call!($next, allow_periods)
+						call!($next(allow_periods))
 					)) >>
 					({
 						let mut x = x;
@@ -398,7 +398,7 @@ left_op!(or_op, and_unless, with_modifier!("or", Op::Or));
 pub(crate) fn expression(
 	allow_periods: bool,
 ) -> impl Fn(&[u8]) -> IResult<&[u8], Node> {
-	move |input| or_op(input, allow_periods)
+	or_op(allow_periods)
 }
 
 #[allow(unused_imports)]
