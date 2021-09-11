@@ -8,6 +8,7 @@ use nom::character::complete::{
 	alphanumeric1,
 	digit1,
 	char,
+	multispace0,
 };
 use nom::multi::separated_list;
 use nom::sequence::delimited;
@@ -39,9 +40,13 @@ fn label_set(input: &[u8]) -> IResult<&[u8], Vec<LabelMatch>> {
 		char('{'),
 		// TODO ws!
 		separated_list(char(','), |input: &[u8]| {
+			let (input, _) = multispace0(input)?;
 			let (input, name) = label_name(input)?;
+			let (input, _) = multispace0(input)?;
 			let (input, op) = label_op(input)?;
+			let (input, _) = multispace0(input)?;
 			let (input, value) = string(input)?;
+			let (input, _) = multispace0(input)?;
 			Ok((input, LabelMatch { name, op, value }))
 		}),
 		char('}')
