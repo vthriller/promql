@@ -159,10 +159,10 @@ fn label_list(input: &[u8]) -> IResult<&[u8], Vec<String>> {
 
 fn function_aggregation(input: &[u8]) -> IResult<&[u8], AggregationMod> {
 	ws!(input, do_parse!(
-		action: alt!(
-			  call!(tag("by")) => { |_| AggregationAction::By }
-			| call!(tag("without")) => { |_| AggregationAction::Without }
-		) >>
+		action: call!(alt((
+			map(tag("by"), |_| AggregationAction::By),
+			map(tag("without"), |_| AggregationAction::Without),
+		))) >>
 		labels: label_list >>
 		(AggregationMod { action, labels })
 	))
