@@ -159,11 +159,8 @@ fn function_aggregation(input: &[u8]) -> IResult<&[u8], AggregationMod> {
 }
 
 // it's up to the library user to decide whether argument list is valid or not
-fn function_args(
-	input: &[u8],
-	allow_periods: bool,
-) -> IResult<&[u8], Vec<Node>> {
-	tuple_ws!((
+fn function_args(allow_periods: bool) -> impl Fn(&[u8]) -> IResult<&[u8], Vec<Node>> {
+	move |input| tuple_ws!((
 		char('('),
 		separated_list(
 			delim_ws(char(',')),
@@ -184,7 +181,7 @@ fn function(input: &[u8], allow_periods: bool) -> IResult<&[u8], Node> {
 						// both 'sum by (label, label) (foo)' and 'sum(foo) by (label, label)' are valid
 						|input| {
 							let (input, (args, agg)) = tuple((
-								|input| function_args(input, allow_periods),
+								function_args(allow_periods),
 								opt(function_aggregation),
 							))(input)?;
 							Ok((input, (args, agg)))
@@ -192,7 +189,7 @@ fn function(input: &[u8], allow_periods: bool) -> IResult<&[u8], Node> {
 						|input| {
 							let (input, (agg, args)) = tuple((
 								opt(function_aggregation),
-								|input| function_args(input, allow_periods),
+								function_args(allow_periods),
 							))(input)?;
 							Ok((input, (args, agg)))
 						},
