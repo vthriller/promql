@@ -109,7 +109,7 @@ fn instant_vec(
 	move |input| {
 		let orig = input;
 		let (input, (name, labels))  = tuple_ws!((
-			opt(|input| metric_name(input, allow_periods)),
+			opt(metric_name(allow_periods)),
 			opt(label_set),
 		))(input)?;
 
@@ -184,10 +184,9 @@ pub(crate) fn vector<'a>(
 // > Label names … must match the regex [a-zA-Z_][a-zA-Z0-9_]*. Label names beginning with __ are reserved for internal use.
 
 fn metric_name(
-	input: &[u8],
 	allow_periods: bool,
-) -> IResult<&[u8], String> {
-	flat_map!(
+) -> impl Fn(&[u8]) -> IResult<&[u8], String> {
+	move |input| flat_map!(
 		input,
 		recognize!(tuple!(
 			alt!(call!(alpha1) | call!(is_a("_:"))),
