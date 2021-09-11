@@ -246,7 +246,7 @@ fn atom(allow_periods: bool) -> impl Fn(&[u8]) -> IResult<&[u8], Node> {
 					char('-'),
 					atom(allow_periods)
 				),
-				|a| Node::negation(a)
+				Node::negation
 			)
 			,
 			// function call is parsed before vector: the latter can actually consume function name as a vector, effectively rendering the rest of the expression invalid
