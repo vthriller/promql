@@ -36,12 +36,13 @@ pub struct LabelMatch {
 fn label_set(input: &[u8]) -> IResult<&[u8], Vec<LabelMatch>> {
 	delimited(
 		char('{'),
-		|input| ws!(input, separated_list!(call!(char(',')), do_parse!(
+		// TODO ws!
+		|input: &[u8]| separated_list!(input, call!(char(',')), do_parse!(
 			name: label_name >>
 			op: label_op >>
 			value: string >>
 			(LabelMatch { name, op, value })
-		))),
+		)),
 		char('}')
 	)(input)
 }
@@ -309,6 +310,43 @@ mod tests {
 							name: "lorem".to_string(),
 							op: LabelMatchOp::Eq,
 							value: "ipsum \\n dolor \"sit amet\"".to_string(),
+						},
+					],
+					range: None,
+					offset: None
+				}
+			))
+		);
+
+		assert_eq!(
+			vector(
+				// testing whitespace
+				cbs("foo{a='b',c ='d' , e = 'f' }"),
+				allow_periods
+			),
+			Ok((
+				cbs(""),
+				Vector {
+					labels: vec![
+						LabelMatch {
+							name: "__name__".to_string(),
+							op: LabelMatchOp::Eq,
+							value: "foo".to_string(),
+						},
+						LabelMatch {
+							name: "a".to_string(),
+							op: LabelMatchOp::Eq,
+							value: "b".to_string(),
+						},
+						LabelMatch {
+							name: "c".to_string(),
+							op: LabelMatchOp::Eq,
+							value: "d".to_string(),
+						},
+						LabelMatch {
+							name: "e".to_string(),
+							op: LabelMatchOp::Eq,
+							value: "f".to_string(),
 						},
 					],
 					range: None,
