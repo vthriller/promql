@@ -178,7 +178,7 @@ fn function_args(allow_periods: bool) -> impl Fn(&[u8]) -> IResult<&[u8], Vec<No
 			surrounded_ws(char(',')),
 			alt((
 				expression(allow_periods),
-				map(string, |s| Node::String(s)),
+				map(string, Node::String),
 			))
 		),
 		char(')')
@@ -306,7 +306,7 @@ fn op_modifier(input: &[u8]) -> IResult<&[u8], OpMod> {
 			))) >>
 			labels: map!(
 				opt!(label_list),
-				|labels| labels.unwrap_or(vec![])
+				|labels| labels.unwrap_or_default()
 			) >>
 			(OpGroupMod { side, labels })
 		)) >>

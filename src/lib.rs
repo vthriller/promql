@@ -47,6 +47,8 @@ if let Node::Operator { x, op: Op::And(op_mod), y } = ast {
 ```
 */
 
+#![cfg_attr(feature = "cargo-clippy", allow(clippy::tabs_in_doc_comments))]
+
 #[macro_use]
 extern crate nom;
 #[macro_use]

@@ -158,7 +158,7 @@ fn range_literal(input: &[u8]) -> IResult<&[u8], usize> {
 	)
 }
 
-pub(crate) fn vector<'a>(
+pub(crate) fn vector(
 	allow_periods: bool,
 ) -> impl Fn(&[u8]) -> IResult<&[u8], Vector> {
 	move |input: &[u8]| {
