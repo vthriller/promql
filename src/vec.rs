@@ -160,21 +160,21 @@ pub(crate) fn vector<'a>(
 	input: &'a [u8],
 	allow_periods: bool,
 ) -> IResult<&[u8], Vector> {
-			// labels and offset parsers already handle whitespace, no need to use ws!() here
-			let (input, (labels, range, offset, _)) = tuple((
-				|input: &'a [u8]| instant_vec(input, allow_periods),
-				opt(delimited(char('['), range_literal, char(']'))),
-				opt(preceded(
-					delimited(multispace0, tag("offset"), multispace0),
-					range_literal
-				)),
-				multispace0,
-			))(input)?;
-			Ok((input, Vector {
-					labels,
-					range,
-					offset
-			}))
+	// labels and offset parsers already handle whitespace, no need to use ws!() here
+	let (input, (labels, range, offset, _)) = tuple((
+		|input: &'a [u8]| instant_vec(input, allow_periods),
+		opt(delimited(char('['), range_literal, char(']'))),
+		opt(preceded(
+			delimited(multispace0, tag("offset"), multispace0),
+			range_literal
+		)),
+		multispace0,
+	))(input)?;
+	Ok((input, Vector {
+		labels,
+		range,
+		offset
+	}))
 }
 
 // > The metric name … must match the regex [a-zA-Z_:][a-zA-Z0-9_:]*.
