@@ -175,9 +175,6 @@ fn function_args(
 }
 
 fn function(input: &[u8], allow_periods: bool) -> IResult<&[u8], Node> {
-	ws!(
-		input,
-		call!(|input| {
 			// I have no idea what counts as a function name but label_name fits well for what's built into the prometheus so let's use that
 			let (input, name) = label_name(input)?;
 			let (input, args_agg) =
@@ -201,8 +198,6 @@ fn function(input: &[u8], allow_periods: bool) -> IResult<&[u8], Node> {
 					args,
 					aggregation,
 				}))
-		})
-	)
 }
 
 fn atom(input: &[u8], allow_periods: bool) -> IResult<&[u8], Node> {
