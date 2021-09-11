@@ -38,12 +38,12 @@ fn label_set(input: &[u8]) -> IResult<&[u8], Vec<LabelMatch>> {
 	delimited(
 		char('{'),
 		// TODO ws!
-		separated_list(char(','), |input: &[u8]| do_parse!(input,
-			name: label_name >>
-			op: label_op >>
-			value: string >>
-			(LabelMatch { name, op, value })
-		)),
+		separated_list(char(','), |input: &[u8]| {
+			let (input, name) = label_name(input)?;
+			let (input, op) = label_op(input)?;
+			let (input, value) = string(input)?;
+			Ok((input, LabelMatch { name, op, value }))
+		}),
 		char('}')
 	)(input)
 }
