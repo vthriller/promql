@@ -18,7 +18,10 @@ use nom::sequence::{
 	tuple,
 };
 use str::string;
-use crate::tuple_separated;
+use crate::{
+	tuple_ws,
+	tuple_separated,
+};
 
 /// Label filter operators.
 #[derive(Debug, PartialEq)]
@@ -49,12 +52,10 @@ fn label_set(input: &[u8]) -> IResult<&[u8], Vec<LabelMatch>> {
 			separated_list(
 				delimited(multispace0, char(','), multispace0),
 				|input: &[u8]| {
-					let (input, (_, name, op, value, _))  = tuple_separated!(multispace0, (
-						multispace0,
+					let (input, (name, op, value))  = tuple_ws!((
 						label_name,
 						label_op,
 						string,
-						multispace0,
 					))(input)?;
 					Ok((input, LabelMatch { name, op, value }))
 				}
@@ -108,11 +109,9 @@ fn instant_vec(
 	allow_periods: bool,
 ) -> IResult<&[u8], Vec<LabelMatch>> {
 	let orig = input;
-	let (input, (_, name, labels, _))  = tuple_separated!(multispace0, (
-		multispace0,
+	let (input, (name, labels))  = tuple_ws!((
 		opt(|input| metric_name(input, allow_periods)),
 		opt(label_set),
-		multispace0,
 	))(input)?;
 
 	let mut ret = match name {

@@ -10,3 +10,17 @@ macro_rules! tuple_separated {
 		))
 	}};
 }
+
+#[macro_export]
+macro_rules! tuple_ws {
+	(($($args:expr),* $(,)?)) => {{
+		use nom::character::complete::multispace0;
+		use nom::sequence::delimited;
+
+		delimited(
+			multispace0,
+			tuple_separated!(multispace0, ($($args,)*)),
+			multispace0,
+		)
+	}};
+}
