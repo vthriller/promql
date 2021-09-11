@@ -5,6 +5,7 @@ use nom::bytes::complete::{
 	tag_no_case,
 };
 use nom::character::complete::char;
+use nom::combinator::opt;
 use nom::multi::separated_list;
 use nom::number::complete::recognize_float;
 use str::string;
@@ -181,13 +182,13 @@ fn function(input: &[u8], allow_periods: bool) -> IResult<&[u8], Node> {
 					alt((
 						// both 'sum by (label, label) (foo)' and 'sum(foo) by (label, label)' are valid
 						|input| {
-							let (input, args) = call!(input, function_args, allow_periods)?;
-							let (input,	aggregation) = opt!(input, function_aggregation)?;
+							let (input, args) = function_args(input, allow_periods)?;
+							let (input,	aggregation) = opt(function_aggregation)(input)?;
 							Ok((input, (args, aggregation)))
 						},
 						|input| {
-							let (input,	aggregation) = opt!(input, function_aggregation)?;
-							let (input, args) = call!(input, function_args, allow_periods)?;
+							let (input,	aggregation) = opt(function_aggregation)(input)?;
+							let (input, args) = function_args(input, allow_periods)?;
 							Ok((input, (args, aggregation)))
 						},
 					))(input)?;
