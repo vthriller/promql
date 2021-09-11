@@ -162,7 +162,7 @@ pub(crate) fn vector<'a>(
 			// labels and offset parsers already handle whitespace, no need to use ws!() here
 			let (input, (labels, range, offset)) = tuple((
 				|input: &'a [u8]| instant_vec(input, allow_periods),
-				opt(|input: &[u8]| delimited!(input, call!(char('[')), range_literal, call!(char(']')))),
+				opt(delimited(char('['), range_literal, char(']'))),
 				opt(|input: &[u8]| ws!(input, preceded!(call!(tag("offset")), range_literal))),
 			))(input)?;
 			Ok((input, Vector {
