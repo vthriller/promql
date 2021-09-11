@@ -105,10 +105,10 @@ fn instant_vec(
 ) -> IResult<&[u8], Vec<LabelMatch>> {
 	map_res!(
 		input,
-		ws!(do_parse!(
-			name: opt!(call!(metric_name, allow_periods))
-				>> labels: opt!(label_set)
-				>> ({
+		ws!(call!(|input| {
+					let (input, name) = opt!(input, call!(metric_name, allow_periods))?;
+					let (input, labels) = opt!(input, label_set)?;
+
 					let mut ret = match name {
 						Some(name) => vec![LabelMatch {
 							name: "__name__".to_string(),
@@ -122,12 +122,16 @@ fn instant_vec(
 					}
 
 					if ret.is_empty() {
-						Err("vector selector must contain label matchers or metric name")
+						Err(nom::Err::Failure((
+							input,
+							// XXX FIXME
+							// "vector selector must contain label matchers or metric name",
+							nom::error::ErrorKind::MapRes,
+						)))
 					} else {
-						Ok(ret)
+						Ok((input, ret))
 					}
-				})
-		)),
+		})),
 		|x| x
 	)
 }
