@@ -1,3 +1,13 @@
+use nom::character::complete::multispace0;
+use nom::sequence::delimited;
+
+use nom::{
+	AsChar,
+	InputTakeAtPosition,
+};
+use nom::IResult;
+use nom::error::ParseError;
+
 #[macro_export]
 macro_rules! tuple_separated {
 	($delim:expr, ($first:expr, $($rest:expr),* $(,)?)) => {{
@@ -11,16 +21,23 @@ macro_rules! tuple_separated {
 	}};
 }
 
+pub(crate) fn delim_ws<I, O, E, P: Fn(I) -> IResult<I, O, E>>(parser: P) -> impl Fn(I) -> IResult<I, O, E>
+where
+	I: InputTakeAtPosition,
+	E: ParseError<I>,
+	<I as InputTakeAtPosition>::Item: AsChar + Clone,
+{
+	delimited(multispace0, parser, multispace0)
+}
+
 #[macro_export]
 macro_rules! tuple_ws {
 	(($($args:expr),* $(,)?)) => {{
 		use nom::character::complete::multispace0;
-		use nom::sequence::delimited;
+		use $crate::utils::delim_ws;
 
-		delimited(
-			multispace0,
+		delim_ws(
 			tuple_separated!(multispace0, ($($args,)*)),
-			multispace0,
 		)
 	}};
 }
