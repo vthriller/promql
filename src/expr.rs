@@ -158,14 +158,16 @@ fn label_list(input: &[u8]) -> IResult<&[u8], Vec<String>> {
 }
 
 fn function_aggregation(input: &[u8]) -> IResult<&[u8], AggregationMod> {
-	ws!(input, do_parse!(
-		action: call!(alt((
+	ws!(input, call!(map(
+		tuple((
+		alt((
 			map(tag("by"), |_| AggregationAction::By),
 			map(tag("without"), |_| AggregationAction::Without),
-		))) >>
-		labels: label_list >>
-		(AggregationMod { action, labels })
-	))
+		)),
+		label_list,
+		)),
+		|(action, labels)| (AggregationMod { action, labels })
+	)))
 }
 
 // it's up to the library user to decide whether argument list is valid or not
