@@ -198,23 +198,23 @@ where
 }
 
 fn function(input: &[u8], allow_periods: bool) -> IResult<&[u8], Node> {
-		map(
-			tuple((
-						// I have no idea what counts as a function name but label_name fits well for what's built into the prometheus so let's use that
-						label_name,
-						// both 'sum by (label, label) (foo)' and 'sum(foo) by (label, label)' are valid
-						pair_permutations(
-								&function_args(allow_periods),
-								&opt(function_aggregation),
-						),
-			)),
-			|(name, (args, agg))|
-				Node::Function {
-					name,
-					args,
-					aggregation: agg,
-				}
-		)(input)
+	map(
+		tuple((
+			// I have no idea what counts as a function name but label_name fits well for what's built into the prometheus so let's use that
+			label_name,
+			// both 'sum by (label, label) (foo)' and 'sum(foo) by (label, label)' are valid
+			pair_permutations(
+				&function_args(allow_periods),
+				&opt(function_aggregation),
+			),
+		)),
+		|(name, (args, agg))|
+			Node::Function {
+				name,
+				args,
+				aggregation: agg,
+			}
+	)(input)
 }
 
 fn atom(input: &[u8], allow_periods: bool) -> IResult<&[u8], Node> {
