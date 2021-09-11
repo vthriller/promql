@@ -10,7 +10,7 @@ use nom::combinator::{
 	opt,
 };
 use nom::multi::separated_list;
-use nom::number::complete::recognize_float;
+use nom::number::complete::float;
 use nom::sequence::{
 	delimited,
 	preceded,
@@ -231,7 +231,7 @@ fn atom(allow_periods: bool) -> impl Fn(&[u8]) -> IResult<&[u8], Node> {
 			) // XXX define Node::NaN instead?
 			,
 			map(
-				|input: &[u8]| flat_map!(input, call!(recognize_float), parse_to!(f32)),
+				float,
 				Node::Scalar
 			)
 			,
