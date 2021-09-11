@@ -217,47 +217,47 @@ fn function(input: &[u8], allow_periods: bool) -> IResult<&[u8], Node> {
 	)(input)
 }
 
-fn atom(input: &[u8], allow_periods: bool) -> IResult<&[u8], Node> {
+fn atom<'a>(input: &'a [u8], allow_periods: bool) -> IResult<&[u8], Node> {
 	ws!(
 		input,
-		alt!(
-			map!(
+		call!(|input| alt((
+			|input: &'a [u8]| map!(input,
 				call!(tag_no_case("NaN")),
 				|_| Node::Scalar(::std::f32::NAN)
 			) // XXX define Node::NaN instead?
-			|
-			map!(
+			,
+			|input: &'a [u8]| map!(input,
 				flat_map!(call!(recognize_float), parse_to!(f32)),
 				Node::Scalar
 			)
-			|
+			,
 			// unary + does nothing
-			preceded!(
+			|input| preceded!(input,
 				call!(char('+')),
 				call!(atom, allow_periods)
 			)
-			|
+			,
 			// unary -, well, negates whatever is following it
-			map!(
+			|input| map!(input,
 				preceded!(call!(char('-')), call!(atom, allow_periods)),
 				|a| Node::negation(a)
 			)
-			|
+			,
 			// function call is parsed before vector: the latter can actually consume function name as a vector, effectively rendering the rest of the expression invalid
-			call!(function, allow_periods)
-			|
+			|input| function(input, allow_periods)
+			,
 			// FIXME? things like 'and' and 'group_left' are not supposed to parse as a vector: prometheus lexes them unambiguously
-			map!(
+			|input| map!(input,
 				call!(vector, allow_periods),
 				Node::Vector
 			)
-			|
-			delimited!(
+			,
+			|input| delimited!(input,
 				call!(char('(')),
 				call!(expression, allow_periods),
 				call!(char(')'))
 			)
-		)
+		))(input))
 	)
 }
 
