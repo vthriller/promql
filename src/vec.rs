@@ -39,20 +39,21 @@ fn label_set(input: &[u8]) -> IResult<&[u8], Vec<LabelMatch>> {
 	delimited(
 		char('{'),
 		delimited(
-		multispace0,
-		separated_list(
-			delimited(multispace0, char(','), multispace0),
-			|input: &[u8]| {
-			let (input, _) = multispace0(input)?;
-			let (input, name) = label_name(input)?;
-			let (input, _) = multispace0(input)?;
-			let (input, op) = label_op(input)?;
-			let (input, _) = multispace0(input)?;
-			let (input, value) = string(input)?;
-			let (input, _) = multispace0(input)?;
-			Ok((input, LabelMatch { name, op, value }))
-		}),
-		multispace0,
+			multispace0,
+			separated_list(
+				delimited(multispace0, char(','), multispace0),
+				|input: &[u8]| {
+					let (input, _) = multispace0(input)?;
+					let (input, name) = label_name(input)?;
+					let (input, _) = multispace0(input)?;
+					let (input, op) = label_op(input)?;
+					let (input, _) = multispace0(input)?;
+					let (input, value) = string(input)?;
+					let (input, _) = multispace0(input)?;
+					Ok((input, LabelMatch { name, op, value }))
+				}
+			),
+			multispace0,
 		),
 		char('}')
 	)(input)
