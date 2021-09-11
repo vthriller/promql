@@ -8,6 +8,7 @@ use nom::number::complete::recognize_float;
 use str::string;
 use vec::{label_name, vector, Vector};
 use crate::tuple_ws;
+use crate::utils::delim_ws;
 
 /// PromQL operators
 #[derive(Debug, PartialEq)]
@@ -137,7 +138,7 @@ impl Node {
 fn label_list(input: &[u8]) -> IResult<&[u8], Vec<String>> {
 	tuple_ws!((
 		char('('),
-		|input| ws!(input, separated_list!(call!(char(',')), label_name)),
+		|input| separated_list!(input, call!(delim_ws(char(','))), label_name),
 		char(')')
 	))(input).map(|(input, result)| (input, result.1))
 }
