@@ -198,7 +198,7 @@ where
 }
 
 fn function(input: &[u8], allow_periods: bool) -> IResult<&[u8], Node> {
-			let (input, (name, args_agg)) = tuple((
+			let (input, (name, (args, agg))) = tuple((
 						// I have no idea what counts as a function name but label_name fits well for what's built into the prometheus so let's use that
 						label_name,
 						// both 'sum by (label, label) (foo)' and 'sum(foo) by (label, label)' are valid
@@ -208,11 +208,10 @@ fn function(input: &[u8], allow_periods: bool) -> IResult<&[u8], Node> {
 						),
 			))(input)?;
 
-				let (args, aggregation) = args_agg;
 				Ok((input, Node::Function {
 					name,
 					args,
-					aggregation,
+					aggregation: agg,
 				}))
 }
 
