@@ -35,6 +35,7 @@ macro_rules! tuple_ws {
 	(($($args:expr),* $(,)?)) => {{
 		use nom::character::complete::multispace0;
 		use $crate::utils::delim_ws;
+		use $crate::tuple_separated;
 
 		delim_ws(
 			tuple_separated!(multispace0, ($($args,)*)),
