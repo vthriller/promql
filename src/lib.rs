@@ -55,6 +55,7 @@ extern crate quick_error;
 pub(crate) mod expr;
 pub(crate) mod str;
 pub(crate) mod vec;
+pub(crate) mod utils;
 
 pub use expr::*;
 pub use vec::*;
