@@ -277,18 +277,16 @@ macro_rules! with_modifier {
 	};
 }
 
-macro_rules! with_bool_modifier {
-	($i:expr, $literal:expr, $op:expr) => {
+fn with_bool_modifier<'a, O: Fn(bool, Option<OpMod>) -> Op>(literal: &'a str, op: O) -> impl Fn(&'a [u8]) -> IResult<&[u8], Op> {
 			map(
 				tuple_ws!((
-					tag($literal),
+					tag(literal),
 					opt(tag("bool")),
 					opt(op_modifier),
 				)),
-				|(_, boolness, op_mod)|
-					$op(boolness.is_some(), op_mod)
-			)($i)
-	};
+				move |(_, boolness, op_mod)|
+					op(boolness.is_some(), op_mod)
+			)
 }
 
 fn op_modifier(input: &[u8]) -> IResult<&[u8], OpMod> {
@@ -377,12 +375,12 @@ left_op!(
 	comparison,
 	plus_minus,
 	alt!(
-		with_bool_modifier!("==", Op::Eq)
-			| with_bool_modifier!("!=", Op::Ne)
-			| with_bool_modifier!("<=", Op::Le)
-			| with_bool_modifier!(">=", Op::Ge)
-			| with_bool_modifier!("<", Op::Lt)
-			| with_bool_modifier!(">", Op::Gt)
+		call!(with_bool_modifier("==", Op::Eq))
+			| call!(with_bool_modifier("!=", Op::Ne))
+			| call!(with_bool_modifier("<=", Op::Le))
+			| call!(with_bool_modifier(">=", Op::Ge))
+			| call!(with_bool_modifier("<", Op::Lt))
+			| call!(with_bool_modifier(">", Op::Gt))
 	)
 );
 
