@@ -105,6 +105,7 @@ fn instant_vec(
 	allow_periods: bool,
 ) -> IResult<&[u8], Vec<LabelMatch>> {
 		ws!(input, call!(|input| {
+					let orig = input;
 					let (input, (_, name, _, labels, _))  = tuple((
 						multispace0, opt(|input| metric_name(input, allow_periods)),
 						multispace0, opt(label_set),
@@ -124,8 +125,8 @@ fn instant_vec(
 					}
 
 					if ret.is_empty() {
-						Err(nom::Err::Failure((
-							input,
+						Err(nom::Err::Error((
+							orig,
 							// XXX FIXME
 							// "vector selector must contain label matchers or metric name",
 							nom::error::ErrorKind::MapRes,
