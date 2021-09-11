@@ -160,20 +160,17 @@ fn function_args(
 	input: &[u8],
 	allow_periods: bool,
 ) -> IResult<&[u8], Vec<Node>> {
-	ws!(
-		input,
-		delimited!(
-			call!(char('(')),
-			separated_list!(
+		tuple_ws!((
+			char('('),
+			|input: &[u8]| ws!(input, separated_list!(
 				call!(char(',')),
 				alt!(
 					  call!(expression, allow_periods) => { |e| e }
 					| string => { |s| Node::String(s) }
 				)
-			),
-			call!(char(')'))
-		)
-	)
+			)),
+			char(')')
+		))(input).map(|(input, result)| (input, result.1))
 }
 
 fn function(input: &[u8], allow_periods: bool) -> IResult<&[u8], Node> {
