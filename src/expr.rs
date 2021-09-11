@@ -201,8 +201,8 @@ where
 	))
 }
 
-fn function(input: &[u8], allow_periods: bool) -> IResult<&[u8], Node> {
-	map(
+fn function(allow_periods: bool) -> impl Fn(&[u8]) -> IResult<&[u8], Node> {
+	move |input| map(
 		tuple((
 			// I have no idea what counts as a function name but label_name fits well for what's built into the prometheus so let's use that
 			label_name,
@@ -251,7 +251,7 @@ fn atom(allow_periods: bool) -> impl Fn(&[u8]) -> IResult<&[u8], Node> {
 			)
 			,
 			// function call is parsed before vector: the latter can actually consume function name as a vector, effectively rendering the rest of the expression invalid
-			|input| function(input, allow_periods)
+			function(allow_periods)
 			,
 			// FIXME? things like 'and' and 'group_left' are not supposed to parse as a vector: prometheus lexes them unambiguously
 			map(
