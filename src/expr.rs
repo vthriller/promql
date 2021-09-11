@@ -336,9 +336,8 @@ macro_rules! left_op {
 	// $next is the parser for operator that takes precenence, or any other kind of non-operator token sequence
 	($name:ident, $next:ident, $op:ident!($($op_args:tt)*)) => (
 		fn $name(allow_periods: bool) -> impl Fn(&[u8]) -> IResult<&[u8], Node> {
-			move |input| ws!(
-				input,
-				do_parse!(
+			move |input| surrounded_ws(
+				|input: &[u8]| do_parse!(input,
 					x: call!($next(allow_periods)) >>
 					ops: many0!(tuple!(
 						$op!($($op_args)*),
@@ -352,7 +351,7 @@ macro_rules! left_op {
 						x
 					})
 				)
-			)
+			)(input)
 		}
 	);
 }
