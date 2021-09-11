@@ -222,9 +222,8 @@ fn function(allow_periods: bool) -> impl Fn(&[u8]) -> IResult<&[u8], Node> {
 }
 
 fn atom(allow_periods: bool) -> impl Fn(&[u8]) -> IResult<&[u8], Node> {
-	move |input| ws!(
-		input,
-		call!(|input| alt((
+	move |input| surrounded_ws(
+		alt((
 			map(
 				tag_no_case("NaN"),
 				|_| Node::Scalar(::std::f32::NAN)
@@ -264,8 +263,8 @@ fn atom(allow_periods: bool) -> impl Fn(&[u8]) -> IResult<&[u8], Node> {
 				expression(allow_periods),
 				char(')')
 			)
-		))(input))
-	)
+		))
+	)(input)
 }
 
 macro_rules! with_modifier {
