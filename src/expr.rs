@@ -162,13 +162,13 @@ fn function_args(
 ) -> IResult<&[u8], Vec<Node>> {
 		tuple_ws!((
 			char('('),
-			|input: &[u8]| ws!(input, separated_list!(
-				call!(char(',')),
-				alt!(
+			separated_list(
+				delim_ws(char(',')),
+				|input: &[u8]| alt!(input,
 					  call!(expression, allow_periods) => { |e| e }
 					| string => { |s| Node::String(s) }
 				)
-			)),
+			),
 			char(')')
 		))(input).map(|(input, result)| (input, result.1))
 }
