@@ -161,16 +161,16 @@ pub(crate) fn vector(
 ) -> IResult<&[u8], Vector> {
 	ws!(
 		input,
-		do_parse!(
-			labels: call!(instant_vec, allow_periods)
-				>> range: opt!(delimited!(call!(char('[')), range_literal, call!(char(']'))))
-				>> offset: opt!(ws!(preceded!(call!(tag("offset")), range_literal)))
-				>> (Vector {
+		call!(|input| {
+			let (input, labels) = instant_vec(input, allow_periods)?;
+			let (input, range) = opt!(input, delimited!(call!(char('[')), range_literal, call!(char(']'))))?;
+			let (input, offset) = opt!(input, ws!(preceded!(call!(tag("offset")), range_literal)))?;
+			Ok((input, Vector {
 					labels,
 					range,
 					offset
-				})
-		)
+			}))
+		})
 	)
 }
 
