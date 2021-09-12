@@ -4,6 +4,7 @@ use nom::bytes::complete::{
 	take,
 };
 use nom::character::complete::char;
+use nom::sequence::preceded;
 
 // > Label values may contain any Unicode characters.
 // > PromQL follows the same [escaping rules as Go](https://golang.org/ref/spec#String_literals).
@@ -67,15 +68,15 @@ fn rune(input: &[u8]) -> IResult<&[u8], Vec<u8>> {
 				|n| vec![n]
 			)
 			| map!(
-				preceded!(call!(char('x')), fixed_length_radix!(u8, 2u8, 16)),
+				preceded(char('x'), |input| fixed_length_radix!(input, u8, 2u8, 16)),
 				|n| vec![n]
 			)
 			| map_opt!(
-				preceded!(call!(char('u')), fixed_length_radix!(u32, 4u8, 16)),
+				preceded(char('u'), |input| fixed_length_radix!(input, u32, 4u8, 16)),
 				validate_unicode_scalar
 			)
 			| map_opt!(
-				preceded!(call!(char('U')), fixed_length_radix!(u32, 8u8, 16)),
+				preceded(char('U'), |input| fixed_length_radix!(input, u32, 8u8, 16)),
 				validate_unicode_scalar
 			)
 		)
