@@ -195,10 +195,10 @@ fn metric_name(
 	move |input| flat_map!(
 		input,
 		recognize!(tuple!(
-			alt!(call!(alpha1) | call!(is_a("_:"))),
-			many0!(alt!(
-				call!(alphanumeric1) | call!(is_a(if allow_periods { "_:." } else { "_:" }))
-			))
+			call!(alt((alpha1, is_a("_:")))),
+			many0!(call!(alt((
+				alphanumeric1, is_a(if allow_periods { "_:." } else { "_:" }),
+			))))
 		)),
 		parse_to!(String)
 	)
