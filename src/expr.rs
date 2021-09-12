@@ -287,32 +287,34 @@ fn with_bool_modifier<'a, O: Fn(bool, Option<OpMod>) -> Op>(literal: &'a str, op
 }
 
 fn op_modifier(input: &[u8]) -> IResult<&[u8], OpMod> {
-	surrounded_ws(map(tuple((
-		// action
-		alt((
-			map(tag("on"), |_| OpModAction::RestrictTo),
-			map(tag("ignoring"), |_| OpModAction::Ignore),
-		)),
-		// labels
-		label_list,
-		// group
-		// TODO > Grouping modifiers can only be used for comparison and arithmetic. Operations as and, unless and or operations match with all possible entries in the right vector by default.
-		opt(map(tuple((
+	surrounded_ws(map(
+		tuple((
+			// action
 			alt((
-				map(tag("group_left"), |_| OpGroupSide::Left),
-				map(tag("group_right"), |_| OpGroupSide::Right),
+				map(tag("on"), |_| OpModAction::RestrictTo),
+				map(tag("ignoring"), |_| OpModAction::Ignore),
 			)),
-			map(
-				opt(label_list),
-				|labels| labels.unwrap_or_default()
-			),
+			// labels
+			label_list,
+			// group
+			// TODO > Grouping modifiers can only be used for comparison and arithmetic. Operations as and, unless and or operations match with all possible entries in the right vector by default.
+			opt(map(
+				tuple((
+					alt((
+						map(tag("group_left"), |_| OpGroupSide::Left),
+						map(tag("group_right"), |_| OpGroupSide::Right),
+					)),
+					map(
+						opt(label_list),
+						|labels| labels.unwrap_or_default()
+					),
+				)),
+				|(side, labels)|
+					(OpGroupMod { side, labels })
 			)),
-			|(side, labels)|
-			(OpGroupMod { side, labels })
-		)),
 		)),
 		|(action, labels, group)|
-		(OpMod { action, labels, group })
+			(OpMod { action, labels, group })
 	))(input)
 }
 
