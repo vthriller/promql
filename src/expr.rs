@@ -200,8 +200,8 @@ macro_rules! pair_permutations {
 	};
 }
 
-fn function(allow_periods: bool) -> impl Fn(&[u8]) -> IResult<&[u8], Node> {
-	move |input| map(
+fn function<'a>(allow_periods: bool) -> impl FnMut(&'a [u8]) -> IResult<&[u8], Node> {
+	map(
 		tuple((
 			// I have no idea what counts as a function name but label_name fits well for what's built into the prometheus so let's use that
 			label_name,
@@ -217,7 +217,7 @@ fn function(allow_periods: bool) -> impl Fn(&[u8]) -> IResult<&[u8], Node> {
 				args,
 				aggregation: agg,
 			}
-	)(input)
+	)
 }
 
 fn atom(allow_periods: bool) -> impl Fn(&[u8]) -> IResult<&[u8], Node> {
@@ -319,7 +319,7 @@ fn op_modifier(input: &[u8]) -> IResult<&[u8], OpMod> {
 }
 
 // ^ is right-associative, so we can actually keep it simple and recursive
-fn power(allow_periods: bool) -> impl Fn(&[u8]) -> IResult<&[u8], Node> {
+fn power(allow_periods: bool) -> impl FnMut(&[u8]) -> IResult<&[u8], Node> {
 	move |input|
 	surrounded_ws(map(
 		tuple((
@@ -341,8 +341,8 @@ fn power(allow_periods: bool) -> impl Fn(&[u8]) -> IResult<&[u8], Node> {
 macro_rules! left_op {
 	// $next is the parser for operator that takes precenence, or any other kind of non-operator token sequence
 	($name:ident, $next:ident, $op:expr) => (
-		fn $name<'a>(allow_periods: bool) -> impl Fn(&'a [u8]) -> IResult<&'a [u8], Node> {
-			move |input| surrounded_ws(
+		fn $name<'a>(allow_periods: bool) -> impl FnMut(&'a [u8]) -> IResult<&'a [u8], Node> {
+			surrounded_ws(
 				map(tuple((
 					$next(allow_periods),
 					many0(tuple((
@@ -358,7 +358,7 @@ macro_rules! left_op {
 						x
 					})
 				)
-			)(input)
+			)
 		}
 	);
 }
@@ -404,7 +404,7 @@ left_op!(or_op, and_unless, with_modifier!("or", Op::Or));
 
 pub(crate) fn expression<'a>(
 	allow_periods: bool,
-) -> impl Fn(&'a [u8]) -> IResult<&'a [u8], Node> {
+) -> impl FnMut(&'a [u8]) -> IResult<&'a [u8], Node> {
 	or_op(allow_periods)
 }
 
