@@ -45,13 +45,13 @@ pub struct LabelMatch {
 	pub value: String,
 }
 
-fn label_set(input: &[u8]) -> IResult<&[u8], Vec<LabelMatch>> {
+fn label_set<'a>(input: &'a [u8]) -> IResult<&[u8], Vec<LabelMatch>> {
 	delimited(
 		char('{'),
 		surrounded_ws(
 			separated_list0(
 				surrounded_ws(char(',')),
-				|input: &[u8]| {
+				|input: &'a [u8]| {
 					let (input, (name, op, value))  = tuple_ws!((
 						label_name,
 						label_op,
