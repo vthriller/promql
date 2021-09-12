@@ -14,6 +14,7 @@ use nom::character::complete::{
 use nom::combinator::{
 	map,
 	opt,
+	recognize,
 };
 use nom::multi::{
 	many0,
@@ -197,7 +198,7 @@ fn metric_name(
 ) -> impl Fn(&[u8]) -> IResult<&[u8], String> {
 	move |input| flat_map!(
 		input,
-		recognize!(tuple((
+		recognize(tuple((
 			alt((alpha1, is_a("_:"))),
 			many0(alt((
 				alphanumeric1, is_a(if allow_periods { "_:." } else { "_:" }),
@@ -209,7 +210,7 @@ fn metric_name(
 
 // XXX nom does not allow pub(crate) here
 named_attr!(#[doc(hidden)], pub label_name <&[u8], String>, flat_map!(
-	recognize!(tuple((
+	recognize(tuple((
 		alt((alpha1, is_a("_"))),
 		many0(alt((alphanumeric1, is_a("_")))),
 	))),
