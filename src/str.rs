@@ -31,7 +31,7 @@ quick_error! {
 // `fixed_length_radix!(T, n, radix)` parses sequence of `n` chars as a `radix`-base number into a type `T`
 macro_rules! fixed_length_radix {
 	// $type is :ident, not :ty; otherwise "error: expected expression, found `u8`" in "$type::from_str_radix"
-	($i:expr, $type:ident, $len:expr, $radix:expr) => {
+	($type:ident, $len:expr, $radix:expr) => {
 		// there's no easy way to combine nom::is_(whatever)_digit with something like length_count
 		// besides u123::from_str_radix will validate chars anyways, so why do extra work?
 		map_res(
@@ -42,7 +42,7 @@ macro_rules! fixed_length_radix {
 					$radix,
 				)?)
 				}
-			)($i)
+			)
 	};
 }
 
@@ -69,19 +69,19 @@ fn rune(input: &[u8]) -> IResult<&[u8], Vec<u8>> {
 			map(char('\''), |_| vec![0x27]),
 			map(char('"'), |_| vec![0x22]),
 			map(
-				|input| fixed_length_radix!(input, u8, 3u8, 8),
+				fixed_length_radix!(u8, 3u8, 8),
 				|n| vec![n]
 			),
 			map(
-				preceded(char('x'), |input| fixed_length_radix!(input, u8, 2u8, 16)),
+				preceded(char('x'), fixed_length_radix!(u8, 2u8, 16)),
 				|n| vec![n]
 			),
 			map_opt(
-				preceded(char('u'), |input| fixed_length_radix!(input, u32, 4u8, 16)),
+				preceded(char('u'), fixed_length_radix!(u32, 4u8, 16)),
 				validate_unicode_scalar
 			),
 			map_opt(
-				preceded(char('U'), |input| fixed_length_radix!(input, u32, 8u8, 16)),
+				preceded(char('U'), fixed_length_radix!(u32, 8u8, 16)),
 				validate_unicode_scalar
 			),
 		))
