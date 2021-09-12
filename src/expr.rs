@@ -329,13 +329,13 @@ fn power(allow_periods: bool) -> impl Fn(&[u8]) -> IResult<&[u8], Node> {
 // foo op bar op baz → Node[Node[foo op bar] op baz]
 macro_rules! left_op {
 	// $next is the parser for operator that takes precenence, or any other kind of non-operator token sequence
-	($name:ident, $next:ident, $op:ident!($($op_args:tt)*)) => (
+	($name:ident, $next:ident, $op:expr) => (
 		fn $name<'a>(allow_periods: bool) -> impl Fn(&'a [u8]) -> IResult<&'a [u8], Node> {
 			move |input| surrounded_ws(
 				map(tuple((
 					$next(allow_periods),
 					many0(tuple((
-						|input: &'a [u8]| $op!(input, $($op_args)*),
+						$op,
 						$next(allow_periods)
 					))),
 				)), |(x, ops)|
@@ -355,17 +355,17 @@ macro_rules! left_op {
 left_op!(
 	mul_div_mod,
 	power,
-	call!(alt((
+	alt((
 		with_modifier!("*", Op::Mul),
 		with_modifier!("/", Op::Div),
 		with_modifier!("%", Op::Mod),
-	)))
+	))
 );
 
 left_op!(
 	plus_minus,
 	mul_div_mod,
-	call!(alt((with_modifier!("+", Op::Plus), with_modifier!("-", Op::Minus))))
+	alt((with_modifier!("+", Op::Plus), with_modifier!("-", Op::Minus)))
 );
 
 // if you thing this kind of operator chaining makes little to no sense, think again: it actually matches 'foo' that is both '> bar' and '!= baz'.
@@ -373,23 +373,23 @@ left_op!(
 left_op!(
 	comparison,
 	plus_minus,
-	call!(alt((
+	alt((
 		with_bool_modifier("==", Op::Eq),
 		with_bool_modifier("!=", Op::Ne),
 		with_bool_modifier("<=", Op::Le),
 		with_bool_modifier(">=", Op::Ge),
 		with_bool_modifier("<", Op::Lt),
 		with_bool_modifier(">", Op::Gt),
-	)))
+	))
 );
 
 left_op!(
 	and_unless,
 	comparison,
-	call!(alt((with_modifier!("and", Op::And), with_modifier!("unless", Op::Unless))))
+	alt((with_modifier!("and", Op::And), with_modifier!("unless", Op::Unless)))
 );
 
-left_op!(or_op, and_unless, call!(with_modifier!("or", Op::Or)));
+left_op!(or_op, and_unless, with_modifier!("or", Op::Or));
 
 pub(crate) fn expression<'a>(
 	allow_periods: bool,
