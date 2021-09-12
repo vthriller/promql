@@ -122,29 +122,27 @@ fn instant_vec<'a>(
 			opt(label_set),
 		)),
 		|(name, labels)| {
+			let mut ret = match name {
+				Some(name) => vec![LabelMatch {
+					name: "__name__".to_string(),
+					op: LabelMatchOp::Eq,
+					value: name,
+				}],
+				None => vec![],
+			};
+			if let Some(labels) = labels {
+				ret.extend(labels)
+			}
 
-		let mut ret = match name {
-			Some(name) => vec![LabelMatch {
-				name: "__name__".to_string(),
-				op: LabelMatchOp::Eq,
-				value: name,
-			}],
-			None => vec![],
-		};
-		if let Some(labels) = labels {
-			ret.extend(labels)
-		}
-
-		if ret.is_empty() {
-			Err(
-				// XXX FIXME
-				// "vector selector must contain label matchers or metric name",
-				nom::error::ErrorKind::MapRes,
-			)
-		} else {
-			Ok(ret)
-		}
-
+			if ret.is_empty() {
+				Err(
+					// XXX FIXME
+					// "vector selector must contain label matchers or metric name",
+					nom::error::ErrorKind::MapRes,
+				)
+			} else {
+				Ok(ret)
+			}
 		}
 	)
 }
