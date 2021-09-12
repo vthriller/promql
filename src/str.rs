@@ -52,8 +52,8 @@ fn validate_unicode_scalar(n: u32) -> Option<Vec<u8>> {
 }
 
 fn rune(input: &[u8]) -> IResult<&[u8], Vec<u8>> {
-	preceded!(input, call!(char('\\')),
-		call!(alt((
+	preceded(char('\\'),
+		alt((
 			map(char('a'), |_| vec![0x07]),
 			map(char('b'), |_| vec![0x08]),
 			map(char('f'), |_| vec![0x0c]),
@@ -81,8 +81,8 @@ fn rune(input: &[u8]) -> IResult<&[u8], Vec<u8>> {
 				preceded(char('U'), |input| fixed_length_radix!(input, u32, 8u8, 16)),
 				validate_unicode_scalar
 			),
-		)))
-	)
+		))
+	)(input)
 }
 
 // parses sequence of chars that are not in $arg
