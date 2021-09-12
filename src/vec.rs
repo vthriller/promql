@@ -15,7 +15,10 @@ use nom::combinator::{
 	map,
 	opt,
 };
-use nom::multi::separated_list0;
+use nom::multi::{
+	many0,
+	separated_list0,
+};
 use nom::sequence::{
 	delimited,
 	preceded,
@@ -196,7 +199,7 @@ fn metric_name(
 		input,
 		recognize!(tuple!(
 			call!(alt((alpha1, is_a("_:")))),
-			many0!(call!(alt((
+			call!(many0(alt((
 				alphanumeric1, is_a(if allow_periods { "_:." } else { "_:" }),
 			))))
 		)),
