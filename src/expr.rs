@@ -185,22 +185,16 @@ fn function_args(allow_periods: bool) -> impl Fn(&[u8]) -> IResult<&[u8], Vec<No
 	)(input)
 }
 
-fn pair_permutations<'a, I, O1, O2, E, P1, P2>(p1: &'a P1, p2: &'a P2) -> impl Fn(I) -> IResult<I, (O1, O2), E> + 'a
-where
-	I: 'a + Clone,
-	O1: 'a,
-	O2: 'a,
-	E: 'a + nom::error::ParseError<I>,
-	P1: Fn(I) -> IResult<I, O1, E>,
-	P2: Fn(I) -> IResult<I, O2, E>,
-{
+macro_rules! pair_permutations {
+	($p1:expr, $p2:expr $(,)?) => {
 	alt((
-		tuple((p1, p2)),
+		tuple(($p1, $p2)),
 		map(
-			tuple((p2, p1)),
+			tuple(($p2, $p1)),
 			|(o2, o1)| (o1, o2),
 		),
 	))
+	};
 }
 
 fn function(allow_periods: bool) -> impl Fn(&[u8]) -> IResult<&[u8], Node> {
@@ -209,9 +203,9 @@ fn function(allow_periods: bool) -> impl Fn(&[u8]) -> IResult<&[u8], Node> {
 			// I have no idea what counts as a function name but label_name fits well for what's built into the prometheus so let's use that
 			label_name,
 			// both 'sum by (label, label) (foo)' and 'sum(foo) by (label, label)' are valid
-			pair_permutations(
-				&function_args(allow_periods),
-				&opt(function_aggregation),
+			pair_permutations!(
+				function_args(allow_periods),
+				opt(function_aggregation),
 			),
 		)),
 		|(name, (args, agg))|
