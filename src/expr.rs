@@ -174,8 +174,8 @@ fn function_aggregation(input: &[u8]) -> IResult<&[u8], AggregationMod> {
 }
 
 // it's up to the library user to decide whether argument list is valid or not
-fn function_args(allow_periods: bool) -> impl Fn(&[u8]) -> IResult<&[u8], Vec<Node>> {
-	move |input| delimited_ws(
+fn function_args<'a>(allow_periods: bool) -> impl FnMut(&'a [u8]) -> IResult<&[u8], Vec<Node>> {
+	delimited_ws(
 		char('('),
 		separated_list0(
 			surrounded_ws(char(',')),
@@ -185,7 +185,7 @@ fn function_args(allow_periods: bool) -> impl Fn(&[u8]) -> IResult<&[u8], Vec<No
 			))
 		),
 		char(')')
-	)(input)
+	)
 }
 
 macro_rules! pair_permutations {
