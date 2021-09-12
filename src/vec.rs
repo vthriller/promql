@@ -211,7 +211,7 @@ fn metric_name(
 named_attr!(#[doc(hidden)], pub label_name <&[u8], String>, flat_map!(
 	recognize!(tuple!(
 		call!(alt((alpha1, is_a("_")))),
-		many0!(call!(alt((alphanumeric1, is_a("_")))))
+		call!(many0(alt((alphanumeric1, is_a("_")))))
 	)),
 	parse_to!(String)
 ));
