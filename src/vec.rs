@@ -208,14 +208,15 @@ fn metric_name(
 	)(input)
 }
 
-// XXX nom does not allow pub(crate) here
-named_attr!(#[doc(hidden)], pub label_name <&[u8], String>, call!(map_res(
+pub(crate) fn label_name(input: &[u8]) -> IResult<&[u8], String> {
+map_res(
 	recognize(tuple((
 		alt((alpha1, is_a("_"))),
 		many0(alt((alphanumeric1, is_a("_")))),
 	))),
 	|s: &[u8]| String::from_utf8(s.to_vec())
-)));
+)(input)
+}
 
 fn label_op(input: &[u8]) -> IResult<&[u8], LabelMatchOp> {
 	alt((
