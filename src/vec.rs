@@ -13,6 +13,7 @@ use nom::character::complete::{
 };
 use nom::combinator::{
 	map,
+	map_res,
 	opt,
 	recognize,
 };
@@ -196,26 +197,25 @@ pub(crate) fn vector(
 fn metric_name(
 	allow_periods: bool,
 ) -> impl Fn(&[u8]) -> IResult<&[u8], String> {
-	move |input| flat_map!(
-		input,
+	move |input| map_res(
 		recognize(tuple((
 			alt((alpha1, is_a("_:"))),
 			many0(alt((
 				alphanumeric1, is_a(if allow_periods { "_:." } else { "_:" }),
 			))),
 		))),
-		parse_to!(String)
-	)
+		|s: &[u8]| String::from_utf8(s.to_vec())
+	)(input)
 }
 
 // XXX nom does not allow pub(crate) here
-named_attr!(#[doc(hidden)], pub label_name <&[u8], String>, flat_map!(
+named_attr!(#[doc(hidden)], pub label_name <&[u8], String>, call!(map_res(
 	recognize(tuple((
 		alt((alpha1, is_a("_"))),
 		many0(alt((alphanumeric1, is_a("_")))),
 	))),
-	parse_to!(String)
-));
+	|s: &[u8]| String::from_utf8(s.to_vec())
+)));
 
 fn label_op(input: &[u8]) -> IResult<&[u8], LabelMatchOp> {
 	alt((
