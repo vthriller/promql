@@ -112,7 +112,7 @@ pub fn string(input: &[u8]) -> IResult<&[u8], String> {
 			// raw string literals, where "backslashes have no special meaning"
 			delimited(char('`'), is_not_v!("`"), char('`')),
 		)),
-		|s: Vec<u8>| String::from_utf8(s)
+		String::from_utf8
 	)(input)
 }
 
