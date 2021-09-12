@@ -96,8 +96,8 @@ macro_rules! is_not_v {
 
 // sequence of chars (except those marked as invalid in $arg) or rune literals, parsed into Vec<u8>
 macro_rules! chars_except {
-	($i:expr, $arg:expr) => {
-		map(many0(alt((rune, is_not_v!($arg)))), |s| s.concat())($i)
+	($arg:expr) => {
+		map(many0(alt((rune, is_not_v!($arg)))), |s| s.concat())
 	};
 }
 
@@ -105,9 +105,9 @@ pub fn string(input: &[u8]) -> IResult<&[u8], String> {
 	map_res!(input,
 		alt!(
 			// newlines are not allowed in interpreted quotes, but are totally fine in raw string literals
-			delimited!(call!(char('"')), chars_except!("\n\"\\"), call!(char('"')))
+			delimited!(call!(char('"')), call!(chars_except!("\n\"\\")), call!(char('"')))
 			|
-			delimited!(call!(char('\'')), chars_except!("\n'\\"), call!(char('\'')))
+			delimited!(call!(char('\'')), call!(chars_except!("\n'\\")), call!(char('\'')))
 			|
 			// raw string literals, where "backslashes have no special meaning"
 			delimited!(call!(char('`')), call!(is_not_v!("`")), call!(char('`')))
