@@ -7,7 +7,10 @@ use nom::branch::alt;
 use nom::character::complete::char;
 use nom::combinator::{map, map_opt};
 use nom::multi::many0;
-use nom::sequence::preceded;
+use nom::sequence::{
+	delimited,
+	preceded,
+};
 
 // > Label values may contain any Unicode characters.
 // > PromQL follows the same [escaping rules as Go](https://golang.org/ref/spec#String_literals).
@@ -103,15 +106,13 @@ macro_rules! chars_except {
 
 pub fn string(input: &[u8]) -> IResult<&[u8], String> {
 	map_res!(input,
-		alt!(
+		call!(alt((
 			// newlines are not allowed in interpreted quotes, but are totally fine in raw string literals
-			delimited!(call!(char('"')), call!(chars_except!("\n\"\\")), call!(char('"')))
-			|
-			delimited!(call!(char('\'')), call!(chars_except!("\n'\\")), call!(char('\'')))
-			|
+			delimited(char('"'), chars_except!("\n\"\\"), char('"')),
+			delimited(char('\''), chars_except!("\n'\\"), char('\'')),
 			// raw string literals, where "backslashes have no special meaning"
-			delimited!(call!(char('`')), call!(is_not_v!("`")), call!(char('`')))
-		),
+			delimited(char('`'), is_not_v!("`"), char('`')),
+		))),
 		|s: Vec<u8>| String::from_utf8(s)
 	)
 }
@@ -153,7 +154,7 @@ mod tests {
 			string(cbs("'this\nis not valid'")),
 			err(
 				cbs("'this\nis not valid'"),
-				ErrorKind::Alt
+				ErrorKind::Char
 			)
 		);
 
