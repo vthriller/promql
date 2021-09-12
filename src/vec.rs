@@ -143,23 +143,26 @@ fn instant_vec(
 }
 
 fn range_literal(input: &[u8]) -> IResult<&[u8], usize> {
-	do_parse!(input,
-		num: map!(
+	map(
+		tuple((
+		map(
 			digit1,
 			// from_utf8_unchecked() on [0-9]+ is actually totally safe
 			// FIXME unwrap? FIXME copy-pasted from expr.rs
-			|n| unsafe { String::from_utf8_unchecked(n.to_vec()) }.parse::<usize>().unwrap()
-		) >>
-		suffix: call!(alt((
+			|n: &[u8]| unsafe { String::from_utf8_unchecked(n.to_vec()) }.parse::<usize>().unwrap()
+		),
+		alt((
 			map(char('s'), |_| 1),
 			map(char('m'), |_| 60),
 			map(char('h'), |_| 60 * 60),
 			map(char('d'), |_| 60 * 60 * 24),
 			map(char('w'), |_| 60 * 60 * 24 * 7),
 			map(char('y'), |_| 60 * 60 * 24 * 365), // XXX leap years?
-		))) >>
+		)),
+		)),
+		|(num, suffix)|
 		(num * suffix)
-	)
+	)(input)
 }
 
 pub(crate) fn vector(
