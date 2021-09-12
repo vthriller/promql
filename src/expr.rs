@@ -221,6 +221,8 @@ fn function<'a>(allow_periods: bool) -> impl FnMut(&'a [u8]) -> IResult<&[u8], N
 }
 
 fn atom(allow_periods: bool) -> impl Fn(&[u8]) -> IResult<&[u8], Node> {
+	// this closure somehow prevents `impl Fn` from being recursive
+	// see `rustc --explain E0720`
 	move |input| surrounded_ws(
 		alt((
 			map(
@@ -320,6 +322,8 @@ fn op_modifier(input: &[u8]) -> IResult<&[u8], OpMod> {
 
 // ^ is right-associative, so we can actually keep it simple and recursive
 fn power(allow_periods: bool) -> impl FnMut(&[u8]) -> IResult<&[u8], Node> {
+	// this closure somehow prevents `impl Fn` from being recursive
+	// see `rustc --explain E0720`
 	move |input|
 	surrounded_ws(map(
 		tuple((
