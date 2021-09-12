@@ -294,17 +294,19 @@ fn op_modifier(input: &[u8]) -> IResult<&[u8], OpMod> {
 		))) >>
 		labels: label_list >>
 		// TODO > Grouping modifiers can only be used for comparison and arithmetic. Operations as and, unless and or operations match with all possible entries in the right vector by default.
-		group: opt!(do_parse!(
-			side: call!(alt((
+		group: opt!(call!(map(tuple((
+			alt((
 				map(tag("group_left"), |_| OpGroupSide::Left),
 				map(tag("group_right"), |_| OpGroupSide::Right),
-			))) >>
-			labels: map!(
-				opt!(label_list),
+			)),
+			map(
+				opt(label_list),
 				|labels| labels.unwrap_or_default()
-			) >>
+			),
+			)),
+			|(side, labels)|
 			(OpGroupMod { side, labels })
-		)) >>
+		))) >>
 		(OpMod { action, labels, group })
 	))(input)
 }
