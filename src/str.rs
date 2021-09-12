@@ -6,6 +6,7 @@ use nom::bytes::complete::{
 use nom::branch::alt;
 use nom::character::complete::char;
 use nom::combinator::{map, map_opt};
+use nom::multi::many0;
 use nom::sequence::preceded;
 
 // > Label values may contain any Unicode characters.
@@ -96,7 +97,7 @@ macro_rules! is_not_v {
 // sequence of chars (except those marked as invalid in $arg) or rune literals, parsed into Vec<u8>
 macro_rules! chars_except {
 	($i:expr, $arg:expr) => {
-		map!($i, many0!(alt!(rune | call!(is_not_v!($arg)))), |s| s.concat())
+		map(many0(alt((rune, is_not_v!($arg)))), |s| s.concat())($i)
 	};
 }
 
