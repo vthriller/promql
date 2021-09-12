@@ -65,3 +65,13 @@ where
 		|result| result.1
 	)
 }
+
+#[cfg(test)]
+pub(crate) mod tests {
+	use nom::Err;
+	use nom::error::{Error, ErrorKind};
+
+	pub(crate) fn err<I, O>(input: I, kind: ErrorKind) -> Result<O, Err<Error<I>>> {
+		Err(Err::Error(Error::new(input, kind)))
+	}
+}

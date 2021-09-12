@@ -116,7 +116,7 @@ pub fn string(input: &[u8]) -> IResult<&[u8], String> {
 #[cfg(test)]
 mod tests {
 	use super::*;
-	use nom::Err;
+	use crate::utils::tests::*;
 	use nom::error::ErrorKind;
 
 	fn cbs(s: &str) -> &[u8] {
@@ -147,10 +147,10 @@ mod tests {
 
 		assert_eq!(
 			string(cbs("'this\nis not valid'")),
-			Err(Err::Error((
+			err(
 				cbs("'this\nis not valid'"),
 				ErrorKind::Alt
-			)))
+			)
 		);
 
 		assert_eq!(
@@ -173,7 +173,7 @@ mod tests {
 		// high surrogate
 		assert_eq!(
 			rune(cbs("\\uD801")),
-			Err(Err::Error((cbs("uD801"), ErrorKind::Alt)))
+			err(cbs("uD801"), ErrorKind::Alt)
 		);
 
 		assert_eq!(
@@ -184,19 +184,19 @@ mod tests {
 		// out of range
 		assert_eq!(
 			rune(cbs("\\UdeadDEAD")),
-			Err(Err::Error((cbs("UdeadDEAD"), ErrorKind::Alt)))
+			err(cbs("UdeadDEAD"), ErrorKind::Alt)
 		);
 
 		// utter nonsense
 
 		assert_eq!(
 			rune(cbs("\\xxx")),
-			Err(Err::Error((cbs("xxx"), ErrorKind::Alt)))
+			err(cbs("xxx"), ErrorKind::Alt)
 		);
 
 		assert_eq!(
 			rune(cbs("\\x1")),
-			Err(Err::Error((cbs("x1"), ErrorKind::Alt)))
+			err(cbs("x1"), ErrorKind::Alt)
 		);
 	}
 }

@@ -63,7 +63,7 @@ pub use expr::*;
 pub use vec::*;
 
 use nom::Err;
-use nom::error::ErrorKind;
+use nom::error::{Error, ErrorKind};
 
 /**
 Parse expression string into an AST.
@@ -72,7 +72,7 @@ This parser operates on byte sequence instead of `&str` because of the fact that
 
 Set `allow_periods` to `true` to allow vector names with periods (like `foo.bar`).
 */
-pub fn parse(e: &[u8], allow_periods: bool) -> Result<Node, nom::Err<(&[u8], ErrorKind)>> {
+pub fn parse(e: &[u8], allow_periods: bool) -> Result<Node, nom::Err<Error<&[u8]>>> {
 	match expression(allow_periods)(e) {
 		Ok((b"", ast)) => Ok(ast),
 		Ok((tail, _)) => Err(Err::Error(error_position!(
@@ -85,17 +85,17 @@ pub fn parse(e: &[u8], allow_periods: bool) -> Result<Node, nom::Err<(&[u8], Err
 
 #[cfg(test)]
 mod tests {
-	use nom::Err;
 	use nom::error::ErrorKind;
+	use crate::utils::tests::*;
 
 	#[test]
 	fn completeness() {
 		assert_eq!(
 			super::parse(b"asdf hjkl", false),
-			Err(Err::Error((
+			err(
 				&b"hjkl"[..],
 				ErrorKind::Complete
-			)))
+			)
 		);
 	}
 }

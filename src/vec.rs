@@ -126,7 +126,7 @@ fn instant_vec(
 		}
 
 		if ret.is_empty() {
-			Err(nom::Err::Error((
+			Err(nom::Err::Error(nom::error::Error::new(
 				orig,
 				// XXX FIXME
 				// "vector selector must contain label matchers or metric name",
@@ -220,7 +220,7 @@ fn label_op(input: &[u8]) -> IResult<&[u8], LabelMatchOp> {
 #[cfg(test)]
 mod tests {
 	use super::*;
-	use nom::Err;
+	use crate::utils::tests::*;
 	use nom::error::ErrorKind;
 
 	fn cbs(s: &str) -> &[u8] {
@@ -393,7 +393,7 @@ mod tests {
 
 		assert_eq!(
 			vector(allow_periods)(cbs("{}")),
-			Err(Err::Error((cbs("{}"), ErrorKind::MapRes)))
+			err(cbs("{}"), ErrorKind::MapRes)
 		);
 	}
 

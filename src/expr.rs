@@ -397,7 +397,6 @@ pub(crate) fn expression(
 #[cfg(test)]
 mod tests {
 	use super::*;
-	use nom::error::ErrorKind;
 	use vec;
 
 	use self::Node::{Function, Scalar};
