@@ -88,15 +88,15 @@ fn rune(input: &[u8]) -> IResult<&[u8], Vec<u8>> {
 // parses sequence of chars that are not in $arg
 // returns Vec<u8> (unlike none_of!() which returns &[char], or is_not!() which returns &[u8])
 macro_rules! is_not_v {
-	($i:expr, $arg:expr) => {
-		map(is_not($arg), |bytes: &[u8]| bytes.to_vec())($i)
+	($arg:expr) => {
+		map(is_not($arg), |bytes: &[u8]| bytes.to_vec())
 	};
 }
 
 // sequence of chars (except those marked as invalid in $arg) or rune literals, parsed into Vec<u8>
 macro_rules! chars_except {
 	($i:expr, $arg:expr) => {
-		map!($i, many0!(alt!(rune | is_not_v!($arg))), |s| s.concat())
+		map!($i, many0!(alt!(rune | call!(is_not_v!($arg)))), |s| s.concat())
 	};
 }
 
@@ -109,7 +109,7 @@ pub fn string(input: &[u8]) -> IResult<&[u8], String> {
 			delimited!(call!(char('\'')), chars_except!("\n'\\"), call!(char('\'')))
 			|
 			// raw string literals, where "backslashes have no special meaning"
-			delimited!(call!(char('`')), is_not_v!("`"), call!(char('`')))
+			delimited!(call!(char('`')), call!(is_not_v!("`")), call!(char('`')))
 		),
 		|s: Vec<u8>| String::from_utf8(s)
 	)
