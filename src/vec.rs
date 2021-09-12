@@ -136,9 +136,8 @@ fn instant_vec<'a>(
 
 			if ret.is_empty() {
 				Err(
-					// XXX FIXME
-					// "vector selector must contain label matchers or metric name",
-					nom::error::ErrorKind::MapRes,
+					// FIXME how end-user can actually access this message?
+					"vector selector must contain label matchers or metric name",
 				)
 			} else {
 				Ok(ret)
