@@ -330,12 +330,12 @@ fn power(allow_periods: bool) -> impl Fn(&[u8]) -> IResult<&[u8], Node> {
 macro_rules! left_op {
 	// $next is the parser for operator that takes precenence, or any other kind of non-operator token sequence
 	($name:ident, $next:ident, $op:ident!($($op_args:tt)*)) => (
-		fn $name(allow_periods: bool) -> impl Fn(&[u8]) -> IResult<&[u8], Node> {
+		fn $name<'a>(allow_periods: bool) -> impl Fn(&'a [u8]) -> IResult<&'a [u8], Node> {
 			move |input| surrounded_ws(
 				map(tuple((
 					$next(allow_periods),
 					many0(tuple((
-						|input: &[u8]| $op!(input, $($op_args)*),
+						|input: &'a [u8]| $op!(input, $($op_args)*),
 						$next(allow_periods)
 					))),
 				)), |(x, ops)|
@@ -389,9 +389,9 @@ left_op!(
 
 left_op!(or_op, and_unless, with_modifier!("or", Op::Or));
 
-pub(crate) fn expression(
+pub(crate) fn expression<'a>(
 	allow_periods: bool,
-) -> impl Fn(&[u8]) -> IResult<&[u8], Node> {
+) -> impl Fn(&'a [u8]) -> IResult<&'a [u8], Node> {
 	or_op(allow_periods)
 }
 
