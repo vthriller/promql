@@ -3,7 +3,9 @@ use nom::bytes::complete::{
 	is_not,
 	take,
 };
+use nom::branch::alt;
 use nom::character::complete::char;
+use nom::combinator::{map, map_opt};
 use nom::sequence::preceded;
 
 // > Label values may contain any Unicode characters.
@@ -51,35 +53,35 @@ fn validate_unicode_scalar(n: u32) -> Option<Vec<u8>> {
 
 fn rune(input: &[u8]) -> IResult<&[u8], Vec<u8>> {
 	preceded!(input, call!(char('\\')),
-		alt!(
-			  call!(char('a')) => { |_| vec![0x07] }
-			| call!(char('b')) => { |_| vec![0x08] }
-			| call!(char('f')) => { |_| vec![0x0c] }
-			| call!(char('n')) => { |_| vec![0x0a] }
-			| call!(char('r')) => { |_| vec![0x0d] }
-			| call!(char('t')) => { |_| vec![0x09] }
-			| call!(char('v')) => { |_| vec![0x0b] }
+		call!(alt((
+			map(char('a'), |_| vec![0x07]),
+			map(char('b'), |_| vec![0x08]),
+			map(char('f'), |_| vec![0x0c]),
+			map(char('n'), |_| vec![0x0a]),
+			map(char('r'), |_| vec![0x0d]),
+			map(char('t'), |_| vec![0x09]),
+			map(char('v'), |_| vec![0x0b]),
 			// TODO? should we really care whether \' is used in ""-strings or vice versa? (Prometheus itself does…)
-			| call!(char('\\')) => { |_| vec![0x5c] }
-			| call!(char('\'')) => { |_| vec![0x27] }
-			| call!(char('"')) => { |_| vec![0x22] }
-			| map!(
-				fixed_length_radix!(u8, 3u8, 8),
+			map(char('\\'), |_| vec![0x5c]),
+			map(char('\''), |_| vec![0x27]),
+			map(char('"'), |_| vec![0x22]),
+			map(
+				|input| fixed_length_radix!(input, u8, 3u8, 8),
 				|n| vec![n]
-			)
-			| map!(
+			),
+			map(
 				preceded(char('x'), |input| fixed_length_radix!(input, u8, 2u8, 16)),
 				|n| vec![n]
-			)
-			| map_opt!(
+			),
+			map_opt(
 				preceded(char('u'), |input| fixed_length_radix!(input, u32, 4u8, 16)),
 				validate_unicode_scalar
-			)
-			| map_opt!(
+			),
+			map_opt(
 				preceded(char('U'), |input| fixed_length_radix!(input, u32, 8u8, 16)),
 				validate_unicode_scalar
-			)
-		)
+			),
+		)))
 	)
 }
 
@@ -174,7 +176,7 @@ mod tests {
 		// high surrogate
 		assert_eq!(
 			rune(cbs("\\uD801")),
-			err(cbs("uD801"), ErrorKind::Alt)
+			err(cbs("uD801"), ErrorKind::Char)
 		);
 
 		assert_eq!(
@@ -185,19 +187,19 @@ mod tests {
 		// out of range
 		assert_eq!(
 			rune(cbs("\\UdeadDEAD")),
-			err(cbs("UdeadDEAD"), ErrorKind::Alt)
+			err(cbs("UdeadDEAD"), ErrorKind::MapOpt)
 		);
 
 		// utter nonsense
 
 		assert_eq!(
 			rune(cbs("\\xxx")),
-			err(cbs("xxx"), ErrorKind::Alt)
+			err(cbs("xxx"), ErrorKind::Char)
 		);
 
 		assert_eq!(
 			rune(cbs("\\x1")),
-			err(cbs("x1"), ErrorKind::Alt)
+			err(cbs("x1"), ErrorKind::Char)
 		);
 	}
 }
