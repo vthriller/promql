@@ -267,10 +267,10 @@ fn atom(allow_periods: bool) -> impl Fn(&[u8]) -> IResult<&[u8], Node> {
 }
 
 macro_rules! with_modifier {
-	($i:expr, $literal:expr, $op:expr) => {
+	($literal:expr, $op:expr) => {
 		map(preceded(tag($literal), opt(op_modifier)), |op_mod| {
 			$op(op_mod)
-			})($i)
+			})
 	};
 }
 
@@ -316,7 +316,7 @@ fn power(allow_periods: bool) -> impl Fn(&[u8]) -> IResult<&[u8], Node> {
 		do_parse!(input,
 			x: call!(atom(allow_periods))
 				>> y: opt!(tuple!(
-					with_modifier!("^", Op::Pow),
+					call!(with_modifier!("^", Op::Pow)),
 					call!(power(allow_periods))
 				)) >> (match y {
 				None => x,
@@ -356,14 +356,18 @@ left_op!(
 	mul_div_mod,
 	power,
 	alt!(
-		with_modifier!("*", Op::Mul) | with_modifier!("/", Op::Div) | with_modifier!("%", Op::Mod)
+		call!(with_modifier!("*", Op::Mul))
+		|
+		call!(with_modifier!("/", Op::Div))
+		|
+		call!(with_modifier!("%", Op::Mod))
 	)
 );
 
 left_op!(
 	plus_minus,
 	mul_div_mod,
-	alt!(with_modifier!("+", Op::Plus) | with_modifier!("-", Op::Minus))
+	alt!(call!(with_modifier!("+", Op::Plus)) | call!(with_modifier!("-", Op::Minus)))
 );
 
 // if you thing this kind of operator chaining makes little to no sense, think again: it actually matches 'foo' that is both '> bar' and '!= baz'.
@@ -384,10 +388,10 @@ left_op!(
 left_op!(
 	and_unless,
 	comparison,
-	alt!(with_modifier!("and", Op::And) | with_modifier!("unless", Op::Unless))
+	alt!(call!(with_modifier!("and", Op::And)) | call!(with_modifier!("unless", Op::Unless)))
 );
 
-left_op!(or_op, and_unless, with_modifier!("or", Op::Or));
+left_op!(or_op, and_unless, call!(with_modifier!("or", Op::Or)));
 
 pub(crate) fn expression<'a>(
 	allow_periods: bool,
