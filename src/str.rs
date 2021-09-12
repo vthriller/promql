@@ -89,7 +89,7 @@ fn rune(input: &[u8]) -> IResult<&[u8], Vec<u8>> {
 // returns Vec<u8> (unlike none_of!() which returns &[char], or is_not!() which returns &[u8])
 macro_rules! is_not_v {
 	($i:expr, $arg:expr) => {
-		map!($i, call!(is_not($arg)), |bytes| bytes.to_vec())
+		map(is_not($arg), |bytes: &[u8]| bytes.to_vec())($i)
 	};
 }
 
