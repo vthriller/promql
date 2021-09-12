@@ -104,16 +104,16 @@ macro_rules! chars_except {
 }
 
 pub fn string(input: &[u8]) -> IResult<&[u8], String> {
-	map_res!(input,
-		call!(alt((
+	map_res(
+		alt((
 			// newlines are not allowed in interpreted quotes, but are totally fine in raw string literals
 			delimited(char('"'), chars_except!("\n\"\\"), char('"')),
 			delimited(char('\''), chars_except!("\n'\\"), char('\'')),
 			// raw string literals, where "backslashes have no special meaning"
 			delimited(char('`'), is_not_v!("`"), char('`')),
-		))),
+		)),
 		|s: Vec<u8>| String::from_utf8(s)
-	)
+	)(input)
 }
 
 #[allow(unused_imports)]
