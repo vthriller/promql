@@ -279,7 +279,7 @@ macro_rules! with_modifier {
 	};
 }
 
-fn with_bool_modifier<'a, O: Fn(bool, Option<OpMod>) -> Op>(literal: &'a str, op: O) -> impl Fn(&'a [u8]) -> IResult<&[u8], Op> {
+fn with_bool_modifier<'a, O: Fn(bool, Option<OpMod>) -> Op>(literal: &'a str, op: O) -> impl FnMut(&'a [u8]) -> IResult<&[u8], Op> {
 	map(
 		tuple_ws!((
 			tag(literal),
