@@ -5,7 +5,7 @@ use nom::bytes::complete::{
 };
 use nom::branch::alt;
 use nom::character::complete::char;
-use nom::combinator::{map, map_opt};
+use nom::combinator::{map, map_opt, map_res};
 use nom::multi::many0;
 use nom::sequence::{
 	delimited,
@@ -34,16 +34,15 @@ macro_rules! fixed_length_radix {
 	($i:expr, $type:ident, $len:expr, $radix:expr) => {
 		// there's no easy way to combine nom::is_(whatever)_digit with something like length_count
 		// besides u123::from_str_radix will validate chars anyways, so why do extra work?
-		map_res!(
-			$i,
-			call!(take($len)),
+		map_res(
+			take($len),
 			|n: &[u8]| -> Result<_, UnicodeRuneError> {
 				Ok($type::from_str_radix(
 					&String::from_utf8(n.to_vec())?,
 					$radix,
 				)?)
 				}
-			)
+			)($i)
 	};
 }
 
