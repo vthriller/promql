@@ -1,4 +1,5 @@
 use nom::IResult;
+use nom::branch::alt;
 use nom::bytes::complete::{
 	is_a,
 	tag,
@@ -10,7 +11,10 @@ use nom::character::complete::{
 	char,
 	multispace0,
 };
-use nom::combinator::opt;
+use nom::combinator::{
+	map,
+	opt,
+};
 use nom::multi::separated_list0;
 use nom::sequence::{
 	delimited,
@@ -146,14 +150,14 @@ fn range_literal(input: &[u8]) -> IResult<&[u8], usize> {
 			// FIXME unwrap? FIXME copy-pasted from expr.rs
 			|n| unsafe { String::from_utf8_unchecked(n.to_vec()) }.parse::<usize>().unwrap()
 		) >>
-		suffix: alt!(
-			  call!(char('s')) => { |_| 1 }
-			| call!(char('m')) => { |_| 60 }
-			| call!(char('h')) => { |_| 60 * 60 }
-			| call!(char('d')) => { |_| 60 * 60 * 24 }
-			| call!(char('w')) => { |_| 60 * 60 * 24 * 7 }
-			| call!(char('y')) => { |_| 60 * 60 * 24 * 365 } // XXX leap years?
-		) >>
+		suffix: call!(alt((
+			map(char('s'), |_| 1),
+			map(char('m'), |_| 60),
+			map(char('h'), |_| 60 * 60),
+			map(char('d'), |_| 60 * 60 * 24),
+			map(char('w'), |_| 60 * 60 * 24 * 7),
+			map(char('y'), |_| 60 * 60 * 24 * 365), // XXX leap years?
+		))) >>
 		(num * suffix)
 	)
 }
