@@ -264,12 +264,10 @@ fn atom(allow_periods: bool) -> impl Fn(&[u8]) -> IResult<&[u8], Node> {
 }
 
 macro_rules! with_modifier {
-	// this macro mimicks another parser macros, hence implicit input argument, $i
-	// for comparison, see nom's call!()
 	($i:expr, $literal:expr, $op:expr) => {
-		map!($i, preceded!(call!(tag($literal)), opt!(op_modifier)), |op_mod| {
+		map(preceded(tag($literal), opt(op_modifier)), |op_mod| {
 			$op(op_mod)
-			})
+			})($i)
 	};
 }
 
