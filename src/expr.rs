@@ -9,7 +9,10 @@ use nom::combinator::{
 	map,
 	opt,
 };
-use nom::multi::separated_list0;
+use nom::multi::{
+	many0,
+	separated_list0,
+};
 use nom::number::complete::float;
 use nom::sequence::{
 	delimited,
@@ -329,12 +332,13 @@ macro_rules! left_op {
 	($name:ident, $next:ident, $op:ident!($($op_args:tt)*)) => (
 		fn $name(allow_periods: bool) -> impl Fn(&[u8]) -> IResult<&[u8], Node> {
 			move |input| surrounded_ws(
-				|input: &[u8]| do_parse!(input,
-					x: call!($next(allow_periods)) >>
-					ops: many0!(tuple!(
-						$op!($($op_args)*),
-						call!($next(allow_periods))
-					)) >>
+				map(tuple((
+					$next(allow_periods),
+					many0(tuple((
+						|input: &[u8]| $op!(input, $($op_args)*),
+						$next(allow_periods)
+					))),
+				)), |(x, ops)|
 					({
 						let mut x = x;
 						for (op, y) in ops {
