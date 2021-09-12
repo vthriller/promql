@@ -25,6 +25,7 @@ use crate::tuple_ws;
 use crate::utils::{
 	surrounded_ws,
 	delimited_ws,
+	value,
 };
 
 /// PromQL operators
@@ -67,7 +68,7 @@ pub enum Op {
 	Or(Option<OpMod>),
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum OpModAction {
 	RestrictTo,
 	Ignore,
@@ -83,7 +84,7 @@ pub struct OpMod {
 	pub group: Option<OpGroupMod>,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum OpGroupSide {
 	Left,
 	Right,
@@ -95,7 +96,7 @@ pub struct OpGroupMod {
 	pub labels: Vec<String>,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum AggregationAction {
 	Without,
 	By,
@@ -164,8 +165,8 @@ fn function_aggregation(input: &[u8]) -> IResult<&[u8], AggregationMod> {
 	surrounded_ws(map(
 		tuple((
 			alt((
-				map(tag("by"), |_| AggregationAction::By),
-				map(tag("without"), |_| AggregationAction::Without),
+				value(tag("by"), AggregationAction::By),
+				value(tag("without"), AggregationAction::Without),
 			)),
 			label_list,
 		)),
@@ -293,8 +294,8 @@ fn op_modifier(input: &[u8]) -> IResult<&[u8], OpMod> {
 		tuple((
 			// action
 			alt((
-				map(tag("on"), |_| OpModAction::RestrictTo),
-				map(tag("ignoring"), |_| OpModAction::Ignore),
+				value(tag("on"), OpModAction::RestrictTo),
+				value(tag("ignoring"), OpModAction::Ignore),
 			)),
 			// labels
 			label_list,
@@ -303,8 +304,8 @@ fn op_modifier(input: &[u8]) -> IResult<&[u8], OpMod> {
 			opt(map(
 				tuple((
 					alt((
-						map(tag("group_left"), |_| OpGroupSide::Left),
-						map(tag("group_right"), |_| OpGroupSide::Right),
+						value(tag("group_left"), OpGroupSide::Left),
+						value(tag("group_right"), OpGroupSide::Right),
 					)),
 					map(
 						opt(label_list),

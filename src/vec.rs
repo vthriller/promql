@@ -31,10 +31,13 @@ use crate::{
 	tuple_ws,
 	tuple_separated,
 };
-use crate::utils::surrounded_ws;
+use crate::utils::{
+	surrounded_ws,
+	value,
+};
 
 /// Label filter operators.
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum LabelMatchOp {
 	/** `=`  */
 	Eq,
@@ -156,12 +159,12 @@ fn range_literal(input: &[u8]) -> IResult<&[u8], usize> {
 				|n: &[u8]| unsafe { String::from_utf8_unchecked(n.to_vec()) }.parse::<usize>().unwrap()
 			),
 			alt((
-				map(char('s'), |_| 1),
-				map(char('m'), |_| 60),
-				map(char('h'), |_| 60 * 60),
-				map(char('d'), |_| 60 * 60 * 24),
-				map(char('w'), |_| 60 * 60 * 24 * 7),
-				map(char('y'), |_| 60 * 60 * 24 * 365), // XXX leap years?
+				value(char('s'), 1),
+				value(char('m'), 60),
+				value(char('h'), 60 * 60),
+				value(char('d'), 60 * 60 * 24),
+				value(char('w'), 60 * 60 * 24 * 7),
+				value(char('y'), 60 * 60 * 24 * 7 * 365), // XXX leap years?
 			)),
 		)),
 		|(num, suffix)| (num * suffix)
@@ -220,10 +223,10 @@ map_res(
 
 fn label_op(input: &[u8]) -> IResult<&[u8], LabelMatchOp> {
 	alt((
-		map(tag("=~"), |_| LabelMatchOp::REq),
-		map(tag("!~"), |_| LabelMatchOp::RNe),
-		map(tag("="),  |_| LabelMatchOp::Eq), // should come after =~
-		map(tag("!="), |_| LabelMatchOp::Ne),
+		value(tag("=~"), LabelMatchOp::REq),
+		value(tag("!~"), LabelMatchOp::RNe),
+		value(tag("="),  LabelMatchOp::Eq), // should come after =~
+		value(tag("!="), LabelMatchOp::Ne),
 	))(input)
 }
 

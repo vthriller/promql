@@ -57,6 +57,7 @@ fn validate_unicode_scalar(n: u32) -> Option<Vec<u8>> {
 fn rune(input: &[u8]) -> IResult<&[u8], Vec<u8>> {
 	preceded(char('\\'),
 		alt((
+			// not using value() here to avoid allocation of lots of temporary Vec *per rune() call*
 			map(char('a'), |_| vec![0x07]),
 			map(char('b'), |_| vec![0x08]),
 			map(char('f'), |_| vec![0x0c]),

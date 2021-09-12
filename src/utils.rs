@@ -9,6 +9,8 @@ use nom::{
 use nom::IResult;
 use nom::error::ParseError;
 
+use nom::Parser;
+
 #[macro_export]
 macro_rules! tuple_separated {
 	($delim:expr, ($first:expr, $($rest:expr),* $(,)?)) => {{
@@ -64,6 +66,16 @@ where
 		tuple_ws!((p1, p2, p3)),
 		|result| result.1
 	)
+}
+
+/**
+A version of nom's `value()` with arguments reversed (makes it look like a `match` arm—just like `map()`!)
+*/
+pub(crate) fn value<I, O1: Clone, O2, E: ParseError<I>, F: Parser<I, O2, E>,>(
+	parser: F,
+	val: O1,
+) -> impl FnMut(I) -> IResult<I, O1, E> {
+	nom::combinator::value(val, parser)
 }
 
 #[cfg(test)]
