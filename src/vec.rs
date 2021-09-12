@@ -168,12 +168,12 @@ fn range_literal(input: &[u8]) -> IResult<&[u8], usize> {
 	)(input)
 }
 
-pub(crate) fn vector(
+pub(crate) fn vector<'a>(
 	allow_periods: bool,
-) -> impl Fn(&[u8]) -> IResult<&[u8], Vector> {
-	move |input: &[u8]| {
+) -> impl FnMut(&'a [u8]) -> IResult<&[u8], Vector> {
+	map(
 		// labels and offset parsers already handle whitespace, no need to use ws!() here
-		let (input, (labels, range, offset, _)) = tuple((
+		tuple((
 			instant_vec(allow_periods),
 			opt(delimited(char('['), range_literal, char(']'))),
 			opt(preceded(
@@ -181,13 +181,14 @@ pub(crate) fn vector(
 				range_literal
 			)),
 			multispace0,
-		))(input)?;
-		Ok((input, Vector {
+		)),
+		|(labels, range, offset, _)|
+		Vector {
 			labels,
 			range,
 			offset
-		}))
-	}
+		}
+	)
 }
 
 // > The metric name … must match the regex [a-zA-Z_:][a-zA-Z0-9_:]*.
@@ -467,8 +468,9 @@ mod tests {
 		labels: fn() -> Vec<LabelMatch>,
 		allow_periods: bool,
 	) {
+		let q = format!("{} [1m]", instant);
 		assert_eq!(
-			vector(allow_periods)(cbs(&format!("{} [1m]", instant))),
+			vector(allow_periods)(cbs(&q)),
 			Ok((
 				cbs(""),
 				Vector {
@@ -479,8 +481,9 @@ mod tests {
 			))
 		);
 
+		let q = format!("{} offset 5m", instant);
 		assert_eq!(
-			vector(allow_periods)(cbs(&format!("{} offset 5m", instant))),
+			vector(allow_periods)(cbs(&q)),
 			Ok((
 				cbs(""),
 				Vector {
@@ -491,8 +494,9 @@ mod tests {
 			))
 		);
 
+		let q = format!("{} [1m] offset 5m", instant);
 		assert_eq!(
-			vector(allow_periods)(cbs(&format!("{} [1m] offset 5m", instant))),
+			vector(allow_periods)(cbs(&q)),
 			Ok((
 				cbs(""),
 				Vector {
@@ -503,9 +507,10 @@ mod tests {
 			))
 		);
 
+		let q = format!("{} offset 5m [1m]", instant);
 		// FIXME should be Error()?
 		assert_eq!(
-			vector(allow_periods)(cbs(&format!("{} offset 5m [1m]", instant))),
+			vector(allow_periods)(cbs(&q)),
 			Ok((
 				cbs("[1m]"),
 				Vector {
