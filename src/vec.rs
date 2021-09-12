@@ -113,15 +113,15 @@ pub struct Vector {
 	pub offset: Option<usize>,
 }
 
-fn instant_vec(
+fn instant_vec<'a>(
 	allow_periods: bool,
-) -> impl Fn(&[u8]) -> IResult<&[u8], Vec<LabelMatch>> {
-	move |input| {
-		let orig = input;
-		let (input, (name, labels))  = tuple_ws!((
+) -> impl FnMut(&'a [u8]) -> IResult<&[u8], Vec<LabelMatch>> {
+	map_res(
+		tuple_ws!((
 			opt(metric_name(allow_periods)),
 			opt(label_set),
-		))(input)?;
+		)),
+		|(name, labels)| {
 
 		let mut ret = match name {
 			Some(name) => vec![LabelMatch {
@@ -136,16 +136,17 @@ fn instant_vec(
 		}
 
 		if ret.is_empty() {
-			Err(nom::Err::Error(nom::error::Error::new(
-				orig,
+			Err(
 				// XXX FIXME
 				// "vector selector must contain label matchers or metric name",
 				nom::error::ErrorKind::MapRes,
-			)))
+			)
 		} else {
-			Ok((input, ret))
+			Ok(ret)
 		}
-	}
+
+		}
+	)
 }
 
 fn range_literal(input: &[u8]) -> IResult<&[u8], usize> {
