@@ -324,10 +324,10 @@ fn power(allow_periods: bool) -> impl Fn(&[u8]) -> IResult<&[u8], Node> {
 	surrounded_ws(|input: &[u8]|
 		do_parse!(input,
 			x: call!(atom(allow_periods))
-				>> y: opt!(tuple!(
-					call!(with_modifier!("^", Op::Pow)),
-					call!(power(allow_periods))
-				)) >> (match y {
+				>> y: call!(opt(tuple((
+					with_modifier!("^", Op::Pow),
+					power(allow_periods)
+				)))) >> (match y {
 				None => x,
 				Some((op, y)) => Node::operator(x, op, y),
 			})
