@@ -355,19 +355,17 @@ macro_rules! left_op {
 left_op!(
 	mul_div_mod,
 	power,
-	alt!(
-		call!(with_modifier!("*", Op::Mul))
-		|
-		call!(with_modifier!("/", Op::Div))
-		|
-		call!(with_modifier!("%", Op::Mod))
-	)
+	call!(alt((
+		with_modifier!("*", Op::Mul),
+		with_modifier!("/", Op::Div),
+		with_modifier!("%", Op::Mod),
+	)))
 );
 
 left_op!(
 	plus_minus,
 	mul_div_mod,
-	alt!(call!(with_modifier!("+", Op::Plus)) | call!(with_modifier!("-", Op::Minus)))
+	call!(alt((with_modifier!("+", Op::Plus), with_modifier!("-", Op::Minus))))
 );
 
 // if you thing this kind of operator chaining makes little to no sense, think again: it actually matches 'foo' that is both '> bar' and '!= baz'.
@@ -388,7 +386,7 @@ left_op!(
 left_op!(
 	and_unless,
 	comparison,
-	alt!(call!(with_modifier!("and", Op::And)) | call!(with_modifier!("unless", Op::Unless)))
+	call!(alt((with_modifier!("and", Op::And), with_modifier!("unless", Op::Unless))))
 );
 
 left_op!(or_op, and_unless, call!(with_modifier!("or", Op::Or)));
