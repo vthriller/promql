@@ -194,18 +194,18 @@ pub(crate) fn vector(
 // > The metric name … must match the regex [a-zA-Z_:][a-zA-Z0-9_:]*.
 // > Label names … must match the regex [a-zA-Z_][a-zA-Z0-9_]*. Label names beginning with __ are reserved for internal use.
 
-fn metric_name(
+fn metric_name<'a>(
 	allow_periods: bool,
-) -> impl Fn(&[u8]) -> IResult<&[u8], String> {
-	move |input| map_res(
+) -> impl FnMut(&'a [u8]) -> IResult<&[u8], String> {
+	map_res(
 		recognize(tuple((
 			alt((alpha1, is_a("_:"))),
 			many0(alt((
 				alphanumeric1, is_a(if allow_periods { "_:." } else { "_:" }),
 			))),
 		))),
-		|s: &[u8]| String::from_utf8(s.to_vec())
-	)(input)
+		|s: &'a [u8]| String::from_utf8(s.to_vec())
+	)
 }
 
 pub(crate) fn label_name(input: &[u8]) -> IResult<&[u8], String> {
