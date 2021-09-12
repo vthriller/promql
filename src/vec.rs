@@ -217,12 +217,12 @@ named_attr!(#[doc(hidden)], pub label_name <&[u8], String>, flat_map!(
 ));
 
 fn label_op(input: &[u8]) -> IResult<&[u8], LabelMatchOp> {
-	alt!(input,
-		  call!(tag("=~")) => { |_| LabelMatchOp::REq }
-		| call!(tag("!~")) => { |_| LabelMatchOp::RNe }
-		| call!(tag("="))  => { |_| LabelMatchOp::Eq  } // should come after =~
-		| call!(tag("!=")) => { |_| LabelMatchOp::Ne  }
-	)
+	alt((
+		map(tag("=~"), |_| LabelMatchOp::REq),
+		map(tag("!~"), |_| LabelMatchOp::RNe),
+		map(tag("="),  |_| LabelMatchOp::Eq), // should come after =~
+		map(tag("!="), |_| LabelMatchOp::Ne),
+	))(input)
 }
 
 #[allow(unused_imports)]
