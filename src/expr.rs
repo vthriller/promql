@@ -325,14 +325,15 @@ fn power(allow_periods: bool) -> impl Fn(&[u8]) -> IResult<&[u8], Node> {
 		tuple((
 			atom(allow_periods),
 			opt(tuple((
-					with_modifier!("^", Op::Pow),
-					power(allow_periods)
-				)))
+				with_modifier!("^", Op::Pow),
+				power(allow_periods)
+			)))
 		)),
-		|(x, y)| (match y {
+		|(x, y)|
+			match y {
 				None => x,
 				Some((op, y)) => Node::operator(x, op, y),
-			})
+			}
 	))(input)
 }
 
