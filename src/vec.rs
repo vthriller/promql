@@ -197,12 +197,12 @@ fn metric_name(
 ) -> impl Fn(&[u8]) -> IResult<&[u8], String> {
 	move |input| flat_map!(
 		input,
-		recognize!(tuple!(
-			call!(alt((alpha1, is_a("_:")))),
-			call!(many0(alt((
+		recognize!(tuple((
+			alt((alpha1, is_a("_:"))),
+			many0(alt((
 				alphanumeric1, is_a(if allow_periods { "_:." } else { "_:" }),
-			))))
-		)),
+			))),
+		))),
 		parse_to!(String)
 	)
 }
