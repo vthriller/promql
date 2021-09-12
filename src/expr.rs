@@ -321,18 +321,19 @@ fn op_modifier(input: &[u8]) -> IResult<&[u8], OpMod> {
 // ^ is right-associative, so we can actually keep it simple and recursive
 fn power(allow_periods: bool) -> impl Fn(&[u8]) -> IResult<&[u8], Node> {
 	move |input|
-	surrounded_ws(|input: &[u8]|
-		do_parse!(input,
-			x: call!(atom(allow_periods))
-				>> y: call!(opt(tuple((
+	surrounded_ws(map(
+		tuple((
+			atom(allow_periods),
+			opt(tuple((
 					with_modifier!("^", Op::Pow),
 					power(allow_periods)
-				)))) >> (match y {
+				)))
+		)),
+		|(x, y)| (match y {
 				None => x,
 				Some((op, y)) => Node::operator(x, op, y),
 			})
-		)
-	)(input)
+	))(input)
 }
 
 // foo op bar op baz → Node[Node[foo op bar] op baz]
