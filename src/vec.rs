@@ -60,14 +60,15 @@ fn label_set<'a>(input: &'a [u8]) -> IResult<&[u8], Vec<LabelMatch>> {
 		surrounded_ws(
 			separated_list0(
 				surrounded_ws(char(',')),
-				|input: &'a [u8]| {
-					let (input, (name, op, value))  = tuple_ws!((
+				map(
+					tuple_ws!((
 						label_name,
 						label_op,
 						string,
-					))(input)?;
-					Ok((input, LabelMatch { name, op, value }))
-				}
+					)),
+					|(name, op, value)|
+						LabelMatch { name, op, value }
+				)
 			),
 		),
 		char('}')
