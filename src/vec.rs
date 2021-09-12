@@ -209,10 +209,10 @@ fn metric_name(
 
 // XXX nom does not allow pub(crate) here
 named_attr!(#[doc(hidden)], pub label_name <&[u8], String>, flat_map!(
-	recognize!(tuple!(
-		call!(alt((alpha1, is_a("_")))),
-		call!(many0(alt((alphanumeric1, is_a("_")))))
-	)),
+	recognize!(tuple((
+		alt((alpha1, is_a("_"))),
+		many0(alt((alphanumeric1, is_a("_")))),
+	))),
 	parse_to!(String)
 ));
 
