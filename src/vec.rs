@@ -242,9 +242,9 @@ mod tests {
 
 		// matches foo.bar{} entirely
 		assert_eq!(
-			vector(ParserOptions {
-				allow_periods: true,
-			})(cbs("foo.bar{}")),
+			vector(ParserOptions::default()
+				.allow_periods(true),
+			)(cbs("foo.bar{}")),
 			Ok((
 				cbs(""),
 				Vector {
@@ -266,9 +266,9 @@ mod tests {
 
 		// matches foo, leaves .bar{}
 		assert_eq!(
-			vector(ParserOptions {
-				allow_periods: false,
-			})(cbs("foo.bar{}")),
+			vector(ParserOptions::default()
+				.allow_periods(false)
+			)(cbs("foo.bar{}")),
 			Ok((
 				cbs(".bar{}"),
 				Vector {
@@ -285,7 +285,8 @@ mod tests {
 	}
 
 	fn instant_vectors(allow_periods: bool) {
-		let opts = ParserOptions { allow_periods };
+		let opts = ParserOptions::default()
+			.allow_periods(allow_periods);
 
 		assert_eq!(
 			vector(opts)(cbs("foo")),
@@ -472,7 +473,8 @@ mod tests {
 		labels: fn() -> Vec<LabelMatch>,
 		allow_periods: bool,
 	) {
-		let opts = ParserOptions { allow_periods };
+		let opts = ParserOptions::default()
+			.allow_periods(allow_periods);
 
 		let q = format!("{} [1m]", instant);
 		assert_eq!(

@@ -431,9 +431,7 @@ mod tests {
 
 	// vector parsing is already tested in `mod vec`, so use that parser instead of crafting lengthy structs all over the test functions
 	fn vector(expr: &str) -> Node {
-		match vec::vector(ParserOptions{
-			allow_periods: false,
-		})(cbs(expr)) {
+		match vec::vector(ParserOptions::default())(cbs(expr)) {
 			Ok((b"", x)) => Node::Vector(x),
 			_ => panic!("failed to parse label correctly"),
 		}
