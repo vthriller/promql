@@ -111,10 +111,10 @@ assert_eq!(
 pub struct Vector {
 	/// Set of label filters
 	pub labels: Vec<LabelMatch>,
-	/// Range for range vectors, in seconds, e.g. `Some(300)` for `[5m]`
-	pub range: Option<usize>,
-	/// Offset in seconds, e.g. `Some(3600)` for `offset 1h`
-	pub offset: Option<usize>,
+	/// Range for range vectors, in seconds, e.g. `Some(300.)` for `[5m]`
+	pub range: Option<f32>,
+	/// Offset in seconds, e.g. `Some(3600.)` for `offset 1h`
+	pub offset: Option<f32>,
 }
 
 fn instant_vec<'a>(opts: ParserOptions) -> impl FnMut(&'a [u8]) -> IResult<&[u8], Vec<LabelMatch>> {
@@ -148,22 +148,22 @@ fn instant_vec<'a>(opts: ParserOptions) -> impl FnMut(&'a [u8]) -> IResult<&[u8]
 	)
 }
 
-fn range_literal(input: &[u8]) -> IResult<&[u8], usize> {
+fn range_literal(input: &[u8]) -> IResult<&[u8], f32> {
 	map(
 		tuple((
 			map(
 				digit1,
 				// from_utf8_unchecked() on [0-9]+ is actually totally safe
 				// FIXME unwrap? FIXME copy-pasted from expr.rs
-				|n: &[u8]| unsafe { String::from_utf8_unchecked(n.to_vec()) }.parse::<usize>().unwrap()
+				|n: &[u8]| unsafe { String::from_utf8_unchecked(n.to_vec()) }.parse::<f32>().unwrap()
 			),
 			alt((
-				value(char('s'), 1),
-				value(char('m'), 60),
-				value(char('h'), 60 * 60),
-				value(char('d'), 60 * 60 * 24),
-				value(char('w'), 60 * 60 * 24 * 7),
-				value(char('y'), 60 * 60 * 24 * 7 * 365), // XXX leap years?
+				value(char('s'), 1.),
+				value(char('m'), 60.),
+				value(char('h'), 60. * 60.),
+				value(char('d'), 60. * 60. * 24.),
+				value(char('w'), 60. * 60. * 24. * 7.),
+				value(char('y'), 60. * 60. * 24. * 7. * 365.), // XXX leap years?
 			)),
 		)),
 		|(num, suffix)| (num * suffix)
@@ -481,7 +481,7 @@ mod tests {
 				cbs(""),
 				Vector {
 					labels: labels(),
-					range: Some(60),
+					range: Some(60.),
 					offset: None,
 				}
 			))
@@ -495,7 +495,7 @@ mod tests {
 				Vector {
 					labels: labels(),
 					range: None,
-					offset: Some(300),
+					offset: Some(300.),
 				}
 			))
 		);
@@ -507,8 +507,8 @@ mod tests {
 				cbs(""),
 				Vector {
 					labels: labels(),
-					range: Some(60),
-					offset: Some(300),
+					range: Some(60.),
+					offset: Some(300.),
 				}
 			))
 		);
@@ -522,7 +522,7 @@ mod tests {
 				Vector {
 					labels: labels(),
 					range: None,
-					offset: Some(300),
+					offset: Some(300.),
 				}
 			))
 		);
