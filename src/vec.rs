@@ -148,7 +148,7 @@ fn instant_vec<'a>(opts: ParserOptions) -> impl FnMut(&'a [u8]) -> IResult<&[u8]
 	)
 }
 
-fn range_literal(input: &[u8]) -> IResult<&[u8], f32> {
+fn range_literal<'a>() -> impl FnMut(&'a [u8]) -> IResult<&[u8], f32> {
 	map(
 		tuple((
 			map(
@@ -167,7 +167,7 @@ fn range_literal(input: &[u8]) -> IResult<&[u8], f32> {
 			)),
 		)),
 		|(num, suffix)| (num * suffix)
-	)(input)
+	)
 }
 
 pub(crate) fn vector<'a>(opts: ParserOptions) -> impl FnMut(&'a [u8]) -> IResult<&[u8], Vector> {
@@ -175,10 +175,10 @@ pub(crate) fn vector<'a>(opts: ParserOptions) -> impl FnMut(&'a [u8]) -> IResult
 		// labels and offset parsers already handle whitespace, no need to use ws!() here
 		tuple((
 			instant_vec(opts),
-			opt(delimited(char('['), range_literal, char(']'))),
+			opt(delimited(char('['), range_literal(), char(']'))),
 			opt(preceded(
 				surrounded_ws(tag("offset")),
-				range_literal
+				range_literal()
 			)),
 			multispace0,
 		)),
