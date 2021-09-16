@@ -16,11 +16,11 @@ let opts = ParserOptions {
 	allow_periods: false,
 };
 
-let ast = parse(b"
-	sum(1 - something_used{env=\"production\"} / something_total) by (instance)
+let ast = parse(br#"
+	sum(1 - something_used{env="production"} / something_total) by (instance)
 	and ignoring (instance)
-	sum(rate(some_queries{instance=~\"localhost\\\\d+\"} [5m])) > 100
-", opts).unwrap(); // or show user that their query is invalid
+	sum(rate(some_queries{instance=~"localhost\\d+"} [5m])) > 100
+"#, opts).unwrap(); // or show user that their query is invalid
 
 // now we can look for all sorts of things
 
@@ -44,7 +44,7 @@ if let Node::Operator { x, op: Op::And(op_mod), y } = ast {
 		// …
 	}
 } else {
-	panic!("top operator is not an \"and\"");
+	panic!("top operator is not an 'and'");
 }
 
 # }
