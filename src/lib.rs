@@ -12,11 +12,15 @@ See [official documentation](https://prometheus.io/docs/prometheus/latest/queryi
 
 use promql::*;
 
+let opts = ParserOptions {
+	allow_periods: false,
+};
+
 let ast = parse(b"
 	sum(1 - something_used{env=\"production\"} / something_total) by (instance)
 	and ignoring (instance)
 	sum(rate(some_queries{instance=~\"localhost\\\\d+\"} [5m])) > 100
-", false).unwrap(); // or show user that their query is invalid
+", opts).unwrap(); // or show user that their query is invalid
 
 // now we can look for all sorts of things
 
@@ -65,6 +69,25 @@ pub use vec::*;
 use nom::Err;
 use nom::error::{Error, ErrorKind};
 
+/// Options that allow or disallow certain query language features.
+#[derive(Clone, Copy)]
+pub struct ParserOptions {
+	/**
+	Allow periods in metric names (e.g. `threads.busy{instance="..."}`).
+
+	This option is usually used in systems that have metrics carried over from other monitoring systems like Graphite.
+	*/
+	pub allow_periods: bool,
+}
+
+impl Default for ParserOptions {
+	fn default() -> Self {
+		ParserOptions {
+			allow_periods: false,
+		}
+	}
+}
+
 /**
 Parse expression string into an AST.
 
@@ -72,8 +95,8 @@ This parser operates on byte sequence instead of `&str` because of the fact that
 
 Set `allow_periods` to `true` to allow vector names with periods (like `foo.bar`).
 */
-pub fn parse(e: &[u8], allow_periods: bool) -> Result<Node, nom::Err<Error<&[u8]>>> {
-	match expression(allow_periods)(e) {
+pub fn parse(e: &[u8], opts: ParserOptions) -> Result<Node, nom::Err<Error<&[u8]>>> {
+	match expression(opts)(e) {
 		Ok((b"", ast)) => Ok(ast),
 		Ok((tail, _)) => Err(Err::Error(error_position!(
 			tail,
@@ -91,7 +114,7 @@ mod tests {
 	#[test]
 	fn completeness() {
 		assert_eq!(
-			super::parse(b"asdf hjkl", false),
+			super::parse(b"asdf hjkl", Default::default()),
 			err(
 				&b"hjkl"[..],
 				ErrorKind::Complete

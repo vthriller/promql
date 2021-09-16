@@ -28,6 +28,7 @@ use nom::sequence::{
 };
 use str::string;
 use crate::{
+	ParserOptions,
 	tuple_ws,
 	tuple_separated,
 };
@@ -92,7 +93,7 @@ use promql::LabelMatchOp::*; // Eq
 use nom::IResult;
 
 assert_eq!(
-	parse("foo{bar='baz'}".as_bytes(), false),
+	parse("foo{bar='baz'}".as_bytes(), Default::default()),
 	Ok(Node::Vector(Vector {
 		labels: vec![
 			// this is the filter for the metric name 'foo'
@@ -116,12 +117,10 @@ pub struct Vector {
 	pub offset: Option<usize>,
 }
 
-fn instant_vec<'a>(
-	allow_periods: bool,
-) -> impl FnMut(&'a [u8]) -> IResult<&[u8], Vec<LabelMatch>> {
+fn instant_vec<'a>(opts: ParserOptions) -> impl FnMut(&'a [u8]) -> IResult<&[u8], Vec<LabelMatch>> {
 	map_res(
 		tuple_ws!((
-			opt(metric_name(allow_periods)),
+			opt(metric_name(opts)),
 			opt(label_set),
 		)),
 		|(name, labels)| {
@@ -171,13 +170,11 @@ fn range_literal(input: &[u8]) -> IResult<&[u8], usize> {
 	)(input)
 }
 
-pub(crate) fn vector<'a>(
-	allow_periods: bool,
-) -> impl FnMut(&'a [u8]) -> IResult<&[u8], Vector> {
+pub(crate) fn vector<'a>(opts: ParserOptions) -> impl FnMut(&'a [u8]) -> IResult<&[u8], Vector> {
 	map(
 		// labels and offset parsers already handle whitespace, no need to use ws!() here
 		tuple((
-			instant_vec(allow_periods),
+			instant_vec(opts),
 			opt(delimited(char('['), range_literal, char(']'))),
 			opt(preceded(
 				surrounded_ws(tag("offset")),
@@ -197,14 +194,12 @@ pub(crate) fn vector<'a>(
 // > The metric name … must match the regex [a-zA-Z_:][a-zA-Z0-9_:]*.
 // > Label names … must match the regex [a-zA-Z_][a-zA-Z0-9_]*. Label names beginning with __ are reserved for internal use.
 
-fn metric_name<'a>(
-	allow_periods: bool,
-) -> impl FnMut(&'a [u8]) -> IResult<&[u8], String> {
+fn metric_name<'a>(opts: ParserOptions) -> impl FnMut(&'a [u8]) -> IResult<&[u8], String> {
 	map_res(
 		recognize(tuple((
 			alt((alpha1, is_a("_:"))),
 			many0(alt((
-				alphanumeric1, is_a(if allow_periods { "_:." } else { "_:" }),
+				alphanumeric1, is_a(if opts.allow_periods { "_:." } else { "_:" }),
 			))),
 		))),
 		|s: &'a [u8]| String::from_utf8(s.to_vec())
@@ -247,7 +242,9 @@ mod tests {
 
 		// matches foo.bar{} entirely
 		assert_eq!(
-			vector(true)(cbs("foo.bar{}")),
+			vector(ParserOptions {
+				allow_periods: true,
+			})(cbs("foo.bar{}")),
 			Ok((
 				cbs(""),
 				Vector {
@@ -269,7 +266,9 @@ mod tests {
 
 		// matches foo, leaves .bar{}
 		assert_eq!(
-			vector(false)(cbs("foo.bar{}")),
+			vector(ParserOptions {
+				allow_periods: false,
+			})(cbs("foo.bar{}")),
 			Ok((
 				cbs(".bar{}"),
 				Vector {
@@ -286,8 +285,10 @@ mod tests {
 	}
 
 	fn instant_vectors(allow_periods: bool) {
+		let opts = ParserOptions { allow_periods };
+
 		assert_eq!(
-			vector(allow_periods)(cbs("foo")),
+			vector(opts)(cbs("foo")),
 			Ok((
 				cbs(""),
 				Vector {
@@ -303,7 +304,7 @@ mod tests {
 		);
 
 		assert_eq!(
-			vector(allow_periods)(cbs("foo { }")),
+			vector(opts)(cbs("foo { }")),
 			Ok((
 				cbs(""),
 				Vector {
@@ -319,7 +320,7 @@ mod tests {
 		);
 
 		assert_eq!(
-			vector(allow_periods)(
+			vector(opts)(
 				cbs("foo { bar = 'baz', quux !~ 'xyzzy', lorem = `ipsum \\n dolor \"sit amet\"` }"),
 			),
 			Ok((
@@ -354,7 +355,7 @@ mod tests {
 		);
 
 		assert_eq!(
-			vector(allow_periods)(
+			vector(opts)(
 				// testing whitespace
 				cbs("foo{a='b',c ='d' , e = 'f' }"),
 			),
@@ -390,7 +391,7 @@ mod tests {
 		);
 
 		assert_eq!(
-			vector(allow_periods)(cbs("{lorem=~\"ipsum\"}")),
+			vector(opts)(cbs("{lorem=~\"ipsum\"}")),
 			Ok((
 				cbs(""),
 				Vector {
@@ -406,7 +407,7 @@ mod tests {
 		);
 
 		assert_eq!(
-			vector(allow_periods)(cbs("{}")),
+			vector(opts)(cbs("{}")),
 			err(cbs("{}"), ErrorKind::MapRes)
 		);
 	}
@@ -471,9 +472,11 @@ mod tests {
 		labels: fn() -> Vec<LabelMatch>,
 		allow_periods: bool,
 	) {
+		let opts = ParserOptions { allow_periods };
+
 		let q = format!("{} [1m]", instant);
 		assert_eq!(
-			vector(allow_periods)(cbs(&q)),
+			vector(opts)(cbs(&q)),
 			Ok((
 				cbs(""),
 				Vector {
@@ -486,7 +489,7 @@ mod tests {
 
 		let q = format!("{} offset 5m", instant);
 		assert_eq!(
-			vector(allow_periods)(cbs(&q)),
+			vector(opts)(cbs(&q)),
 			Ok((
 				cbs(""),
 				Vector {
@@ -499,7 +502,7 @@ mod tests {
 
 		let q = format!("{} [1m] offset 5m", instant);
 		assert_eq!(
-			vector(allow_periods)(cbs(&q)),
+			vector(opts)(cbs(&q)),
 			Ok((
 				cbs(""),
 				Vector {
@@ -513,7 +516,7 @@ mod tests {
 		let q = format!("{} offset 5m [1m]", instant);
 		// FIXME should be Error()?
 		assert_eq!(
-			vector(allow_periods)(cbs(&q)),
+			vector(opts)(cbs(&q)),
 			Ok((
 				cbs("[1m]"),
 				Vector {

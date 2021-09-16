@@ -21,7 +21,10 @@ use nom::sequence::{
 };
 use str::string;
 use vec::{label_name, vector, Vector};
-use crate::tuple_ws;
+use crate::{
+	ParserOptions,
+	tuple_ws,
+};
 use crate::utils::{
 	surrounded_ws,
 	delimited_ws,
@@ -175,13 +178,13 @@ fn function_aggregation(input: &[u8]) -> IResult<&[u8], AggregationMod> {
 }
 
 // it's up to the library user to decide whether argument list is valid or not
-fn function_args<'a>(allow_periods: bool) -> impl FnMut(&'a [u8]) -> IResult<&[u8], Vec<Node>> {
+fn function_args<'a>(opts: ParserOptions) -> impl FnMut(&'a [u8]) -> IResult<&[u8], Vec<Node>> {
 	delimited_ws(
 		char('('),
 		separated_list0(
 			surrounded_ws(char(',')),
 			alt((
-				expression(allow_periods),
+				expression(opts),
 				map(string, Node::String),
 			))
 		),
@@ -201,14 +204,14 @@ macro_rules! pair_permutations {
 	};
 }
 
-fn function<'a>(allow_periods: bool) -> impl FnMut(&'a [u8]) -> IResult<&[u8], Node> {
+fn function<'a>(opts: ParserOptions) -> impl FnMut(&'a [u8]) -> IResult<&[u8], Node> {
 	map(
 		tuple((
 			// I have no idea what counts as a function name but label_name fits well for what's built into the prometheus so let's use that
 			label_name,
 			// both 'sum by (label, label) (foo)' and 'sum(foo) by (label, label)' are valid
 			pair_permutations!(
-				function_args(allow_periods),
+				function_args(opts),
 				opt(function_aggregation),
 			),
 		)),
@@ -221,7 +224,7 @@ fn function<'a>(allow_periods: bool) -> impl FnMut(&'a [u8]) -> IResult<&[u8], N
 	)
 }
 
-fn atom(allow_periods: bool) -> impl Fn(&[u8]) -> IResult<&[u8], Node> {
+fn atom(opts: ParserOptions) -> impl Fn(&[u8]) -> IResult<&[u8], Node> {
 	// this closure somehow prevents `impl Fn` from being recursive
 	// see `rustc --explain E0720`
 	move |input| surrounded_ws(
@@ -239,30 +242,30 @@ fn atom(allow_periods: bool) -> impl Fn(&[u8]) -> IResult<&[u8], Node> {
 			// unary + does nothing
 			preceded(
 				char('+'),
-				atom(allow_periods)
+				atom(opts)
 			)
 			,
 			// unary -, well, negates whatever is following it
 			map(
 				preceded(
 					char('-'),
-					atom(allow_periods)
+					atom(opts)
 				),
 				Node::negation
 			)
 			,
 			// function call is parsed before vector: the latter can actually consume function name as a vector, effectively rendering the rest of the expression invalid
-			function(allow_periods)
+			function(opts)
 			,
 			// FIXME? things like 'and' and 'group_left' are not supposed to parse as a vector: prometheus lexes them unambiguously
 			map(
-				vector(allow_periods),
+				vector(opts),
 				Node::Vector
 			)
 			,
 			delimited(
 				char('('),
-				expression(allow_periods),
+				expression(opts),
 				char(')')
 			)
 		))
@@ -322,16 +325,16 @@ fn op_modifier(input: &[u8]) -> IResult<&[u8], OpMod> {
 }
 
 // ^ is right-associative, so we can actually keep it simple and recursive
-fn power(allow_periods: bool) -> impl FnMut(&[u8]) -> IResult<&[u8], Node> {
+fn power(opts: ParserOptions) -> impl FnMut(&[u8]) -> IResult<&[u8], Node> {
 	// this closure somehow prevents `impl Fn` from being recursive
 	// see `rustc --explain E0720`
 	move |input|
 	surrounded_ws(map(
 		tuple((
-			atom(allow_periods),
+			atom(opts),
 			opt(tuple((
 				with_modifier!("^", Op::Pow),
-				power(allow_periods)
+				power(opts)
 			)))
 		)),
 		|(x, y)|
@@ -346,13 +349,13 @@ fn power(allow_periods: bool) -> impl FnMut(&[u8]) -> IResult<&[u8], Node> {
 macro_rules! left_op {
 	// $next is the parser for operator that takes precenence, or any other kind of non-operator token sequence
 	($name:ident, $next:ident, $op:expr) => (
-		fn $name<'a>(allow_periods: bool) -> impl FnMut(&'a [u8]) -> IResult<&'a [u8], Node> {
+		fn $name<'a>(opts: ParserOptions) -> impl FnMut(&'a [u8]) -> IResult<&'a [u8], Node> {
 			surrounded_ws(
 				map(tuple((
-					$next(allow_periods),
+					$next(opts),
 					many0(tuple((
 						$op,
-						$next(allow_periods)
+						$next(opts)
 					))),
 				)), |(x, ops)|
 					({
@@ -407,10 +410,8 @@ left_op!(
 
 left_op!(or_op, and_unless, with_modifier!("or", Op::Or));
 
-pub(crate) fn expression<'a>(
-	allow_periods: bool,
-) -> impl FnMut(&'a [u8]) -> IResult<&'a [u8], Node> {
-	or_op(allow_periods)
+pub(crate) fn expression<'a>(opts: ParserOptions) -> impl FnMut(&'a [u8]) -> IResult<&'a [u8], Node> {
+	or_op(opts)
 }
 
 #[allow(unused_imports)]
@@ -430,7 +431,9 @@ mod tests {
 
 	// vector parsing is already tested in `mod vec`, so use that parser instead of crafting lengthy structs all over the test functions
 	fn vector(expr: &str) -> Node {
-		match vec::vector(false)(cbs(expr)) {
+		match vec::vector(ParserOptions{
+			allow_periods: false,
+		})(cbs(expr)) {
 			Ok((b"", x)) => Node::Vector(x),
 			_ => panic!("failed to parse label correctly"),
 		}
@@ -465,13 +468,13 @@ mod tests {
 	}
 
 	fn scalar_single(input: &str, output: f32) {
-		assert_eq!(expression(false)(cbs(input)), Ok((cbs(""), Scalar(output))));
+		assert_eq!(expression(Default::default())(cbs(input)), Ok((cbs(""), Scalar(output))));
 	}
 
 	#[test]
 	fn ops() {
 		assert_eq!(
-			expression(false)(cbs("foo > bar != 0 and 15.5 < xyzzy")),
+			expression(Default::default())(cbs("foo > bar != 0 and 15.5 < xyzzy")),
 			Ok((
 				cbs(""),
 				operator(
@@ -487,7 +490,7 @@ mod tests {
 		);
 
 		assert_eq!(
-			expression(false)(cbs("foo + bar - baz <= quux + xyzzy")),
+			expression(Default::default())(cbs("foo + bar - baz <= quux + xyzzy")),
 			Ok((
 				cbs(""),
 				operator(
@@ -503,7 +506,7 @@ mod tests {
 		);
 
 		assert_eq!(
-			expression(false)(cbs("foo + bar % baz")),
+			expression(Default::default())(cbs("foo + bar % baz")),
 			Ok((
 				cbs(""),
 				operator(
@@ -515,7 +518,7 @@ mod tests {
 		);
 
 		assert_eq!(
-			expression(false)(cbs("x^y^z")),
+			expression(Default::default())(cbs("x^y^z")),
 			Ok((
 				cbs(""),
 				operator(
@@ -527,7 +530,7 @@ mod tests {
 		);
 
 		assert_eq!(
-			expression(false)(cbs("(a+b)*c")),
+			expression(Default::default())(cbs("(a+b)*c")),
 			Ok((
 				cbs(""),
 				operator(
@@ -542,7 +545,7 @@ mod tests {
 	#[test]
 	fn op_mods() {
 		assert_eq!(
-			expression(false)(
+			expression(Default::default())(
 				cbs("foo + ignoring (instance) bar / on (cluster) baz"),
 			),
 			Ok((
@@ -568,7 +571,7 @@ mod tests {
 		);
 
 		assert_eq!(
-			expression(false)(cbs("foo + ignoring (instance) group_right bar / on (cluster, shmuster) group_left (job) baz")),
+			expression(Default::default())(cbs("foo + ignoring (instance) group_right bar / on (cluster, shmuster) group_left (job) baz")),
 			Ok((cbs(""), operator(
 				vector("foo"),
 				Plus(Some(OpMod {
@@ -589,7 +592,7 @@ mod tests {
 		);
 
 		assert_eq!(
-			expression(false)(
+			expression(Default::default())(
 				cbs("node_cpu{cpu='cpu0'} > bool ignoring (cpu) node_cpu{cpu='cpu1'}"),
 			),
 			Ok((
@@ -613,7 +616,7 @@ mod tests {
 	#[test]
 	fn unary() {
 		assert_eq!(
-			expression(false)(cbs("a + -b")),
+			expression(Default::default())(cbs("a + -b")),
 			Ok((
 				cbs(""),
 				operator(vector("a"), Plus(None), negation(vector("b")),)
@@ -621,7 +624,7 @@ mod tests {
 		);
 
 		assert_eq!(
-			expression(false)(cbs("a ^ - 1 - b")),
+			expression(Default::default())(cbs("a ^ - 1 - b")),
 			Ok((
 				cbs(""),
 				operator(
@@ -633,7 +636,7 @@ mod tests {
 		);
 
 		assert_eq!(
-			expression(false)(cbs("a ^ - (1 - b)")),
+			expression(Default::default())(cbs("a ^ - (1 - b)")),
 			Ok((
 				cbs(""),
 				operator(
@@ -647,12 +650,12 @@ mod tests {
 		// yes, these are also valid
 
 		assert_eq!(
-			expression(false)(cbs("a +++++++ b")),
+			expression(Default::default())(cbs("a +++++++ b")),
 			Ok((cbs(""), operator(vector("a"), Plus(None), vector("b"),)))
 		);
 
 		assert_eq!(
-			expression(false)(cbs("a * --+-b")),
+			expression(Default::default())(cbs("a * --+-b")),
 			Ok((
 				cbs(""),
 				operator(
@@ -667,7 +670,7 @@ mod tests {
 	#[test]
 	fn functions() {
 		assert_eq!(
-			expression(false)(cbs("foo() + bar(baz) + quux(xyzzy, plough)")),
+			expression(Default::default())(cbs("foo() + bar(baz) + quux(xyzzy, plough)")),
 			Ok((
 				cbs(""),
 				operator(
@@ -695,7 +698,7 @@ mod tests {
 		);
 
 		assert_eq!(
-			expression(false)(cbs("round(rate(whatever [5m]) > 0, 0.2)")),
+			expression(Default::default())(cbs("round(rate(whatever [5m]) > 0, 0.2)")),
 			Ok((
 				cbs(""),
 				Function {
@@ -718,7 +721,7 @@ mod tests {
 		);
 
 		assert_eq!(
-			expression(false)(
+			expression(Default::default())(
 				cbs("label_replace(up, 'instance', '', 'instance', '.*')"),
 			),
 			Ok((
@@ -741,7 +744,7 @@ mod tests {
 	#[test]
 	fn agg_functions() {
 		assert_eq!(
-			expression(false)(cbs("sum(foo) by (bar) * count(foo) without (bar)")),
+			expression(Default::default())(cbs("sum(foo) by (bar) * count(foo) without (bar)")),
 			Ok((
 				cbs(""),
 				operator(
@@ -767,7 +770,7 @@ mod tests {
 		);
 
 		assert_eq!(
-			expression(false)(cbs("sum by (bar) (foo) * count without (bar) (foo)")),
+			expression(Default::default())(cbs("sum by (bar) (foo) * count without (bar) (foo)")),
 			Ok((
 				cbs(""),
 				operator(
