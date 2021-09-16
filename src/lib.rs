@@ -12,9 +12,8 @@ See [official documentation](https://prometheus.io/docs/prometheus/latest/queryi
 
 use promql::*;
 
-let opts = ParserOptions {
-	allow_periods: false,
-};
+let opts = ParserOptions::default()
+	.allow_periods(false);
 
 let ast = parse(br#"
 	sum(1 - something_used{env="production"} / something_total) by (instance)
@@ -85,6 +84,13 @@ impl Default for ParserOptions {
 		ParserOptions {
 			allow_periods: false,
 		}
+	}
+}
+
+impl ParserOptions {
+	pub fn allow_periods(mut self, val: bool) -> Self {
+		self.allow_periods = val;
+		self
 	}
 }
 
