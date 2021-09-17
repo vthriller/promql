@@ -149,6 +149,18 @@ fn instant_vec<'a>(opts: ParserOptions) -> impl FnMut(&'a [u8]) -> IResult<&[u8]
 	)
 }
 
+fn range_suffix_to_duration(s: &[u8]) -> f32 {
+	match s {
+		b"s" => 1.,
+		b"m" => 60.,
+		b"h" => 60. * 60.,
+		b"d" => 60. * 60. * 24.,
+		b"w" => 60. * 60. * 24. * 7.,
+		b"y" => 60. * 60. * 24. * 7. * 365., // XXX leap years?
+		_ => panic!("unexpected duration suffix: {:?}", s),
+	}
+}
+
 fn range_literal_part<'a>(opts: ParserOptions) -> impl FnMut(&'a [u8]) -> IResult<&[u8], f32> {
 	map(
 		tuple((
@@ -170,14 +182,13 @@ fn range_literal_part<'a>(opts: ParserOptions) -> impl FnMut(&'a [u8]) -> IResul
 				// FIXME unwrap? FIXME copy-pasted from expr.rs
 				|n: &[u8]| unsafe { String::from_utf8_unchecked(n.to_vec()) }.parse::<f32>().unwrap()
 			),
-			alt((
-				value(char('s'), 1.),
-				value(char('m'), 60.),
-				value(char('h'), 60. * 60.),
-				value(char('d'), 60. * 60. * 24.),
-				value(char('w'), 60. * 60. * 24. * 7.),
-				value(char('y'), 60. * 60. * 24. * 7. * 365.), // XXX leap years?
-			)),
+			map(
+				alt((
+					tag("s"), tag("m"), tag("h"),
+					tag("d"), tag("w"), tag("y"),
+				)),
+				range_suffix_to_duration
+			)
 		)),
 		|(num, suffix)| (num * suffix)
 	)
