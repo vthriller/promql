@@ -455,19 +455,13 @@ mod tests {
 	#[test]
 	fn modified_vectors_permutations() {
 		for &allow_periods in &[true, false] {
-		for &fractional_intervals in &[true, false] {
-		for &compound_intervals in &[true, false] {
 		for &negative_offsets in &[true, false] {
 			let opts = ParserOptions::new()
 				.allow_periods(allow_periods)
-				.fractional_intervals(fractional_intervals)
-				.compound_intervals(compound_intervals)
 				.negative_offsets(negative_offsets)
 				.build();
 
 			modified_vectors(opts)
-		}
-		}
 		}
 		}
 	}
@@ -557,94 +551,6 @@ mod tests {
 			v("[1m]", None, Some(300.)),
 		);
 
-		// fractional_intervals
-
-		let q = format!("{} [1.5m]", instant);
-		assert_eq!(
-			vector(opts)(cbs(&q)),
-			if opts.fractional_intervals {
-				v("", Some(90.), None)
-			} else {
-				v("[1.5m]", None, None)
-			}
-		);
-
-		let q = format!("{} offset 0.5d", instant);
-		assert_eq!(
-			vector(opts)(cbs(&q)),
-			if opts.fractional_intervals {
-				v("", None, Some(60. * 60. * 12.))
-			} else {
-				v("offset 0.5d", None, None)
-			}
-		);
-
-		let q = format!("{} [1.5m] offset 0.5d", instant);
-		assert_eq!(
-			vector(opts)(cbs(&q)),
-			if opts.fractional_intervals {
-				v("", Some(90.), Some(60. * 60. * 12.))
-			} else {
-				v("[1.5m] offset 0.5d", None, None)
-			}
-		);
-
-		let q = format!("{} offset 0.5d [1.5m]", instant);
-		// FIXME should be Error()?
-		assert_eq!(
-			vector(opts)(cbs(&q)),
-			if opts.fractional_intervals {
-				v("[1.5m]", None, Some(60. * 60. * 12.))
-			} else {
-				v("offset 0.5d [1.5m]", None, None)
-			}
-		);
-
-		// compound_intervals
-
-		let q = format!("{} [1m45s]", instant);
-		assert_eq!(
-			vector(opts)(cbs(&q)),
-			if opts.compound_intervals {
-				v("", Some(105.), None)
-			} else {
-				v("[1m45s]", None, None)
-			}
-		);
-
-		let q = format!("{} offset 1h30m", instant);
-		assert_eq!(
-			vector(opts)(cbs(&q)),
-			if opts.compound_intervals {
-				v("", None, Some(90. * 60.))
-			} else {
-				// `offset 1h` is partially pared
-				v("30m", None, Some(60. * 60.))
-			}
-		);
-
-		let q = format!("{} [1m45s] offset 1h30m", instant);
-		assert_eq!(
-			vector(opts)(cbs(&q)),
-			if opts.compound_intervals {
-				v("", Some(105.), Some(90. * 60.))
-			} else {
-				v("[1m45s] offset 1h30m", None, None)
-			}
-		);
-
-		let q = format!("{} offset 1h30m [1m45s]", instant);
-		// FIXME should be Error()?
-		assert_eq!(
-			vector(opts)(cbs(&q)),
-			if opts.compound_intervals {
-				v("[1m45s]", None, Some(90. * 60.))
-			} else {
-				// `offset 1h` is partially pared
-				v("30m [1m45s]", None, Some(60. * 60.))
-			}
-		);
-
 		// negative_offsets
 
 		let q = format!("{} offset -5m", instant);
@@ -656,5 +562,51 @@ mod tests {
 				v("offset -5m", None, None)
 			}
 		);
+	}
+
+	#[test]
+	fn ranges() {
+		for (
+			// None: test both true/false
+			// Some(bool): test specific option only
+			fractional_intervals,
+			compound_intervals,
+			// input
+			src,
+			// whether parser returns "" as the remainder
+			expect_complete,
+			// Some(123) for Ok((..., 123)), None for any Err()
+			value,
+		) in [
+			(None,        None,        "1m",    true,  Some(60.)),
+			(Some(true),  None,        "1.5m",  true,  Some(90.)),
+			(Some(false), None,        "1.5m",  false, None),
+			(None,        Some(true),  "1m30s", true,  Some(90.)),
+			(None,        Some(false), "1m30s", false, Some(60.)),
+			// TODO? `1.5h 30s`
+		] {
+			for fractional_intervals in fractional_intervals.map(|i| vec![i]).unwrap_or_else(|| vec![true, false]) {
+			for compound_intervals   in compound_intervals  .map(|i| vec![i]).unwrap_or_else(|| vec![true, false]) {
+				let opts = ParserOptions::new()
+					.fractional_intervals(fractional_intervals)
+					.compound_intervals(compound_intervals)
+					.build();
+
+				let output = range_literal(opts)(cbs(&src));
+				if let Some(value) = value {
+					let (tail, output) = output.unwrap(); // panics if not Ok()
+					assert_eq!(output, value,
+						"\n fractional_intervals = {} \n compound_intervals = {} \n src = {}",
+						fractional_intervals,
+						compound_intervals,
+						src,
+					);
+					assert_eq!(tail.is_empty(), expect_complete);
+				} else {
+					assert!(output.is_err());
+				}
+			}
+			}
+		}
 	}
 }
