@@ -9,3 +9,4 @@ repository = "https://github.com/vthriller/promql"
 [dependencies]
 quick-error = "2.0"
 nom = "7.0"
+builder-pattern = "0.3"

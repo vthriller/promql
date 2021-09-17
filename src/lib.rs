@@ -12,8 +12,9 @@ See [official documentation](https://prometheus.io/docs/prometheus/latest/queryi
 
 use promql::*;
 
-let opts = ParserOptions::default()
-	.allow_periods(false);
+let opts = ParserOptions::new()
+	.allow_periods(false)
+	.build();
 
 let ast = parse(br#"
 	sum(1 - something_used{env="production"} / something_total) by (instance)
@@ -68,43 +69,32 @@ pub use vec::*;
 use nom::Err;
 use nom::error::{Error, ErrorKind};
 
+extern crate builder_pattern;
+use builder_pattern::Builder;
+
 /// Options that allow or disallow certain query language features.
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Builder)]
 pub struct ParserOptions {
 	/**
 	Allow periods in metric names (e.g. `threads.busy{instance="..."}`).
 
 	This option is usually used in systems that have metrics carried over from other monitoring systems like Graphite.
 	*/
-	pub allow_periods: bool,
+	#[default(false)]
+	allow_periods: bool,
+
 	/// Allow decimal fractions in intervals (e.g. `offset 0.5d`)
-	pub fractional_intervals: bool,
+	#[default(false)]
+	fractional_intervals: bool,
+
 	/// Allow compound interval literals (e.g. `offset 1h30m`)
-	pub compound_intervals: bool,
+	#[default(false)]
+	compound_intervals: bool,
 }
 
 impl Default for ParserOptions {
 	fn default() -> Self {
-		ParserOptions {
-			allow_periods: false,
-			fractional_intervals: false,
-			compound_intervals: false,
-		}
-	}
-}
-
-impl ParserOptions {
-	pub fn allow_periods(mut self, val: bool) -> Self {
-		self.allow_periods = val;
-		self
-	}
-	pub fn fractional_intervals(mut self, val: bool) -> Self {
-		self.fractional_intervals = val;
-		self
-	}
-	pub fn compound_intervals(mut self, val: bool) -> Self {
-		self.compound_intervals = val;
-		self
+		ParserOptions::new().build()
 	}
 }
 

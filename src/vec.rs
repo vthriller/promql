@@ -266,8 +266,9 @@ mod tests {
 
 		// matches foo.bar{} entirely
 		assert_eq!(
-			vector(ParserOptions::default()
-				.allow_periods(true),
+			vector(ParserOptions::new()
+				.allow_periods(true)
+				.build(),
 			)(cbs("foo.bar{}")),
 			Ok((
 				cbs(""),
@@ -290,8 +291,9 @@ mod tests {
 
 		// matches foo, leaves .bar{}
 		assert_eq!(
-			vector(ParserOptions::default()
+			vector(ParserOptions::new()
 				.allow_periods(false)
+				.build()
 			)(cbs("foo.bar{}")),
 			Ok((
 				cbs(".bar{}"),
@@ -309,8 +311,9 @@ mod tests {
 	}
 
 	fn instant_vectors(allow_periods: bool) {
-		let opts = ParserOptions::default()
-			.allow_periods(allow_periods);
+		let opts = ParserOptions::new()
+			.allow_periods(allow_periods)
+			.build();
 
 		assert_eq!(
 			vector(opts)(cbs("foo")),
@@ -442,11 +445,11 @@ mod tests {
 		for &allow_periods in &[true, false] {
 		for &fractional_intervals in &[true, false] {
 		for &compound_intervals in &[true, false] {
-			let opts = ParserOptions::default()
+			let opts = ParserOptions::new()
 				.allow_periods(allow_periods)
 				.fractional_intervals(fractional_intervals)
 				.compound_intervals(compound_intervals)
-				;
+				.build();
 
 			modified_vectors(opts)
 		}
