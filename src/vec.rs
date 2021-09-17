@@ -13,13 +13,13 @@ use nom::character::complete::{
 };
 use nom::combinator::{
 	map,
+	map_opt,
 	map_res,
 	opt,
 	recognize,
 };
 use nom::multi::{
 	many0,
-	many1,
 	separated_list0,
 };
 use nom::sequence::{
@@ -161,8 +161,10 @@ fn range_suffix_to_duration(s: &[u8]) -> f32 {
 	}
 }
 
-fn range_literal_part<'a>(opts: ParserOptions) -> impl FnMut(&'a [u8]) -> IResult<&[u8], f32> {
-	map(
+// `max_duration` limits set of available suffixes, allowing us to forbid intervals like `30s5m`
+// not using collections here: they're expensive, and we cannot build an alt() from them anyway (even recursive one, like alt(alt(), ...))
+fn range_literal_part<'a>(opts: ParserOptions, max_duration: Option<f32>) -> impl FnMut(&'a [u8]) -> IResult<&[u8], (f32, f32)> {
+	map_opt(
 		tuple((
 			map(
 				move |input| if opts.fractional_intervals {
@@ -190,18 +192,37 @@ fn range_literal_part<'a>(opts: ParserOptions) -> impl FnMut(&'a [u8]) -> IResul
 				range_suffix_to_duration
 			)
 		)),
-		|(num, suffix)| (num * suffix)
+		move |(num, suffix)| match max_duration {
+			None => Some((num, suffix)),
+			Some(max) => if suffix < max {
+				Some((num, suffix))
+			} else {
+				None
+			},
+		}
 	)
+}
+
+fn range_compound_literal(opts: ParserOptions, max_duration: Option<f32>) -> impl FnMut(&[u8]) -> IResult<&[u8], f32> {
+	move |input| {
+		let (input, (amount, duration)) = range_literal_part(opts, max_duration)(input)?;
+		// use matched duration as a new cap so we don't match the same durations or longer
+		let (input, rest) = match range_compound_literal(opts, Some(duration))(input) {
+			Ok((input, rest)) => (input, rest),
+			Err(_) => (input, 0.), // the rest doesn't look like compound literal
+		};
+		Ok((input, amount * duration + rest))
+	}
 }
 
 fn range_literal<'a>(opts: ParserOptions) -> impl FnMut(&'a [u8]) -> IResult<&[u8], f32> {
 	move |input| if opts.compound_intervals {
-		map(
-			many1(range_literal_part(opts)),
-			|intervals| intervals.into_iter().sum()
-		)(input)
+		range_compound_literal(opts, None)(input)
 	} else {
-		range_literal_part(opts)(input)
+		map(
+			range_literal_part(opts, None),
+			|(amount, duration)| amount * duration
+		)(input)
 	}
 }
 
@@ -594,6 +615,12 @@ mod tests {
 			(Some(false), None,        "1.5m",  false, None),
 			(None,        Some(true),  "1m30s", true,  Some(90.)),
 			(None,        Some(false), "1m30s", false, Some(60.)),
+			// should not parse completely if in wrong order
+			(None,        Some(true),  "30s1m", false, Some(30.)),
+			// should not parse completely if some suffixes repeat
+			(None,        Some(true),  "30s5s", false, Some(30.)),
+			// should parse if some suffixes are skipped
+			(None,        Some(true),  "1d5m",  true,  Some(60. * 60. * 24. + 60. * 5.)),
 			// TODO? `1.5h 30s`
 		] {
 			for fractional_intervals in fractional_intervals.map(|i| vec![i]).unwrap_or_else(|| vec![true, false]) {
