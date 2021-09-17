@@ -149,18 +149,6 @@ fn instant_vec<'a>(opts: ParserOptions) -> impl FnMut(&'a [u8]) -> IResult<&[u8]
 	)
 }
 
-fn range_suffix_to_duration(s: &[u8]) -> f32 {
-	match s {
-		b"s" => 1.,
-		b"m" => 60.,
-		b"h" => 60. * 60.,
-		b"d" => 60. * 60. * 24.,
-		b"w" => 60. * 60. * 24. * 7.,
-		b"y" => 60. * 60. * 24. * 7. * 365., // XXX leap years?
-		_ => panic!("unexpected duration suffix: {:?}", s),
-	}
-}
-
 // `max_duration` limits set of available suffixes, allowing us to forbid intervals like `30s5m`
 // not using collections here: they're expensive, and we cannot build an alt() from them anyway (even recursive one, like alt(alt(), ...))
 fn range_literal_part<'a>(opts: ParserOptions, max_duration: Option<f32>) -> impl FnMut(&'a [u8]) -> IResult<&[u8], (f32, f32)> {
@@ -184,13 +172,14 @@ fn range_literal_part<'a>(opts: ParserOptions, max_duration: Option<f32>) -> imp
 				// FIXME unwrap? FIXME copy-pasted from expr.rs
 				|n: &[u8]| unsafe { String::from_utf8_unchecked(n.to_vec()) }.parse::<f32>().unwrap()
 			),
-			map(
-				alt((
-					tag("s"), tag("m"), tag("h"),
-					tag("d"), tag("w"), tag("y"),
-				)),
-				range_suffix_to_duration
-			)
+			alt((
+				value(char('s'), 1.),
+				value(char('m'), 60.),
+				value(char('h'), 60. * 60.),
+				value(char('d'), 60. * 60. * 24.),
+				value(char('w'), 60. * 60. * 24. * 7.),
+				value(char('y'), 60. * 60. * 24. * 7. * 365.), // XXX leap years?
+			)),
 		)),
 		move |(num, suffix)| match max_duration {
 			None => Some((num, suffix)),
