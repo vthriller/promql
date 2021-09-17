@@ -90,6 +90,10 @@ pub struct ParserOptions {
 	/// Allow compound interval literals (e.g. `offset 1h30m`)
 	#[default(false)]
 	compound_intervals: bool,
+
+	/// Allow negative offsets
+	#[default(false)]
+	negative_offsets: bool,
 }
 
 impl Default for ParserOptions {

@@ -202,7 +202,16 @@ pub(crate) fn vector<'a>(opts: ParserOptions) -> impl FnMut(&'a [u8]) -> IResult
 			opt(delimited(char('['), range_literal(opts), char(']'))),
 			opt(preceded(
 				surrounded_ws(tag("offset")),
-				range_literal(opts)
+				tuple((
+					move |input| if opts.negative_offsets {
+						opt(char('-'))(input)
+					} else {
+						// match empty string (let next parser fail),
+						// mark offset interval as positive
+						Ok((input, None))
+					},
+					range_literal(opts),
+				)),
 			)),
 			multispace0,
 		)),
@@ -210,7 +219,10 @@ pub(crate) fn vector<'a>(opts: ParserOptions) -> impl FnMut(&'a [u8]) -> IResult
 		Vector {
 			labels,
 			range,
-			offset
+			offset: offset.map(|(sign, value)| {
+				let sign = sign.map(|_| -1.).unwrap_or(1.);
+				sign * value
+			})
 		}
 	)
 }
@@ -445,13 +457,16 @@ mod tests {
 		for &allow_periods in &[true, false] {
 		for &fractional_intervals in &[true, false] {
 		for &compound_intervals in &[true, false] {
+		for &negative_offsets in &[true, false] {
 			let opts = ParserOptions::new()
 				.allow_periods(allow_periods)
 				.fractional_intervals(fractional_intervals)
 				.compound_intervals(compound_intervals)
+				.negative_offsets(negative_offsets)
 				.build();
 
 			modified_vectors(opts)
+		}
 		}
 		}
 		}
@@ -627,6 +642,18 @@ mod tests {
 			} else {
 				// `offset 1h` is partially pared
 				v("30m [1m45s]", None, Some(60. * 60.))
+			}
+		);
+
+		// negative_offsets
+
+		let q = format!("{} offset -5m", instant);
+		assert_eq!(
+			vector(opts)(cbs(&q)),
+			if opts.negative_offsets {
+				v("", None, Some(-300.))
+			} else {
+				v("offset -5m", None, None)
 			}
 		);
 	}
