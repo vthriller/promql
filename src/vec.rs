@@ -148,12 +148,24 @@ fn instant_vec<'a>(opts: ParserOptions) -> impl FnMut(&'a [u8]) -> IResult<&[u8]
 	)
 }
 
-fn range_literal<'a>() -> impl FnMut(&'a [u8]) -> IResult<&[u8], f32> {
+fn range_literal<'a>(opts: ParserOptions) -> impl FnMut(&'a [u8]) -> IResult<&[u8], f32> {
 	map(
 		tuple((
 			map(
-				digit1,
-				// from_utf8_unchecked() on [0-9]+ is actually totally safe
+				move |input| if opts.fractional_intervals {
+					// not using nom's `float` here as it allows literals like `1e3`, which is not what we want
+					// TODO should `.5d`/`5.d` (without leading/trailing digits) be allowed?
+					recognize(tuple((
+						digit1,
+						opt(tuple((
+							char('.'),
+							digit1,
+						))),
+					)))(input)
+				} else {
+					digit1(input)
+				},
+				// from_utf8_unchecked() on [0-9.]+ is actually totally safe
 				// FIXME unwrap? FIXME copy-pasted from expr.rs
 				|n: &[u8]| unsafe { String::from_utf8_unchecked(n.to_vec()) }.parse::<f32>().unwrap()
 			),
@@ -175,10 +187,10 @@ pub(crate) fn vector<'a>(opts: ParserOptions) -> impl FnMut(&'a [u8]) -> IResult
 		// labels and offset parsers already handle whitespace, no need to use ws!() here
 		tuple((
 			instant_vec(opts),
-			opt(delimited(char('['), range_literal(), char(']'))),
+			opt(delimited(char('['), range_literal(opts), char(']'))),
 			opt(preceded(
 				surrounded_ws(tag("offset")),
-				range_literal()
+				range_literal(opts)
 			)),
 			multispace0,
 		)),
@@ -416,10 +428,14 @@ mod tests {
 	#[test]
 	fn modified_vectors_permutations() {
 		for &allow_periods in &[true, false] {
+		for &fractional_intervals in &[true, false] {
 			let opts = ParserOptions::default()
-				.allow_periods(allow_periods);
+				.allow_periods(allow_periods)
+				.fractional_intervals(fractional_intervals)
+				;
 
 			modified_vectors(opts)
+		}
 		}
 	}
 
@@ -481,6 +497,8 @@ mod tests {
 			},
 		));
 
+		// regular
+
 		let q = format!("{} [1m]", instant);
 		assert_eq!(
 			vector(opts)(cbs(&q)),
@@ -504,6 +522,49 @@ mod tests {
 		assert_eq!(
 			vector(opts)(cbs(&q)),
 			v("[1m]", None, Some(300.)),
+		);
+
+		// fractional_intervals
+
+		let q = format!("{} [1.5m]", instant);
+		assert_eq!(
+			vector(opts)(cbs(&q)),
+			if opts.fractional_intervals {
+				v("", Some(90.), None)
+			} else {
+				v("[1.5m]", None, None)
+			}
+		);
+
+		let q = format!("{} offset 0.5d", instant);
+		assert_eq!(
+			vector(opts)(cbs(&q)),
+			if opts.fractional_intervals {
+				v("", None, Some(60. * 60. * 12.))
+			} else {
+				v("offset 0.5d", None, None)
+			}
+		);
+
+		let q = format!("{} [1.5m] offset 0.5d", instant);
+		assert_eq!(
+			vector(opts)(cbs(&q)),
+			if opts.fractional_intervals {
+				v("", Some(90.), Some(60. * 60. * 12.))
+			} else {
+				v("[1.5m] offset 0.5d", None, None)
+			}
+		);
+
+		let q = format!("{} offset 0.5d [1.5m]", instant);
+		// FIXME should be Error()?
+		assert_eq!(
+			vector(opts)(cbs(&q)),
+			if opts.fractional_intervals {
+				v("[1.5m]", None, Some(60. * 60. * 12.))
+			} else {
+				v("offset 0.5d [1.5m]", None, None)
+			}
 		);
 	}
 }

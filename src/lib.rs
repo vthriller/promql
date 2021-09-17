@@ -77,12 +77,15 @@ pub struct ParserOptions {
 	This option is usually used in systems that have metrics carried over from other monitoring systems like Graphite.
 	*/
 	pub allow_periods: bool,
+	/// Allow decimal fractions in intervals (e.g. `offset 0.5d`)
+	pub fractional_intervals: bool,
 }
 
 impl Default for ParserOptions {
 	fn default() -> Self {
 		ParserOptions {
 			allow_periods: false,
+			fractional_intervals: false,
 		}
 	}
 }
@@ -90,6 +93,10 @@ impl Default for ParserOptions {
 impl ParserOptions {
 	pub fn allow_periods(mut self, val: bool) -> Self {
 		self.allow_periods = val;
+		self
+	}
+	pub fn fractional_intervals(mut self, val: bool) -> Self {
+		self.fractional_intervals = val;
 		self
 	}
 }
