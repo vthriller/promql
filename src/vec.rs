@@ -12,6 +12,7 @@ use nom::character::complete::{
 	multispace0,
 };
 use nom::combinator::{
+	cond,
 	map,
 	map_opt,
 	map_res,
@@ -173,6 +174,11 @@ fn range_literal_part<'a>(opts: ParserOptions, max_duration: Option<f32>) -> imp
 				|n: &[u8]| unsafe { String::from_utf8_unchecked(n.to_vec()) }.parse::<f32>().unwrap()
 			),
 			alt((
+				// 'ms' should come before 'm'
+				map_opt(
+					cond(opts.ms_duration, tag("ms")),
+					|option| option.map(|_| 1e-3),
+				),
 				value(char('s'), 1.),
 				value(char('m'), 60.),
 				value(char('h'), 60. * 60.),
@@ -635,5 +641,21 @@ mod tests {
 			}
 			}
 		}
+
+		let opts = ParserOptions::new()
+			.ms_duration(true)
+			.build();
+		assert_eq!(
+			range_literal(opts)(cbs("500ms")),
+			Ok((cbs(""), 0.5))
+		);
+
+		let opts = ParserOptions::new()
+			.ms_duration(false)
+			.build();
+		assert_eq!(
+			range_literal(opts)(cbs("500ms")),
+			Ok((cbs("s"), 500. * 60.))
+		);
 	}
 }

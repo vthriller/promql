@@ -94,6 +94,10 @@ pub struct ParserOptions {
 	/// Allow negative offsets
 	#[default(false)]
 	negative_offsets: bool,
+
+	/// Allow `ms` as an interval suffix
+	#[default(false)]
+	ms_duration: bool,
 }
 
 impl Default for ParserOptions {
