@@ -79,6 +79,8 @@ pub struct ParserOptions {
 	pub allow_periods: bool,
 	/// Allow decimal fractions in intervals (e.g. `offset 0.5d`)
 	pub fractional_intervals: bool,
+	/// Allow compound interval literals (e.g. `offset 1h30m`)
+	pub compound_intervals: bool,
 }
 
 impl Default for ParserOptions {
@@ -86,6 +88,7 @@ impl Default for ParserOptions {
 		ParserOptions {
 			allow_periods: false,
 			fractional_intervals: false,
+			compound_intervals: false,
 		}
 	}
 }
@@ -97,6 +100,10 @@ impl ParserOptions {
 	}
 	pub fn fractional_intervals(mut self, val: bool) -> Self {
 		self.fractional_intervals = val;
+		self
+	}
+	pub fn compound_intervals(mut self, val: bool) -> Self {
+		self.compound_intervals = val;
 		self
 	}
 }

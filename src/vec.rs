@@ -19,6 +19,7 @@ use nom::combinator::{
 };
 use nom::multi::{
 	many0,
+	many1,
 	separated_list0,
 };
 use nom::sequence::{
@@ -148,7 +149,7 @@ fn instant_vec<'a>(opts: ParserOptions) -> impl FnMut(&'a [u8]) -> IResult<&[u8]
 	)
 }
 
-fn range_literal<'a>(opts: ParserOptions) -> impl FnMut(&'a [u8]) -> IResult<&[u8], f32> {
+fn range_literal_part<'a>(opts: ParserOptions) -> impl FnMut(&'a [u8]) -> IResult<&[u8], f32> {
 	map(
 		tuple((
 			map(
@@ -180,6 +181,17 @@ fn range_literal<'a>(opts: ParserOptions) -> impl FnMut(&'a [u8]) -> IResult<&[u
 		)),
 		|(num, suffix)| (num * suffix)
 	)
+}
+
+fn range_literal<'a>(opts: ParserOptions) -> impl FnMut(&'a [u8]) -> IResult<&[u8], f32> {
+	move |input| if opts.compound_intervals {
+		map(
+			many1(range_literal_part(opts)),
+			|intervals| intervals.into_iter().sum()
+		)(input)
+	} else {
+		range_literal_part(opts)(input)
+	}
 }
 
 pub(crate) fn vector<'a>(opts: ParserOptions) -> impl FnMut(&'a [u8]) -> IResult<&[u8], Vector> {
@@ -429,12 +441,15 @@ mod tests {
 	fn modified_vectors_permutations() {
 		for &allow_periods in &[true, false] {
 		for &fractional_intervals in &[true, false] {
+		for &compound_intervals in &[true, false] {
 			let opts = ParserOptions::default()
 				.allow_periods(allow_periods)
 				.fractional_intervals(fractional_intervals)
+				.compound_intervals(compound_intervals)
 				;
 
 			modified_vectors(opts)
+		}
 		}
 		}
 	}
@@ -564,6 +579,51 @@ mod tests {
 				v("[1.5m]", None, Some(60. * 60. * 12.))
 			} else {
 				v("offset 0.5d [1.5m]", None, None)
+			}
+		);
+
+		// compound_intervals
+
+		let q = format!("{} [1m45s]", instant);
+		assert_eq!(
+			vector(opts)(cbs(&q)),
+			if opts.compound_intervals {
+				v("", Some(105.), None)
+			} else {
+				v("[1m45s]", None, None)
+			}
+		);
+
+		let q = format!("{} offset 1h30m", instant);
+		assert_eq!(
+			vector(opts)(cbs(&q)),
+			if opts.compound_intervals {
+				v("", None, Some(90. * 60.))
+			} else {
+				// `offset 1h` is partially pared
+				v("30m", None, Some(60. * 60.))
+			}
+		);
+
+		let q = format!("{} [1m45s] offset 1h30m", instant);
+		assert_eq!(
+			vector(opts)(cbs(&q)),
+			if opts.compound_intervals {
+				v("", Some(105.), Some(90. * 60.))
+			} else {
+				v("[1m45s] offset 1h30m", None, None)
+			}
+		);
+
+		let q = format!("{} offset 1h30m [1m45s]", instant);
+		// FIXME should be Error()?
+		assert_eq!(
+			vector(opts)(cbs(&q)),
+			if opts.compound_intervals {
+				v("[1m45s]", None, Some(90. * 60.))
+			} else {
+				// `offset 1h` is partially pared
+				v("30m [1m45s]", None, Some(60. * 60.))
 			}
 		);
 	}
