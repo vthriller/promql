@@ -414,16 +414,16 @@ mod tests {
 	}
 
 	#[test]
-	fn modified_vectors_period() {
-		modified_vectors(true)
+	fn modified_vectors_permutations() {
+		for &allow_periods in &[true, false] {
+			let opts = ParserOptions::default()
+				.allow_periods(allow_periods);
+
+			modified_vectors(opts)
+		}
 	}
 
-	#[test]
-	fn modified_vectors_no_period() {
-		modified_vectors(false)
-	}
-
-	fn modified_vectors(allow_periods: bool) {
+	fn modified_vectors(opts: ParserOptions) {
 		modified_vectors_for_instant(
 			"foo",
 			|| {
@@ -433,7 +433,7 @@ mod tests {
 					value: "foo".to_string(),
 				}]
 			},
-			allow_periods,
+			opts,
 		);
 
 		modified_vectors_for_instant(
@@ -452,7 +452,7 @@ mod tests {
 					},
 				]
 			},
-			allow_periods,
+			opts,
 		);
 
 		modified_vectors_for_instant(
@@ -464,18 +464,15 @@ mod tests {
 					value: "localhost".to_string(),
 				}]
 			},
-			allow_periods,
+			opts,
 		);
 	}
 
 	fn modified_vectors_for_instant(
 		instant: &str,
 		labels: fn() -> Vec<LabelMatch>,
-		allow_periods: bool,
+		opts: ParserOptions,
 	) {
-		let opts = ParserOptions::default()
-			.allow_periods(allow_periods);
-
 		let q = format!("{} [1m]", instant);
 		assert_eq!(
 			vector(opts)(cbs(&q)),
