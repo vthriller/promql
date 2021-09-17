@@ -473,57 +473,37 @@ mod tests {
 		labels: fn() -> Vec<LabelMatch>,
 		opts: ParserOptions,
 	) {
+		let v = |tail, range, offset| Ok((
+			cbs(tail),
+			Vector {
+				labels: labels(),
+				range, offset,
+			},
+		));
+
 		let q = format!("{} [1m]", instant);
 		assert_eq!(
 			vector(opts)(cbs(&q)),
-			Ok((
-				cbs(""),
-				Vector {
-					labels: labels(),
-					range: Some(60.),
-					offset: None,
-				}
-			))
+			v("", Some(60.), None),
 		);
 
 		let q = format!("{} offset 5m", instant);
 		assert_eq!(
 			vector(opts)(cbs(&q)),
-			Ok((
-				cbs(""),
-				Vector {
-					labels: labels(),
-					range: None,
-					offset: Some(300.),
-				}
-			))
+			v("", None, Some(300.)),
 		);
 
 		let q = format!("{} [1m] offset 5m", instant);
 		assert_eq!(
 			vector(opts)(cbs(&q)),
-			Ok((
-				cbs(""),
-				Vector {
-					labels: labels(),
-					range: Some(60.),
-					offset: Some(300.),
-				}
-			))
+			v("", Some(60.), Some(300.)),
 		);
 
 		let q = format!("{} offset 5m [1m]", instant);
 		// FIXME should be Error()?
 		assert_eq!(
 			vector(opts)(cbs(&q)),
-			Ok((
-				cbs("[1m]"),
-				Vector {
-					labels: labels(),
-					range: None,
-					offset: Some(300.),
-				}
-			))
+			v("[1m]", None, Some(300.)),
 		);
 	}
 }
