@@ -12,6 +12,7 @@ use nom::error::ParseError;
 use nom::Parser;
 
 #[macro_export]
+#[doc(hidden)]
 macro_rules! tuple_separated {
 	($delim:expr, ($first:expr, $($rest:expr),* $(,)?)) => {{
 		use nom::sequence::{tuple, preceded};
@@ -34,6 +35,7 @@ where
 }
 
 #[macro_export]
+#[doc(hidden)]
 macro_rules! tuple_ws {
 	(($($args:expr),* $(,)?)) => {{
 		use nom::character::complete::multispace0;
