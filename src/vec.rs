@@ -151,7 +151,8 @@ fn instant_vec<'a>(opts: ParserOptions) -> impl FnMut(&'a [u8]) -> IResult<&[u8]
 }
 
 // `max_duration` limits set of available suffixes, allowing us to forbid intervals like `30s5m`
-// not using collections here: they're expensive, and we cannot build an alt() from them anyway (even recursive one, like alt(alt(), ...))
+// not using vecs/slices to limit set of acceptable suffixes: they're expensive,
+// and we cannot build an alt() from them anyway (even recursive one, like alt(alt(), ...))
 fn range_literal_part<'a>(opts: ParserOptions, max_duration: Option<f32>) -> impl FnMut(&'a [u8]) -> IResult<&[u8], (f32, f32)> {
 	map_opt(
 		tuple((
