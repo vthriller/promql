@@ -13,15 +13,20 @@ use nom::Parser;
 
 #[macro_export]
 #[doc(hidden)]
-macro_rules! tuple_separated {
-	($delim:expr, ($first:expr, $($rest:expr),* $(,)?)) => {{
+macro_rules! tuple_ws {
+	(($first:expr, $($rest:expr),* $(,)?)) => {{
 		use nom::sequence::{tuple, preceded};
+		use $crate::utils::surrounded_ws;
+		use nom::character::complete::multispace0;
+
+		surrounded_ws(
 		tuple((
 			$first,
 			$(
-				preceded($delim, $rest),
+				preceded(multispace0, $rest),
 			)*
 		))
+		)
 	}};
 }
 
@@ -32,20 +37,6 @@ where
 	<I as InputTakeAtPosition>::Item: AsChar + Clone,
 {
 	delimited(multispace0, parser, multispace0)
-}
-
-#[macro_export]
-#[doc(hidden)]
-macro_rules! tuple_ws {
-	(($($args:expr),* $(,)?)) => {{
-		use nom::character::complete::multispace0;
-		use $crate::utils::surrounded_ws;
-		use $crate::tuple_separated;
-
-		surrounded_ws(
-			tuple_separated!(multispace0, ($($args,)*)),
-		)
-	}};
 }
 
 /**
