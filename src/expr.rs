@@ -359,7 +359,7 @@ macro_rules! left_op {
 				map(tuple((
 					$next(opts),
 					many0(tuple((
-						$op,
+						$op(opts),
 						$next(opts)
 					))),
 				)), |(x, ops)|
@@ -379,6 +379,7 @@ macro_rules! left_op {
 left_op!(
 	mul_div_mod,
 	power,
+	|opts|
 	alt((
 		with_modifier("*", Op::Mul),
 		with_modifier("/", Op::Div),
@@ -389,6 +390,7 @@ left_op!(
 left_op!(
 	plus_minus,
 	mul_div_mod,
+	|opts|
 	alt((with_modifier("+", Op::Plus), with_modifier("-", Op::Minus)))
 );
 
@@ -397,6 +399,7 @@ left_op!(
 left_op!(
 	comparison,
 	plus_minus,
+	|opts|
 	alt((
 		with_bool_modifier("==", Op::Eq),
 		with_bool_modifier("!=", Op::Ne),
@@ -410,10 +413,11 @@ left_op!(
 left_op!(
 	and_unless,
 	comparison,
+	|opts|
 	alt((with_modifier("and", Op::And), with_modifier("unless", Op::Unless)))
 );
 
-left_op!(or_op, and_unless, with_modifier("or", Op::Or));
+left_op!(or_op, and_unless, |opts| with_modifier("or", Op::Or));
 
 pub(crate) fn expression<'a>(opts: ParserOptions) -> impl FnMut(&'a [u8]) -> IResult<&'a [u8], Node> {
 	or_op(opts)
