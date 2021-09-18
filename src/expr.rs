@@ -276,9 +276,13 @@ fn atom(opts: ParserOptions) -> impl Fn(&[u8]) -> IResult<&[u8], Node> {
 }
 
 fn with_modifier<'a>(literal: &'static str, op: fn(Option<OpMod>) -> Op) -> impl FnMut(&'a [u8]) -> IResult<&[u8], Op> {
-		map(preceded(tag(literal), opt(op_modifier())), move |op_mod| {
-			op(op_mod)
-			})
+	map(
+		preceded(
+			tag(literal),
+			opt(op_modifier()),
+		),
+		op,
+	)
 }
 
 fn with_bool_modifier<'a, O: Fn(bool, Option<OpMod>) -> Op>(literal: &'a str, op: O) -> impl FnMut(&'a [u8]) -> IResult<&[u8], Op> {
