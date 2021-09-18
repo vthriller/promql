@@ -43,8 +43,6 @@ where
 Whitespace-agnostic version of `nom::sequence::delimited`.
 
 Ignores whitespace before and after each of passed parsers.
-
-Unlike `ws!`, it does not affect whitespace handling within passed parsers.
 */
 pub(crate) fn delimited_ws<I, O1, O2, O3, E, P1, P2, P3>(p1: P1, p2: P2, p3: P3) -> impl FnMut(I) -> IResult<I, O2, E>
 where
