@@ -31,7 +31,7 @@ use nom::sequence::{
 use str::string;
 use crate::{
 	ParserOptions,
-	tuple_ws,
+	tuple_separated,
 };
 use crate::utils::{
 	surrounded_ws,
@@ -66,7 +66,7 @@ fn label_set<'a>(input: &'a [u8]) -> IResult<&[u8], Vec<LabelMatch>> {
 			separated_list0(
 				surrounded_ws(char(',')),
 				map(
-					tuple_ws!((
+					tuple_separated!(multispace0, (
 						label_name,
 						label_op,
 						string,
@@ -120,7 +120,7 @@ pub struct Vector {
 
 fn instant_vec<'a>(opts: ParserOptions) -> impl FnMut(&'a [u8]) -> IResult<&[u8], Vec<LabelMatch>> {
 	map_res(
-		tuple_ws!((
+		tuple_separated!(multispace0, (
 			opt(metric_name(opts)),
 			opt(label_set),
 		)),

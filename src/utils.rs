@@ -13,19 +13,19 @@ use nom::Parser;
 
 #[macro_export]
 #[doc(hidden)]
-macro_rules! tuple_ws {
-	(($first:expr, $($rest:expr),* $(,)?)) => {{
+macro_rules! tuple_separated {
+	($delim:expr, ($first:expr, $($rest:expr),* $(,)?)) => {{
 		use nom::sequence::{tuple, preceded};
-		use $crate::utils::surrounded_ws;
-		use nom::character::complete::multispace0;
 
-		surrounded_ws(
+		delimited(
+		$delim,
 		tuple((
 			$first,
 			$(
-				preceded(multispace0, $rest),
+				preceded($delim, $rest),
 			)*
-		))
+		)),
+		$delim,
 		)
 	}};
 }
@@ -56,7 +56,7 @@ where
 	P3: FnMut(I) -> IResult<I, O3, E>,
 {
 	map(
-		tuple_ws!((p1, p2, p3)),
+		tuple_separated!(multispace0, (p1, p2, p3)),
 		|result| result.1
 	)
 }

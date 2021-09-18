@@ -4,7 +4,10 @@ use nom::bytes::complete::{
 	tag,
 	tag_no_case,
 };
-use nom::character::complete::char;
+use nom::character::complete::{
+	char,
+	multispace0,
+};
 use nom::combinator::{
 	map,
 	opt,
@@ -23,7 +26,7 @@ use str::string;
 use vec::{label_name, vector, Vector};
 use crate::{
 	ParserOptions,
-	tuple_ws,
+	tuple_separated,
 };
 use crate::utils::{
 	surrounded_ws,
@@ -282,7 +285,7 @@ macro_rules! with_modifier {
 
 fn with_bool_modifier<'a, O: Fn(bool, Option<OpMod>) -> Op>(literal: &'a str, op: O) -> impl FnMut(&'a [u8]) -> IResult<&[u8], Op> {
 	map(
-		tuple_ws!((
+		tuple_separated!(multispace0, (
 			tag(literal),
 			opt(tag("bool")),
 			opt(op_modifier),
