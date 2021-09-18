@@ -32,7 +32,6 @@ use str::string;
 use crate::{
 	ParserOptions,
 	tuple_ws,
-	tuple_separated,
 };
 use crate::utils::{
 	surrounded_ws,
