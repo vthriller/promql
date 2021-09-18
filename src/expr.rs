@@ -159,25 +159,25 @@ impl Node {
 	}
 }
 
-fn label_list(input: &[u8]) -> IResult<&[u8], Vec<String>> {
+fn label_list<'a>() -> impl FnMut(&'a [u8]) -> IResult<&[u8], Vec<String>> {
 	delimited_ws(
 		char('('),
 		separated_list0(surrounded_ws(char(',')), label_name),
 		char(')')
-	)(input)
+	)
 }
 
-fn function_aggregation(input: &[u8]) -> IResult<&[u8], AggregationMod> {
+fn function_aggregation<'a>() -> impl FnMut(&'a [u8]) -> IResult<&[u8], AggregationMod> {
 	surrounded_ws(map(
 		tuple((
 			alt((
 				value(tag("by"), AggregationAction::By),
 				value(tag("without"), AggregationAction::Without),
 			)),
-			label_list,
+			label_list(),
 		)),
 		|(action, labels)| (AggregationMod { action, labels })
-	))(input)
+	))
 }
 
 // it's up to the library user to decide whether argument list is valid or not
@@ -215,7 +215,7 @@ fn function<'a>(opts: ParserOptions) -> impl FnMut(&'a [u8]) -> IResult<&[u8], N
 			// both 'sum by (label, label) (foo)' and 'sum(foo) by (label, label)' are valid
 			pair_permutations!(
 				function_args(opts),
-				opt(function_aggregation),
+				opt(function_aggregation()),
 			),
 		)),
 		|(name, (args, agg))|
@@ -277,7 +277,7 @@ fn atom(opts: ParserOptions) -> impl Fn(&[u8]) -> IResult<&[u8], Node> {
 
 macro_rules! with_modifier {
 	($literal:expr, $op:expr) => {
-		map(preceded(tag($literal), opt(op_modifier)), |op_mod| {
+		map(preceded(tag($literal), opt(op_modifier())), |op_mod| {
 			$op(op_mod)
 			})
 	};
@@ -288,14 +288,14 @@ fn with_bool_modifier<'a, O: Fn(bool, Option<OpMod>) -> Op>(literal: &'a str, op
 		tuple_separated!(multispace0, (
 			tag(literal),
 			opt(tag("bool")),
-			opt(op_modifier),
+			opt(op_modifier()),
 		)),
 		move |(_, boolness, op_mod)|
 			op(boolness.is_some(), op_mod)
 	)
 }
 
-fn op_modifier(input: &[u8]) -> IResult<&[u8], OpMod> {
+fn op_modifier<'a>() -> impl FnMut(&'a [u8]) -> IResult<&[u8], OpMod> {
 	surrounded_ws(map(
 		tuple((
 			// action
@@ -304,7 +304,7 @@ fn op_modifier(input: &[u8]) -> IResult<&[u8], OpMod> {
 				value(tag("ignoring"), OpModAction::Ignore),
 			)),
 			// labels
-			label_list,
+			label_list(),
 			// group
 			// TODO > Grouping modifiers can only be used for comparison and arithmetic. Operations as and, unless and or operations match with all possible entries in the right vector by default.
 			opt(map(
@@ -314,7 +314,7 @@ fn op_modifier(input: &[u8]) -> IResult<&[u8], OpMod> {
 						value(tag("group_right"), OpGroupSide::Right),
 					)),
 					map(
-						opt(label_list),
+						opt(label_list()),
 						|labels| labels.unwrap_or_default()
 					),
 				)),
@@ -324,7 +324,7 @@ fn op_modifier(input: &[u8]) -> IResult<&[u8], OpMod> {
 		)),
 		|(action, labels, group)|
 			(OpMod { action, labels, group })
-	))(input)
+	))
 }
 
 // ^ is right-associative, so we can actually keep it simple and recursive
