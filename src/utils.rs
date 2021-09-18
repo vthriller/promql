@@ -18,14 +18,14 @@ macro_rules! tuple_separated {
 		use nom::sequence::{tuple, preceded};
 
 		delimited(
-		$delim,
-		tuple((
-			$first,
-			$(
-				preceded($delim, $rest),
-			)*
-		)),
-		$delim,
+			$delim,
+			tuple((
+				$first,
+				$(
+					preceded($delim, $rest),
+				)*
+			)),
+			$delim,
 		)
 	}};
 }
