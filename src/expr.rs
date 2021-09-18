@@ -275,12 +275,10 @@ fn atom(opts: ParserOptions) -> impl Fn(&[u8]) -> IResult<&[u8], Node> {
 	)(input)
 }
 
-macro_rules! with_modifier {
-	($literal:expr, $op:expr) => {
-		map(preceded(tag($literal), opt(op_modifier())), |op_mod| {
-			$op(op_mod)
+fn with_modifier<'a>(literal: &'static str, op: fn(Option<OpMod>) -> Op) -> impl FnMut(&'a [u8]) -> IResult<&[u8], Op> {
+		map(preceded(tag(literal), opt(op_modifier())), move |op_mod| {
+			op(op_mod)
 			})
-	};
 }
 
 fn with_bool_modifier<'a, O: Fn(bool, Option<OpMod>) -> Op>(literal: &'a str, op: O) -> impl FnMut(&'a [u8]) -> IResult<&[u8], Op> {
@@ -336,7 +334,7 @@ fn power(opts: ParserOptions) -> impl FnMut(&[u8]) -> IResult<&[u8], Node> {
 		tuple((
 			atom(opts),
 			opt(tuple((
-				with_modifier!("^", Op::Pow),
+				with_modifier("^", Op::Pow),
 				power(opts)
 			)))
 		)),
@@ -378,16 +376,16 @@ left_op!(
 	mul_div_mod,
 	power,
 	alt((
-		with_modifier!("*", Op::Mul),
-		with_modifier!("/", Op::Div),
-		with_modifier!("%", Op::Mod),
+		with_modifier("*", Op::Mul),
+		with_modifier("/", Op::Div),
+		with_modifier("%", Op::Mod),
 	))
 );
 
 left_op!(
 	plus_minus,
 	mul_div_mod,
-	alt((with_modifier!("+", Op::Plus), with_modifier!("-", Op::Minus)))
+	alt((with_modifier("+", Op::Plus), with_modifier("-", Op::Minus)))
 );
 
 // if you thing this kind of operator chaining makes little to no sense, think again: it actually matches 'foo' that is both '> bar' and '!= baz'.
@@ -408,10 +406,10 @@ left_op!(
 left_op!(
 	and_unless,
 	comparison,
-	alt((with_modifier!("and", Op::And), with_modifier!("unless", Op::Unless)))
+	alt((with_modifier("and", Op::And), with_modifier("unless", Op::Unless)))
 );
 
-left_op!(or_op, and_unless, with_modifier!("or", Op::Or));
+left_op!(or_op, and_unless, with_modifier("or", Op::Or));
 
 pub(crate) fn expression<'a>(opts: ParserOptions) -> impl FnMut(&'a [u8]) -> IResult<&'a [u8], Node> {
 	or_op(opts)
