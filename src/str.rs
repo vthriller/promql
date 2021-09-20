@@ -93,12 +93,12 @@ fn rune(input: &[u8]) -> IResult<&[u8], Vec<u8>> {
 // parses sequence of chars that are not in arg
 // returns Vec<u8> (unlike none_of!() which returns &[char], or is_not!() which returns &[u8])
 fn is_not_v<'a>(arg: &'static str) -> impl FnMut(&'a [u8]) -> IResult<&[u8], Vec<u8>> {
-		map(is_not(arg), |bytes: &[u8]| bytes.to_vec())
+	map(is_not(arg), |bytes: &[u8]| bytes.to_vec())
 }
 
 // sequence of chars (except those marked as invalid in $arg) or rune literals, parsed into Vec<u8>
 fn chars_except<'a>(arg: &'static str) -> impl FnMut(&'a [u8]) -> IResult<&[u8], Vec<u8>> {
-		map(many0(alt((rune, is_not_v(arg)))), |s| s.concat())
+	map(many0(alt((rune, is_not_v(arg)))), |s| s.concat())
 }
 
 pub fn string(input: &[u8]) -> IResult<&[u8], String> {
