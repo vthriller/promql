@@ -101,16 +101,50 @@ where
 
 // parses sequence of chars that are not in arg
 // returns Vec<u8> (unlike none_of!() which returns &[char], or is_not!() which returns &[u8])
-fn is_not_v<'a>(arg: &'static str) -> impl FnMut(&'a [u8]) -> IResult<&[u8], Vec<u8>> {
-	map(is_not(arg), |bytes: &[u8]| bytes.to_vec())
+fn is_not_v<I, C>(arg: &'static str) -> impl FnMut(I) -> IResult<I, Vec<u8>>
+where
+	I: Clone
+		+ nom::AsBytes
+		+ nom::InputIter<Item = C>
+		+ nom::InputLength
+		+ nom::InputTake
+		+ nom::InputTakeAtPosition<Item = C>
+		,
+	&'static str: nom::FindToken<C>,
+{
+	map(is_not(arg), |bytes: I| bytes.as_bytes().to_vec())
 }
 
 // sequence of chars (except those marked as invalid in $arg) or rune literals, parsed into Vec<u8>
-fn chars_except<'a>(arg: &'static str) -> impl FnMut(&'a [u8]) -> IResult<&[u8], Vec<u8>> {
+fn chars_except<I, C>(arg: &'static str) -> impl FnMut(I) -> IResult<I, Vec<u8>>
+where
+	I: Clone
+		+ nom::AsBytes
+		+ nom::InputIter<Item = C>
+		+ nom::InputLength
+		+ nom::InputTake
+		+ nom::InputTakeAtPosition<Item = C>
+		+ nom::Slice<std::ops::RangeFrom<usize>>
+		,
+	C: nom::AsChar,
+	&'static str: nom::FindToken<C>,
+{
 	map(many0(alt((rune, is_not_v(arg)))), |s| s.concat())
 }
 
-pub fn string(input: &[u8]) -> IResult<&[u8], String> {
+pub fn string<I, C>(input: I) -> IResult<I, String>
+where
+	I: Clone
+		+ nom::AsBytes
+		+ nom::InputIter<Item = C>
+		+ nom::InputLength
+		+ nom::InputTake
+		+ nom::InputTakeAtPosition<Item = C>
+		+ nom::Slice<std::ops::RangeFrom<usize>>
+		,
+	C: nom::AsChar,
+	&'static str: nom::FindToken<C>,
+{
 	map_res(
 		alt((
 			// newlines are not allowed in interpreted quotes, but are totally fine in raw string literals
