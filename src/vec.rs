@@ -293,7 +293,22 @@ where
 	}
 }
 
-pub(crate) fn vector<'a>(opts: ParserOptions) -> impl FnMut(&'a [u8]) -> IResult<&[u8], Vector> {
+pub(crate) fn vector<I, C>(opts: ParserOptions) -> impl FnMut(I) -> IResult<I, Vector>
+where
+	I: Clone + Copy
+		+ nom::AsBytes
+		+ nom::Compare<&'static str>
+		+ nom::InputIter<Item = C>
+		+ nom::InputLength
+		+ nom::InputTake
+		+ nom::InputTakeAtPosition<Item = C>
+		+ nom::Offset
+		+ nom::Slice<std::ops::RangeFrom<usize>>
+		+ nom::Slice<std::ops::RangeTo<usize>>
+		,
+	C: nom::AsChar + Clone,
+	&'static str: nom::FindToken<C>,
+{
 	map(
 		// labels and offset parsers already handle whitespace, no need to use ws!() here
 		tuple((
