@@ -29,6 +29,7 @@ quick_error! {
 }
 
 // `fixed_length_radix!(T, n, radix)` parses sequence of `n` chars as a `radix`-base number into a type `T`
+// cannot be implemented as function since `from_str_radix` is not a part of any trait and is implemented directly for every primitive type
 macro_rules! fixed_length_radix {
 	// $type is :ident, not :ty; otherwise "error: expected expression, found `u8`" in "$type::from_str_radix"
 	($type:ident, $len:expr, $radix:expr) => {
