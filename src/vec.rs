@@ -152,11 +152,25 @@ fn instant_vec<'a>(opts: ParserOptions) -> impl FnMut(&'a [u8]) -> IResult<&[u8]
 // `max_duration` limits set of available suffixes, allowing us to forbid intervals like `30s5m`
 // not using vecs/slices to limit set of acceptable suffixes: they're expensive,
 // and we cannot build an alt() from them anyway (even recursive one, like alt(alt(), ...))
-fn range_literal_part<'a>(opts: ParserOptions, max_duration: Option<f32>) -> impl FnMut(&'a [u8]) -> IResult<&[u8], (f32, f32)> {
+fn range_literal_part<I, C>(opts: ParserOptions, max_duration: Option<f32>) -> impl FnMut(I) -> IResult<I, (f32, f32)>
+where
+	I: Clone
+		+ nom::AsBytes
+		+ nom::Compare<&'static str>
+		+ nom::InputIter<Item = C>
+		+ nom::InputLength
+		+ nom::InputTake
+		+ nom::InputTakeAtPosition<Item = C>
+		+ nom::Offset
+		+ nom::Slice<std::ops::RangeFrom<usize>>
+		+ nom::Slice<std::ops::RangeTo<usize>>
+		,
+	C: nom::AsChar,
+{
 	map_opt(
 		tuple((
 			map(
-				move |input| if opts.fractional_intervals {
+				move |input: I| if opts.fractional_intervals {
 					// not using nom's `float` here as it allows literals like `1e3`, which is not what we want
 					// TODO should `.5d`/`5.d` (without leading/trailing digits) be allowed?
 					recognize(tuple((
@@ -171,7 +185,7 @@ fn range_literal_part<'a>(opts: ParserOptions, max_duration: Option<f32>) -> imp
 				},
 				// from_utf8_unchecked() on [0-9.]+ is actually totally safe
 				// FIXME unwrap? FIXME copy-pasted from expr.rs
-				|n: &[u8]| unsafe { String::from_utf8_unchecked(n.to_vec()) }.parse::<f32>().unwrap()
+				|n| unsafe { String::from_utf8_unchecked(n.as_bytes().to_vec()) }.parse::<f32>().unwrap()
 			),
 			alt((
 				// 'ms' should come before 'm'
@@ -198,7 +212,21 @@ fn range_literal_part<'a>(opts: ParserOptions, max_duration: Option<f32>) -> imp
 	)
 }
 
-fn range_compound_literal(opts: ParserOptions, max_duration: Option<f32>) -> impl FnMut(&[u8]) -> IResult<&[u8], f32> {
+fn range_compound_literal<I, C>(opts: ParserOptions, max_duration: Option<f32>) -> impl FnMut(I) -> IResult<I, f32>
+where
+	I: Clone + Copy
+		+ nom::AsBytes
+		+ nom::Compare<&'static str>
+		+ nom::InputIter<Item = C>
+		+ nom::InputLength
+		+ nom::InputTake
+		+ nom::InputTakeAtPosition<Item = C>
+		+ nom::Offset
+		+ nom::Slice<std::ops::RangeFrom<usize>>
+		+ nom::Slice<std::ops::RangeTo<usize>>
+		,
+	C: nom::AsChar,
+{
 	move |input| {
 		let (input, (amount, duration)) = range_literal_part(opts, max_duration)(input)?;
 		// use matched duration as a new cap so we don't match the same durations or longer
@@ -210,7 +238,21 @@ fn range_compound_literal(opts: ParserOptions, max_duration: Option<f32>) -> imp
 	}
 }
 
-fn range_literal<'a>(opts: ParserOptions) -> impl FnMut(&'a [u8]) -> IResult<&[u8], f32> {
+fn range_literal<I, C>(opts: ParserOptions) -> impl FnMut(I) -> IResult<I, f32>
+where
+	I: Clone + Copy
+		+ nom::AsBytes
+		+ nom::Compare<&'static str>
+		+ nom::InputIter<Item = C>
+		+ nom::InputLength
+		+ nom::InputTake
+		+ nom::InputTakeAtPosition<Item = C>
+		+ nom::Offset
+		+ nom::Slice<std::ops::RangeFrom<usize>>
+		+ nom::Slice<std::ops::RangeTo<usize>>
+		,
+	C: nom::AsChar,
+{
 	move |input| if opts.compound_intervals {
 		range_compound_literal(opts, None)(input)
 	} else {
