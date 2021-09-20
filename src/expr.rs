@@ -148,7 +148,7 @@ pub enum Node {
 	/// Floating point number.
 	Scalar(f32),
 	/// String literal.
-	String(String),
+	String(Vec<u8>),
 	/// Function call or aggregation operator.
 	Function {
 		// Function name.
@@ -936,10 +936,10 @@ mod tests {
 					name: "label_replace".to_string(),
 					args: vec![
 						vector("up"),
-						Node::String("instance".to_string()),
-						Node::String("".to_string()),
-						Node::String("instance".to_string()),
-						Node::String(".*".to_string()),
+						Node::String(b"instance".to_vec()),
+						Node::String(b"".to_vec()),
+						Node::String(b"instance".to_vec()),
+						Node::String(b".*".to_vec()),
 					],
 					aggregation: None,
 				}

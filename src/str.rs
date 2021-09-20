@@ -143,7 +143,8 @@ where
 	map(many0(alt((rune, is_not_v(arg)))), |s| s.concat())
 }
 
-pub fn string<I, C>(input: I) -> IResult<I, String>
+// Go and PromQL allow arbitrary byte sequences, hence Vec<u8> instead of String
+pub fn string<I, C>(input: I) -> IResult<I, Vec<u8>>
 where
 	I: Clone
 		+ AsBytes
@@ -156,16 +157,13 @@ where
 	C: AsChar,
 	&'static str: FindToken<C>,
 {
-	map_res(
 		alt((
 			// newlines are not allowed in interpreted quotes, but are totally fine in raw string literals
 			delimited(char('"'), chars_except("\n\"\\"), char('"')),
 			delimited(char('\''), chars_except("\n'\\"), char('\'')),
 			// raw string literals, where "backslashes have no special meaning"
 			delimited(char('`'), is_not_v("`"), char('`')),
-		)),
-		String::from_utf8
-	)(input)
+		))(input)
 }
 
 #[allow(unused_imports)]
@@ -183,19 +181,19 @@ mod tests {
 	fn strings() {
 		assert_eq!(
 			string(cbs("\"lorem ipsum \\\"dolor\\nsit amet\\\"\"")),
-			Ok((cbs(""), "lorem ipsum \"dolor\nsit amet\"".to_string()))
+			Ok((cbs(""), b"lorem ipsum \"dolor\nsit amet\"".to_vec()))
 		);
 
 		assert_eq!(
 			string(cbs("'lorem ipsum \\'dolor\\nsit\\tamet\\''")),
-			Ok((cbs(""), "lorem ipsum 'dolor\nsit\tamet'".to_string()))
+			Ok((cbs(""), b"lorem ipsum 'dolor\nsit\tamet'".to_vec()))
 		);
 
 		assert_eq!(
 			string(cbs("`lorem ipsum \\\"dolor\\nsit\\tamet\\\"`")),
 			Ok((
 				cbs(""),
-				"lorem ipsum \\\"dolor\\nsit\\tamet\\\"".to_string()
+				b"lorem ipsum \\\"dolor\\nsit\\tamet\\\"".to_vec()
 			))
 		);
 
@@ -211,7 +209,7 @@ mod tests {
 
 		assert_eq!(
 			string(cbs("`but this\nis`")),
-			Ok((cbs(""), "but this\nis".to_string()))
+			Ok((cbs(""), b"but this\nis".to_vec()))
 		);
 	}
 

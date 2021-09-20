@@ -49,6 +49,10 @@ if let Node::Operator { x, op: Op::And(op_mod), y } = ast {
 
 # }
 ```
+
+## Types
+
+This parser emits `Vec<u8>` for most string literals because PromQL, like Go, allows raw byte sequences to be included in the string literals (e.g. `{omg='∞'}` is equivalent to both `{omg='\u221e'}` and `{omg='\xe2\x88\x9e'}`).
 */
 
 #![cfg_attr(feature = "cargo-clippy", allow(clippy::tabs_in_doc_comments))]
@@ -106,11 +110,7 @@ impl Default for ParserOptions {
 	}
 }
 
-/**
-Parse expression string into an AST.
-
-This parser operates on byte sequence instead of `&str` because of the fact that PromQL, like Go, allows raw byte sequences to be included in the string literals (e.g. `{omg='∞'}` is equivalent to both `{omg='\u221e'}` and `{omg='\xe2\x88\x9e'}`).
-*/
+/// Parse expression string into an AST.
 pub fn parse(e: &[u8], opts: ParserOptions) -> Result<Node, nom::Err<Error<&[u8]>>> {
 	match expression(opts)(e) {
 		Ok((b"", ast)) => Ok(ast),

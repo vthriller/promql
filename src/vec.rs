@@ -72,7 +72,7 @@ pub enum LabelMatchOp {
 pub struct LabelMatch {
 	pub name: String,
 	pub op: LabelMatchOp,
-	pub value: String,
+	pub value: Vec<u8>,
 }
 
 fn label_set<I, C>(input: I) -> IResult<I, Vec<LabelMatch>>
@@ -129,9 +129,9 @@ assert_eq!(
 	Ok(Node::Vector(Vector {
 		labels: vec![
 			// this is the filter for the metric name 'foo'
-			LabelMatch { name: "__name__".to_string(), op: Eq, value: "foo".to_string(), },
+			LabelMatch { name: "__name__".to_string(), op: Eq, value: b"foo".to_vec(), },
 			// here go all the other filters
-			LabelMatch { name: "bar".to_string(),      op: Eq, value: "baz".to_string(), },
+			LabelMatch { name: "bar".to_string(),      op: Eq, value: b"baz".to_vec(), },
 		],
 		range: None, offset: None,
 	}))
@@ -175,7 +175,7 @@ where
 				Some(name) => vec![LabelMatch {
 					name: "__name__".to_string(),
 					op: LabelMatchOp::Eq,
-					value: name,
+					value: name.into_bytes(),
 				}],
 				None => vec![],
 			};
@@ -449,7 +449,7 @@ mod tests {
 					labels: vec![LabelMatch {
 						name: "__name__".to_string(),
 						op: LabelMatchOp::Eq,
-						value: "foo.bar".to_string(),
+						value: b"foo.bar".to_vec(),
 					},],
 					range: None,
 					offset: None
@@ -474,7 +474,7 @@ mod tests {
 					labels: vec![LabelMatch {
 						name: "__name__".to_string(),
 						op: LabelMatchOp::Eq,
-						value: "foo".to_string(),
+						value: b"foo".to_vec(),
 					},],
 					range: None,
 					offset: None
@@ -496,7 +496,7 @@ mod tests {
 					labels: vec![LabelMatch {
 						name: "__name__".to_string(),
 						op: LabelMatchOp::Eq,
-						value: "foo".to_string(),
+						value: b"foo".to_vec(),
 					},],
 					range: None,
 					offset: None
@@ -512,7 +512,7 @@ mod tests {
 					labels: vec![LabelMatch {
 						name: "__name__".to_string(),
 						op: LabelMatchOp::Eq,
-						value: "foo".to_string(),
+						value: b"foo".to_vec(),
 					},],
 					range: None,
 					offset: None
@@ -531,22 +531,22 @@ mod tests {
 						LabelMatch {
 							name: "__name__".to_string(),
 							op: LabelMatchOp::Eq,
-							value: "foo".to_string(),
+							value: b"foo".to_vec(),
 						},
 						LabelMatch {
 							name: "bar".to_string(),
 							op: LabelMatchOp::Eq,
-							value: "baz".to_string(),
+							value: b"baz".to_vec(),
 						},
 						LabelMatch {
 							name: "quux".to_string(),
 							op: LabelMatchOp::RNe,
-							value: "xyzzy".to_string(),
+							value: b"xyzzy".to_vec(),
 						},
 						LabelMatch {
 							name: "lorem".to_string(),
 							op: LabelMatchOp::Eq,
-							value: "ipsum \\n dolor \"sit amet\"".to_string(),
+							value: b"ipsum \\n dolor \"sit amet\"".to_vec(),
 						},
 					],
 					range: None,
@@ -567,22 +567,22 @@ mod tests {
 						LabelMatch {
 							name: "__name__".to_string(),
 							op: LabelMatchOp::Eq,
-							value: "foo".to_string(),
+							value: b"foo".to_vec(),
 						},
 						LabelMatch {
 							name: "a".to_string(),
 							op: LabelMatchOp::Eq,
-							value: "b".to_string(),
+							value: b"b".to_vec(),
 						},
 						LabelMatch {
 							name: "c".to_string(),
 							op: LabelMatchOp::Eq,
-							value: "d".to_string(),
+							value: b"d".to_vec(),
 						},
 						LabelMatch {
 							name: "e".to_string(),
 							op: LabelMatchOp::Eq,
-							value: "f".to_string(),
+							value: b"f".to_vec(),
 						},
 					],
 					range: None,
@@ -599,7 +599,7 @@ mod tests {
 					labels: vec![LabelMatch {
 						name: "lorem".to_string(),
 						op: LabelMatchOp::REq,
-						value: "ipsum".to_string(),
+						value: b"ipsum".to_vec(),
 					},],
 					range: None,
 					offset: None
@@ -634,7 +634,7 @@ mod tests {
 				vec![LabelMatch {
 					name: "__name__".to_string(),
 					op: LabelMatchOp::Eq,
-					value: "foo".to_string(),
+					value: b"foo".to_vec(),
 				}]
 			},
 			opts,
@@ -647,12 +647,12 @@ mod tests {
 					LabelMatch {
 						name: "__name__".to_string(),
 						op: LabelMatchOp::Eq,
-						value: "foo".to_string(),
+						value: b"foo".to_vec(),
 					},
 					LabelMatch {
 						name: "bar".to_string(),
 						op: LabelMatchOp::RNe,
-						value: "baz".to_string(),
+						value: b"baz".to_vec(),
 					},
 				]
 			},
@@ -665,7 +665,7 @@ mod tests {
 				vec![LabelMatch {
 					name: "instance".to_string(),
 					op: LabelMatchOp::Ne,
-					value: "localhost".to_string(),
+					value: b"localhost".to_vec(),
 				}]
 			},
 			opts,
