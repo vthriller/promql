@@ -30,11 +30,11 @@ macro_rules! tuple_separated {
 	}};
 }
 
-pub(crate) fn surrounded_ws<I, O, E, P: FnMut(I) -> IResult<I, O, E>>(parser: P) -> impl FnMut(I) -> IResult<I, O, E>
+pub(crate) fn surrounded_ws<I, Item, O, E, P: FnMut(I) -> IResult<I, O, E>>(parser: P) -> impl FnMut(I) -> IResult<I, O, E>
 where
-	I: InputTakeAtPosition,
+	I: InputTakeAtPosition<Item = Item>,
 	E: ParseError<I>,
-	<I as InputTakeAtPosition>::Item: AsChar + Clone,
+	Item: AsChar + Clone,
 {
 	delimited(multispace0, parser, multispace0)
 }
@@ -44,11 +44,11 @@ Whitespace-agnostic version of `nom::sequence::delimited`.
 
 Ignores whitespace before and after each of passed parsers.
 */
-pub(crate) fn delimited_ws<I, O1, O2, O3, E, P1, P2, P3>(p1: P1, p2: P2, p3: P3) -> impl FnMut(I) -> IResult<I, O2, E>
+pub(crate) fn delimited_ws<I, Item, O1, O2, O3, E, P1, P2, P3>(p1: P1, p2: P2, p3: P3) -> impl FnMut(I) -> IResult<I, O2, E>
 where
-	I: InputTakeAtPosition + Clone,
+	I: InputTakeAtPosition<Item = Item> + Clone,
 	E: ParseError<I>,
-	<I as InputTakeAtPosition>::Item: AsChar + Clone,
+	Item: AsChar + Clone,
 	P1: FnMut(I) -> IResult<I, O1, E>,
 	P2: FnMut(I) -> IResult<I, O2, E>,
 	P3: FnMut(I) -> IResult<I, O3, E>,
