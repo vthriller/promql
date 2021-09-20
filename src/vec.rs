@@ -59,7 +59,22 @@ pub struct LabelMatch {
 	pub value: String,
 }
 
-fn label_set<'a>(input: &'a [u8]) -> IResult<&[u8], Vec<LabelMatch>> {
+fn label_set<I, C>(input: I) -> IResult<I, Vec<LabelMatch>>
+where
+	I: Clone
+		+ nom::AsBytes
+		+ nom::Compare<&'static str>
+		+ nom::InputIter<Item = C>
+		+ nom::InputLength
+		+ nom::InputTake
+		+ nom::InputTakeAtPosition<Item = C>
+		+ nom::Offset
+		+ nom::Slice<std::ops::RangeFrom<usize>>
+		+ nom::Slice<std::ops::RangeTo<usize>>
+		,
+	C: nom::AsChar + Clone,
+	&'static str: nom::FindToken<C>,
+{
 	delimited(
 		char('{'),
 		surrounded_ws(
