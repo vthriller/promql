@@ -32,14 +32,14 @@ quick_error! {
 // cannot be implemented as function since `from_str_radix` is not a part of any trait and is implemented directly for every primitive type
 macro_rules! fixed_length_radix {
 	// $type is :ident, not :ty; otherwise "error: expected expression, found `u8`" in "$type::from_str_radix"
-	($type:ident, $len:expr, $radix:expr) => {
+	($input:ty, $type:ident, $len:expr, $radix:expr) => {
 		// there's no easy way to combine nom::is_(whatever)_digit with something like length_count
 		// besides u123::from_str_radix will validate chars anyways, so why do extra work?
 		map_res(
 			take($len),
-			|n: &[u8]| -> Result<_, UnicodeRuneError> {
+			|n: $input| -> Result<_, UnicodeRuneError> {
 				Ok($type::from_str_radix(
-					&String::from_utf8(n.to_vec())?,
+					&String::from_utf8(n.as_bytes().to_vec())?,
 					$radix,
 				)?)
 				}
@@ -55,7 +55,16 @@ fn validate_unicode_scalar(n: u32) -> Option<Vec<u8>> {
 	})
 }
 
-fn rune(input: &[u8]) -> IResult<&[u8], Vec<u8>> {
+fn rune<I, C>(input: I) -> IResult<I, Vec<u8>>
+where
+	I: Clone
+		+ nom::AsBytes
+		+ nom::InputIter<Item = C>
+		+ nom::InputTake
+		+ nom::Slice<std::ops::RangeFrom<usize>>
+		,
+	C: nom::AsChar,
+{
 	preceded(char('\\'),
 		alt((
 			// not using value() here to avoid allocation of lots of temporary Vec *per rune() call*
@@ -71,19 +80,19 @@ fn rune(input: &[u8]) -> IResult<&[u8], Vec<u8>> {
 			map(char('\''), |_| vec![0x27]),
 			map(char('"'), |_| vec![0x22]),
 			map(
-				fixed_length_radix!(u8, 3u8, 8),
+				fixed_length_radix!(I, u8, 3u8, 8),
 				|n| vec![n]
 			),
 			map(
-				preceded(char('x'), fixed_length_radix!(u8, 2u8, 16)),
+				preceded(char('x'), fixed_length_radix!(I, u8, 2u8, 16)),
 				|n| vec![n]
 			),
 			map_opt(
-				preceded(char('u'), fixed_length_radix!(u32, 4u8, 16)),
+				preceded(char('u'), fixed_length_radix!(I, u32, 4u8, 16)),
 				validate_unicode_scalar
 			),
 			map_opt(
-				preceded(char('U'), fixed_length_radix!(u32, 8u8, 16)),
+				preceded(char('U'), fixed_length_radix!(I, u32, 8u8, 16)),
 				validate_unicode_scalar
 			),
 		))
