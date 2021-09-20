@@ -1,4 +1,19 @@
 use nom::IResult;
+use nom::{
+	AsBytes,
+	AsChar,
+	FindToken,
+	InputIter,
+	InputLength,
+	InputTake,
+	InputTakeAtPosition,
+	Offset,
+	Slice,
+};
+use std::ops::{
+	RangeFrom,
+	RangeTo,
+};
 use nom::branch::alt;
 use nom::bytes::complete::{
 	tag,
@@ -159,7 +174,21 @@ impl Node {
 	}
 }
 
-fn label_list<'a>() -> impl FnMut(&'a [u8]) -> IResult<&[u8], Vec<String>> {
+fn label_list<I, C>() -> impl FnMut(I) -> IResult<I, Vec<String>>
+where
+	I: Clone
+		+ AsBytes
+		+ InputIter<Item = C>
+		+ InputLength
+		+ InputTake
+		+ InputTakeAtPosition<Item = C>
+		+ Offset
+		+ Slice<RangeFrom<usize>>
+		+ Slice<RangeTo<usize>>
+		,
+	C: AsChar + Clone,
+	&'static str: FindToken<C>,
+{
 	delimited_ws(
 		char('('),
 		separated_list0(surrounded_ws(char(',')), label_name),
