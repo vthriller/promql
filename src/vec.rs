@@ -299,7 +299,20 @@ pub(crate) fn vector<'a>(opts: ParserOptions) -> impl FnMut(&'a [u8]) -> IResult
 // > The metric name … must match the regex [a-zA-Z_:][a-zA-Z0-9_:]*.
 // > Label names … must match the regex [a-zA-Z_][a-zA-Z0-9_]*. Label names beginning with __ are reserved for internal use.
 
-fn metric_name<'a>(opts: ParserOptions) -> impl FnMut(&'a [u8]) -> IResult<&[u8], String> {
+fn metric_name<I, C>(opts: ParserOptions) -> impl FnMut(I) -> IResult<I, String>
+where
+	I: Clone
+		+ nom::AsBytes
+		+ nom::InputIter<Item = C>
+		+ nom::InputLength
+		+ nom::InputTake
+		+ nom::InputTakeAtPosition<Item = C>
+		+ nom::Offset
+		+ nom::Slice<std::ops::RangeTo<usize>>
+		,
+	C: nom::AsChar,
+	&'static str: nom::FindToken<C>
+{
 	map_res(
 		recognize(tuple((
 			alt((alpha1, is_a("_:"))),
@@ -307,17 +320,30 @@ fn metric_name<'a>(opts: ParserOptions) -> impl FnMut(&'a [u8]) -> IResult<&[u8]
 				alphanumeric1, is_a(if opts.allow_periods { "_:." } else { "_:" }),
 			))),
 		))),
-		|s: &'a [u8]| String::from_utf8(s.to_vec())
+		|s: I| String::from_utf8(s.as_bytes().to_vec())
 	)
 }
 
-pub(crate) fn label_name(input: &[u8]) -> IResult<&[u8], String> {
+pub(crate) fn label_name<I, C>(input: I) -> IResult<I, String>
+where
+	I: Clone
+		+ nom::AsBytes
+		+ nom::InputIter<Item = C>
+		+ nom::InputLength
+		+ nom::InputTake
+		+ nom::InputTakeAtPosition<Item = C>
+		+ nom::Offset
+		+ nom::Slice<std::ops::RangeTo<usize>>
+		,
+	C: nom::AsChar,
+	&'static str: nom::FindToken<C>
+{
 map_res(
 	recognize(tuple((
 		alt((alpha1, is_a("_"))),
 		many0(alt((alphanumeric1, is_a("_")))),
 	))),
-	|s: &[u8]| String::from_utf8(s.to_vec())
+	|s: I| String::from_utf8(s.as_bytes().to_vec())
 )(input)
 }
 
