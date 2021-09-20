@@ -1,4 +1,20 @@
 use nom::IResult;
+use nom::{
+	AsBytes,
+	Compare,
+	InputIter,
+	InputLength,
+	InputTake,
+	InputTakeAtPosition,
+	Offset,
+	Slice,
+	FindToken,
+	AsChar,
+};
+use std::ops::{
+	RangeFrom,
+	RangeTo,
+};
 use nom::branch::alt;
 use nom::bytes::complete::{
 	is_a,
@@ -62,18 +78,18 @@ pub struct LabelMatch {
 fn label_set<I, C>(input: I) -> IResult<I, Vec<LabelMatch>>
 where
 	I: Clone
-		+ nom::AsBytes
-		+ nom::Compare<&'static str>
-		+ nom::InputIter<Item = C>
-		+ nom::InputLength
-		+ nom::InputTake
-		+ nom::InputTakeAtPosition<Item = C>
-		+ nom::Offset
-		+ nom::Slice<std::ops::RangeFrom<usize>>
-		+ nom::Slice<std::ops::RangeTo<usize>>
+		+ AsBytes
+		+ Compare<&'static str>
+		+ InputIter<Item = C>
+		+ InputLength
+		+ InputTake
+		+ InputTakeAtPosition<Item = C>
+		+ Offset
+		+ Slice<RangeFrom<usize>>
+		+ Slice<RangeTo<usize>>
 		,
-	C: nom::AsChar + Clone,
-	&'static str: nom::FindToken<C>,
+	C: AsChar + Clone,
+	&'static str: FindToken<C>,
 {
 	delimited(
 		char('{'),
@@ -136,18 +152,18 @@ pub struct Vector {
 fn instant_vec<I, C>(opts: ParserOptions) -> impl FnMut(I) -> IResult<I, Vec<LabelMatch>>
 where
 	I: Clone
-		+ nom::AsBytes
-		+ nom::Compare<&'static str>
-		+ nom::InputIter<Item = C>
-		+ nom::InputLength
-		+ nom::InputTake
-		+ nom::InputTakeAtPosition<Item = C>
-		+ nom::Offset
-		+ nom::Slice<std::ops::RangeFrom<usize>>
-		+ nom::Slice<std::ops::RangeTo<usize>>
+		+ AsBytes
+		+ Compare<&'static str>
+		+ InputIter<Item = C>
+		+ InputLength
+		+ InputTake
+		+ InputTakeAtPosition<Item = C>
+		+ Offset
+		+ Slice<RangeFrom<usize>>
+		+ Slice<RangeTo<usize>>
 		,
-	C: nom::AsChar + Clone,
-	&'static str: nom::FindToken<C>,
+	C: AsChar + Clone,
+	&'static str: FindToken<C>,
 {
 	map_res(
 		tuple_separated!(multispace0, (
@@ -185,17 +201,17 @@ where
 fn range_literal_part<I, C>(opts: ParserOptions, max_duration: Option<f32>) -> impl FnMut(I) -> IResult<I, (f32, f32)>
 where
 	I: Clone
-		+ nom::AsBytes
-		+ nom::Compare<&'static str>
-		+ nom::InputIter<Item = C>
-		+ nom::InputLength
-		+ nom::InputTake
-		+ nom::InputTakeAtPosition<Item = C>
-		+ nom::Offset
-		+ nom::Slice<std::ops::RangeFrom<usize>>
-		+ nom::Slice<std::ops::RangeTo<usize>>
+		+ AsBytes
+		+ Compare<&'static str>
+		+ InputIter<Item = C>
+		+ InputLength
+		+ InputTake
+		+ InputTakeAtPosition<Item = C>
+		+ Offset
+		+ Slice<RangeFrom<usize>>
+		+ Slice<RangeTo<usize>>
 		,
-	C: nom::AsChar,
+	C: AsChar,
 {
 	map_opt(
 		tuple((
@@ -245,17 +261,17 @@ where
 fn range_compound_literal<I, C>(opts: ParserOptions, max_duration: Option<f32>) -> impl FnMut(I) -> IResult<I, f32>
 where
 	I: Clone + Copy
-		+ nom::AsBytes
-		+ nom::Compare<&'static str>
-		+ nom::InputIter<Item = C>
-		+ nom::InputLength
-		+ nom::InputTake
-		+ nom::InputTakeAtPosition<Item = C>
-		+ nom::Offset
-		+ nom::Slice<std::ops::RangeFrom<usize>>
-		+ nom::Slice<std::ops::RangeTo<usize>>
+		+ AsBytes
+		+ Compare<&'static str>
+		+ InputIter<Item = C>
+		+ InputLength
+		+ InputTake
+		+ InputTakeAtPosition<Item = C>
+		+ Offset
+		+ Slice<RangeFrom<usize>>
+		+ Slice<RangeTo<usize>>
 		,
-	C: nom::AsChar,
+	C: AsChar,
 {
 	move |input| {
 		let (input, (amount, duration)) = range_literal_part(opts, max_duration)(input)?;
@@ -271,17 +287,17 @@ where
 fn range_literal<I, C>(opts: ParserOptions) -> impl FnMut(I) -> IResult<I, f32>
 where
 	I: Clone + Copy
-		+ nom::AsBytes
-		+ nom::Compare<&'static str>
-		+ nom::InputIter<Item = C>
-		+ nom::InputLength
-		+ nom::InputTake
-		+ nom::InputTakeAtPosition<Item = C>
-		+ nom::Offset
-		+ nom::Slice<std::ops::RangeFrom<usize>>
-		+ nom::Slice<std::ops::RangeTo<usize>>
+		+ AsBytes
+		+ Compare<&'static str>
+		+ InputIter<Item = C>
+		+ InputLength
+		+ InputTake
+		+ InputTakeAtPosition<Item = C>
+		+ Offset
+		+ Slice<RangeFrom<usize>>
+		+ Slice<RangeTo<usize>>
 		,
-	C: nom::AsChar,
+	C: AsChar,
 {
 	move |input| if opts.compound_intervals {
 		range_compound_literal(opts, None)(input)
@@ -296,18 +312,18 @@ where
 pub(crate) fn vector<I, C>(opts: ParserOptions) -> impl FnMut(I) -> IResult<I, Vector>
 where
 	I: Clone + Copy
-		+ nom::AsBytes
-		+ nom::Compare<&'static str>
-		+ nom::InputIter<Item = C>
-		+ nom::InputLength
-		+ nom::InputTake
-		+ nom::InputTakeAtPosition<Item = C>
-		+ nom::Offset
-		+ nom::Slice<std::ops::RangeFrom<usize>>
-		+ nom::Slice<std::ops::RangeTo<usize>>
+		+ AsBytes
+		+ Compare<&'static str>
+		+ InputIter<Item = C>
+		+ InputLength
+		+ InputTake
+		+ InputTakeAtPosition<Item = C>
+		+ Offset
+		+ Slice<RangeFrom<usize>>
+		+ Slice<RangeTo<usize>>
 		,
-	C: nom::AsChar + Clone,
-	&'static str: nom::FindToken<C>,
+	C: AsChar + Clone,
+	&'static str: FindToken<C>,
 {
 	map(
 		// labels and offset parsers already handle whitespace, no need to use ws!() here
@@ -347,16 +363,16 @@ where
 fn metric_name<I, C>(opts: ParserOptions) -> impl FnMut(I) -> IResult<I, String>
 where
 	I: Clone
-		+ nom::AsBytes
-		+ nom::InputIter<Item = C>
-		+ nom::InputLength
-		+ nom::InputTake
-		+ nom::InputTakeAtPosition<Item = C>
-		+ nom::Offset
-		+ nom::Slice<std::ops::RangeTo<usize>>
+		+ AsBytes
+		+ InputIter<Item = C>
+		+ InputLength
+		+ InputTake
+		+ InputTakeAtPosition<Item = C>
+		+ Offset
+		+ Slice<RangeTo<usize>>
 		,
-	C: nom::AsChar,
-	&'static str: nom::FindToken<C>
+	C: AsChar,
+	&'static str: FindToken<C>
 {
 	map_res(
 		recognize(tuple((
@@ -372,16 +388,16 @@ where
 pub(crate) fn label_name<I, C>(input: I) -> IResult<I, String>
 where
 	I: Clone
-		+ nom::AsBytes
-		+ nom::InputIter<Item = C>
-		+ nom::InputLength
-		+ nom::InputTake
-		+ nom::InputTakeAtPosition<Item = C>
-		+ nom::Offset
-		+ nom::Slice<std::ops::RangeTo<usize>>
+		+ AsBytes
+		+ InputIter<Item = C>
+		+ InputLength
+		+ InputTake
+		+ InputTakeAtPosition<Item = C>
+		+ Offset
+		+ Slice<RangeTo<usize>>
 		,
-	C: nom::AsChar,
-	&'static str: nom::FindToken<C>
+	C: AsChar,
+	&'static str: FindToken<C>
 {
 map_res(
 	recognize(tuple((
@@ -395,8 +411,8 @@ map_res(
 fn label_op<I>(input: I) -> IResult<I, LabelMatchOp>
 where
 	I: Clone
-		+ nom::Compare<&'static str>
-		+ nom::InputTake
+		+ Compare<&'static str>
+		+ InputTake
 {
 	alt((
 		value(tag("=~"), LabelMatchOp::REq),

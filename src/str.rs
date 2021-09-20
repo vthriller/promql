@@ -1,4 +1,15 @@
 use nom::IResult;
+use nom::{
+	AsBytes,
+	AsChar,
+	FindToken,
+	InputIter,
+	InputLength,
+	InputTake,
+	InputTakeAtPosition,
+	Slice,
+};
+use std::ops::RangeFrom;
 use nom::bytes::complete::{
 	is_not,
 	take,
@@ -58,12 +69,12 @@ fn validate_unicode_scalar(n: u32) -> Option<Vec<u8>> {
 fn rune<I, C>(input: I) -> IResult<I, Vec<u8>>
 where
 	I: Clone
-		+ nom::AsBytes
-		+ nom::InputIter<Item = C>
-		+ nom::InputTake
-		+ nom::Slice<std::ops::RangeFrom<usize>>
+		+ AsBytes
+		+ InputIter<Item = C>
+		+ InputTake
+		+ Slice<RangeFrom<usize>>
 		,
-	C: nom::AsChar,
+	C: AsChar,
 {
 	preceded(char('\\'),
 		alt((
@@ -104,13 +115,13 @@ where
 fn is_not_v<I, C>(arg: &'static str) -> impl FnMut(I) -> IResult<I, Vec<u8>>
 where
 	I: Clone
-		+ nom::AsBytes
-		+ nom::InputIter<Item = C>
-		+ nom::InputLength
-		+ nom::InputTake
-		+ nom::InputTakeAtPosition<Item = C>
+		+ AsBytes
+		+ InputIter<Item = C>
+		+ InputLength
+		+ InputTake
+		+ InputTakeAtPosition<Item = C>
 		,
-	&'static str: nom::FindToken<C>,
+	&'static str: FindToken<C>,
 {
 	map(is_not(arg), |bytes: I| bytes.as_bytes().to_vec())
 }
@@ -119,15 +130,15 @@ where
 fn chars_except<I, C>(arg: &'static str) -> impl FnMut(I) -> IResult<I, Vec<u8>>
 where
 	I: Clone
-		+ nom::AsBytes
-		+ nom::InputIter<Item = C>
-		+ nom::InputLength
-		+ nom::InputTake
-		+ nom::InputTakeAtPosition<Item = C>
-		+ nom::Slice<std::ops::RangeFrom<usize>>
+		+ AsBytes
+		+ InputIter<Item = C>
+		+ InputLength
+		+ InputTake
+		+ InputTakeAtPosition<Item = C>
+		+ Slice<RangeFrom<usize>>
 		,
-	C: nom::AsChar,
-	&'static str: nom::FindToken<C>,
+	C: AsChar,
+	&'static str: FindToken<C>,
 {
 	map(many0(alt((rune, is_not_v(arg)))), |s| s.concat())
 }
@@ -135,15 +146,15 @@ where
 pub fn string<I, C>(input: I) -> IResult<I, String>
 where
 	I: Clone
-		+ nom::AsBytes
-		+ nom::InputIter<Item = C>
-		+ nom::InputLength
-		+ nom::InputTake
-		+ nom::InputTakeAtPosition<Item = C>
-		+ nom::Slice<std::ops::RangeFrom<usize>>
+		+ AsBytes
+		+ InputIter<Item = C>
+		+ InputLength
+		+ InputTake
+		+ InputTakeAtPosition<Item = C>
+		+ Slice<RangeFrom<usize>>
 		,
-	C: nom::AsChar,
-	&'static str: nom::FindToken<C>,
+	C: AsChar,
+	&'static str: FindToken<C>,
 {
 	map_res(
 		alt((
