@@ -12,6 +12,7 @@ use nom::{
 	Slice,
 };
 use std::ops::{
+	Range,
 	RangeFrom,
 	RangeTo,
 };
@@ -226,7 +227,25 @@ where
 }
 
 // it's up to the library user to decide whether argument list is valid or not
-fn function_args<'a>(opts: ParserOptions) -> impl FnMut(&'a [u8]) -> IResult<&[u8], Vec<Node>> {
+fn function_args<I, C>(opts: ParserOptions) -> impl FnMut(I) -> IResult<I, Vec<Node>>
+where
+	I: Clone + Copy
+		+ AsBytes
+		+ Compare<&'static str>
+		+ for<'a> Compare<&'a [u8]>
+		+ InputIter<Item = C>
+		+ InputLength
+		+ InputTake
+		+ InputTakeAtPosition<Item = C>
+		+ Offset
+		+ Slice<Range<usize>>
+		+ Slice<RangeFrom<usize>>
+		+ Slice<RangeTo<usize>>
+		,
+	C: AsChar + Clone + Copy,
+	&'static str: FindToken<C>,
+	<I as InputIter>::IterElem: Clone,
+{
 	delimited_ws(
 		char('('),
 		separated_list0(
@@ -252,7 +271,25 @@ macro_rules! pair_permutations {
 	};
 }
 
-fn function<'a>(opts: ParserOptions) -> impl FnMut(&'a [u8]) -> IResult<&[u8], Node> {
+fn function<I, C>(opts: ParserOptions) -> impl FnMut(I) -> IResult<I, Node>
+where
+	I: Clone + Copy
+		+ AsBytes
+		+ Compare<&'static str>
+		+ for<'a> Compare<&'a [u8]>
+		+ InputIter<Item = C>
+		+ InputLength
+		+ InputTake
+		+ InputTakeAtPosition<Item = C>
+		+ Offset
+		+ Slice<Range<usize>>
+		+ Slice<RangeFrom<usize>>
+		+ Slice<RangeTo<usize>>
+		,
+	C: AsChar + Clone + Copy,
+	&'static str: FindToken<C>,
+	<I as InputIter>::IterElem: Clone,
+{
 	map(
 		tuple((
 			// I have no idea what counts as a function name but label_name fits well for what's built into the prometheus so let's use that
@@ -272,7 +309,25 @@ fn function<'a>(opts: ParserOptions) -> impl FnMut(&'a [u8]) -> IResult<&[u8], N
 	)
 }
 
-fn atom(opts: ParserOptions) -> impl Fn(&[u8]) -> IResult<&[u8], Node> {
+fn atom<I, C>(opts: ParserOptions) -> impl Fn(I) -> IResult<I, Node>
+where
+	I: Clone + Copy
+		+ AsBytes
+		+ Compare<&'static str>
+		+ for<'a> Compare<&'a [u8]>
+		+ InputIter<Item = C>
+		+ InputLength
+		+ InputTake
+		+ InputTakeAtPosition<Item = C>
+		+ Offset
+		+ Slice<Range<usize>>
+		+ Slice<RangeFrom<usize>>
+		+ Slice<RangeTo<usize>>
+		,
+	C: AsChar + Clone + Copy,
+	&'static str: FindToken<C>,
+	<I as InputIter>::IterElem: Clone,
+{
 	// this closure somehow prevents `impl Fn` from being recursive
 	// see `rustc --explain E0720`
 	move |input| surrounded_ws(
@@ -420,7 +475,25 @@ where
 }
 
 // ^ is right-associative, so we can actually keep it simple and recursive
-fn power(opts: ParserOptions) -> impl FnMut(&[u8]) -> IResult<&[u8], Node> {
+fn power<I, C>(opts: ParserOptions) -> impl FnMut(I) -> IResult<I, Node>
+where
+	I: Clone + Copy
+		+ AsBytes
+		+ Compare<&'static str>
+		+ for<'a> Compare<&'a [u8]>
+		+ InputIter<Item = C>
+		+ InputLength
+		+ InputTake
+		+ InputTakeAtPosition<Item = C>
+		+ Offset
+		+ Slice<Range<usize>>
+		+ Slice<RangeFrom<usize>>
+		+ Slice<RangeTo<usize>>
+		,
+	C: AsChar + Clone + Copy,
+	&'static str: FindToken<C>,
+	<I as InputIter>::IterElem: Clone,
+{
 	// this closure somehow prevents `impl Fn` from being recursive
 	// see `rustc --explain E0720`
 	move |input|
@@ -444,7 +517,25 @@ fn power(opts: ParserOptions) -> impl FnMut(&[u8]) -> IResult<&[u8], Node> {
 macro_rules! left_op {
 	// $next is the parser for operator that takes precenence, or any other kind of non-operator token sequence
 	($name:ident, $next:ident, $op:expr) => (
-		fn $name<'a>(opts: ParserOptions) -> impl FnMut(&'a [u8]) -> IResult<&'a [u8], Node> {
+		fn $name<I, C>(opts: ParserOptions) -> impl FnMut(I) -> IResult<I, Node>
+		where
+			I: Clone + Copy
+				+ AsBytes
+				+ Compare<&'static str>
+				+ for<'a> Compare<&'a [u8]>
+				+ InputIter<Item = C>
+				+ InputLength
+				+ InputTake
+				+ InputTakeAtPosition<Item = C>
+				+ Offset
+				+ Slice<Range<usize>>
+				+ Slice<RangeFrom<usize>>
+				+ Slice<RangeTo<usize>>
+				,
+			C: AsChar + Clone + Copy,
+			&'static str: FindToken<C>,
+			<I as InputIter>::IterElem: Clone,
+		{
 			surrounded_ws(
 				map(tuple((
 					$next(opts),
@@ -509,7 +600,25 @@ left_op!(
 
 left_op!(or_op, and_unless, |opts| with_modifier("or", Op::Or));
 
-pub(crate) fn expression<'a>(opts: ParserOptions) -> impl FnMut(&'a [u8]) -> IResult<&'a [u8], Node> {
+pub(crate) fn expression<I, C>(opts: ParserOptions) -> impl FnMut(I) -> IResult<I, Node>
+where
+	I: Clone + Copy
+		+ AsBytes
+		+ Compare<&'static str>
+		+ for<'a> Compare<&'a [u8]>
+		+ InputIter<Item = C>
+		+ InputLength
+		+ InputTake
+		+ InputTakeAtPosition<Item = C>
+		+ Offset
+		+ Slice<Range<usize>>
+		+ Slice<RangeFrom<usize>>
+		+ Slice<RangeTo<usize>>
+		,
+	C: AsChar + Clone + Copy,
+	&'static str: FindToken<C>,
+	<I as InputIter>::IterElem: Clone,
+{
 	or_op(opts)
 }
 
