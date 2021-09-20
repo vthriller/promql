@@ -347,7 +347,12 @@ map_res(
 )(input)
 }
 
-fn label_op(input: &[u8]) -> IResult<&[u8], LabelMatchOp> {
+fn label_op<I>(input: I) -> IResult<I, LabelMatchOp>
+where
+	I: Clone
+		+ nom::Compare<&'static str>
+		+ nom::InputTake
+{
 	alt((
 		value(tag("=~"), LabelMatchOp::REq),
 		value(tag("!~"), LabelMatchOp::RNe),
