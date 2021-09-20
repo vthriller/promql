@@ -133,7 +133,22 @@ pub struct Vector {
 	pub offset: Option<f32>,
 }
 
-fn instant_vec<'a>(opts: ParserOptions) -> impl FnMut(&'a [u8]) -> IResult<&[u8], Vec<LabelMatch>> {
+fn instant_vec<I, C>(opts: ParserOptions) -> impl FnMut(I) -> IResult<I, Vec<LabelMatch>>
+where
+	I: Clone
+		+ nom::AsBytes
+		+ nom::Compare<&'static str>
+		+ nom::InputIter<Item = C>
+		+ nom::InputLength
+		+ nom::InputTake
+		+ nom::InputTakeAtPosition<Item = C>
+		+ nom::Offset
+		+ nom::Slice<std::ops::RangeFrom<usize>>
+		+ nom::Slice<std::ops::RangeTo<usize>>
+		,
+	C: nom::AsChar + Clone,
+	&'static str: nom::FindToken<C>,
+{
 	map_res(
 		tuple_separated!(multispace0, (
 			opt(metric_name(opts)),
