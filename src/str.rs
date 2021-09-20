@@ -90,29 +90,25 @@ fn rune(input: &[u8]) -> IResult<&[u8], Vec<u8>> {
 	)(input)
 }
 
-// parses sequence of chars that are not in $arg
+// parses sequence of chars that are not in arg
 // returns Vec<u8> (unlike none_of!() which returns &[char], or is_not!() which returns &[u8])
-macro_rules! is_not_v {
-	($arg:expr) => {
-		map(is_not($arg), |bytes: &[u8]| bytes.to_vec())
-	};
+fn is_not_v<'a>(arg: &'static str) -> impl FnMut(&'a [u8]) -> IResult<&[u8], Vec<u8>> {
+		map(is_not(arg), |bytes: &[u8]| bytes.to_vec())
 }
 
 // sequence of chars (except those marked as invalid in $arg) or rune literals, parsed into Vec<u8>
-macro_rules! chars_except {
-	($arg:expr) => {
-		map(many0(alt((rune, is_not_v!($arg)))), |s| s.concat())
-	};
+fn chars_except<'a>(arg: &'static str) -> impl FnMut(&'a [u8]) -> IResult<&[u8], Vec<u8>> {
+		map(many0(alt((rune, is_not_v(arg)))), |s| s.concat())
 }
 
 pub fn string(input: &[u8]) -> IResult<&[u8], String> {
 	map_res(
 		alt((
 			// newlines are not allowed in interpreted quotes, but are totally fine in raw string literals
-			delimited(char('"'), chars_except!("\n\"\\"), char('"')),
-			delimited(char('\''), chars_except!("\n'\\"), char('\'')),
+			delimited(char('"'), chars_except("\n\"\\"), char('"')),
+			delimited(char('\''), chars_except("\n'\\"), char('\'')),
 			// raw string literals, where "backslashes have no special meaning"
-			delimited(char('`'), is_not_v!("`"), char('`')),
+			delimited(char('`'), is_not_v("`"), char('`')),
 		)),
 		String::from_utf8
 	)(input)
