@@ -320,7 +320,22 @@ fn atom(opts: ParserOptions) -> impl Fn(&[u8]) -> IResult<&[u8], Node> {
 	)(input)
 }
 
-fn with_modifier<'a>(literal: &'static str, op: fn(Option<OpMod>) -> Op) -> impl FnMut(&'a [u8]) -> IResult<&[u8], Op> {
+fn with_modifier<I, C>(literal: &'static str, op: fn(Option<OpMod>) -> Op) -> impl FnMut(I) -> IResult<I, Op>
+where
+	I: Clone
+		+ AsBytes
+		+ Compare<&'static str>
+		+ InputIter<Item = C>
+		+ InputLength
+		+ InputTake
+		+ InputTakeAtPosition<Item = C>
+		+ Offset
+		+ Slice<RangeFrom<usize>>
+		+ Slice<RangeTo<usize>>
+		,
+	C: AsChar + Clone,
+	&'static str: FindToken<C>,
+{
 	map(
 		preceded(
 			tag(literal),
