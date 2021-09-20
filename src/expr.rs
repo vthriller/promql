@@ -330,7 +330,22 @@ fn with_modifier<'a>(literal: &'static str, op: fn(Option<OpMod>) -> Op) -> impl
 	)
 }
 
-fn with_bool_modifier<'a, O: Fn(bool, Option<OpMod>) -> Op>(literal: &'a str, op: O) -> impl FnMut(&'a [u8]) -> IResult<&[u8], Op> {
+fn with_bool_modifier<'a, I, C, O: Fn(bool, Option<OpMod>) -> Op>(literal: &'static str, op: O) -> impl FnMut(I) -> IResult<I, Op>
+where
+	I: Clone
+		+ AsBytes
+		+ Compare<&'static str>
+		+ InputIter<Item = C>
+		+ InputLength
+		+ InputTake
+		+ InputTakeAtPosition<Item = C>
+		+ Offset
+		+ Slice<RangeFrom<usize>>
+		+ Slice<RangeTo<usize>>
+		,
+	C: AsChar + Clone,
+	&'static str: FindToken<C>,
+{
 	map(
 		tuple_separated!(multispace0, (
 			tag(literal),
