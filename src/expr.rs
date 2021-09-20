@@ -2,6 +2,7 @@ use nom::IResult;
 use nom::{
 	AsBytes,
 	AsChar,
+	Compare,
 	FindToken,
 	InputIter,
 	InputLength,
@@ -196,7 +197,22 @@ where
 	)
 }
 
-fn function_aggregation<'a>() -> impl FnMut(&'a [u8]) -> IResult<&[u8], AggregationMod> {
+fn function_aggregation<I, C>() -> impl FnMut(I) -> IResult<I, AggregationMod>
+where
+	I: Clone
+		+ AsBytes
+		+ Compare<&'static str>
+		+ InputIter<Item = C>
+		+ InputLength
+		+ InputTake
+		+ InputTakeAtPosition<Item = C>
+		+ Offset
+		+ Slice<RangeFrom<usize>>
+		+ Slice<RangeTo<usize>>
+		,
+	C: AsChar + Clone,
+	&'static str: FindToken<C>,
+{
 	surrounded_ws(map(
 		tuple((
 			alt((
