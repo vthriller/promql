@@ -342,7 +342,22 @@ fn with_bool_modifier<'a, O: Fn(bool, Option<OpMod>) -> Op>(literal: &'a str, op
 	)
 }
 
-fn op_modifier<'a>() -> impl FnMut(&'a [u8]) -> IResult<&[u8], OpMod> {
+fn op_modifier<I, C>() -> impl FnMut(I) -> IResult<I, OpMod>
+where
+	I: Clone
+		+ AsBytes
+		+ Compare<&'static str>
+		+ InputIter<Item = C>
+		+ InputLength
+		+ InputTake
+		+ InputTakeAtPosition<Item = C>
+		+ Offset
+		+ Slice<RangeFrom<usize>>
+		+ Slice<RangeTo<usize>>
+		,
+	C: AsChar + Clone,
+	&'static str: FindToken<C>,
+{
 	surrounded_ws(map(
 		tuple((
 			// action
