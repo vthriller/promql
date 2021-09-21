@@ -153,4 +153,17 @@ mod tests {
 			)
 		);
 	}
+
+	#[test]
+	fn stack_overflow() {
+		let mut op = vec!["++++"];
+		op.append(&mut op.clone()); // 8
+		op.append(&mut op.clone()); // 16
+		//op.append(&mut op.clone()); // 32
+		//op.append(&mut op.clone()); // 64
+		//op.append(&mut op.clone()); // 128
+		let op = op.join("");
+
+		let _ = super::parse(format!("a {} b", op).as_str(), Default::default());
+	}
 }
