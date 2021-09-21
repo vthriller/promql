@@ -16,11 +16,13 @@ let opts = ParserOptions::new()
 	.allow_periods(false)
 	.build();
 
-let ast = parse(br#"
+// query can also be `&str`
+let query: &[u8] = br#"
 	sum(1 - something_used{env="production"} / something_total) by (instance)
 	and ignoring (instance)
 	sum(rate(some_queries{instance=~"localhost\\d+"} [5m])) > 100
-"#, opts).unwrap(); // or show user that their query is invalid
+"#;
+let ast = parse(query, opts).unwrap(); // or show user that their query is invalid
 
 // now we can look for all sorts of things
 
@@ -111,13 +113,27 @@ impl Default for ParserOptions {
 }
 
 /// Parse expression string into an AST.
-pub fn parse(e: &[u8], opts: ParserOptions) -> Result<Node, nom::Err<Error<&[u8]>>> {
-	match expression(opts)(e) {
-		Ok((b"", ast)) => Ok(ast),
-		Ok((tail, _)) => Err(Err::Error(error_position!(
-			tail,
-			ErrorKind::Complete
-		))),
+pub fn parse<I, C>(e: I, opts: ParserOptions) -> Result<Node, nom::Err<Error<I>>>
+where
+	I: Clone + Copy
+		+ nom::AsBytes
+		+ nom::Compare<&'static str>
+		+ for<'a> nom::Compare<&'a [u8]>
+		+ nom::InputIter<Item = C>
+		+ nom::InputLength
+		+ nom::InputTake
+		+ nom::InputTakeAtPosition<Item = C>
+		+ nom::Offset
+		+ nom::Slice<std::ops::Range<usize>>
+		+ nom::Slice<std::ops::RangeFrom<usize>>
+		+ nom::Slice<std::ops::RangeTo<usize>>
+		,
+	C: nom::AsChar + Clone + Copy,
+	&'static str: nom::FindToken<C>,
+	<I as nom::InputIter>::IterElem: Clone,
+{
+	match nom::combinator::all_consuming(expression(opts))(e) {
+		Ok((_, ast)) => Ok(ast),
 		Err(e) => Err(e),
 	}
 }
@@ -130,10 +146,10 @@ mod tests {
 	#[test]
 	fn completeness() {
 		assert_eq!(
-			super::parse(b"asdf hjkl", Default::default()),
+			super::parse(&b"asdf hjkl"[..], Default::default()),
 			err(
 				&b"hjkl"[..],
-				ErrorKind::Complete
+				ErrorKind::Eof
 			)
 		);
 	}
