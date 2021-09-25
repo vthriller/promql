@@ -198,7 +198,7 @@ where
 	)(input)
 }
 
-fn function_aggregation<I, C>(input: I) -> IResult<I, AggregationMod>
+fn function_aggregation<I, C>(input: I, opts: ParserOptions) -> IResult<I, AggregationMod>
 where
 	I: Clone
 		+ AsBytes
@@ -297,7 +297,7 @@ where
 			// both 'sum by (label, label) (foo)' and 'sum(foo) by (label, label)' are valid
 			pair_permutations!(
 				function_args(recursion_level, opts),
-				opt(function_aggregation),
+				opt(|i| function_aggregation(i, opts)),
 			),
 		)),
 		|(name, (args, agg))|
