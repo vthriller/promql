@@ -194,7 +194,7 @@ impl Node {
 	}
 }
 
-fn label_list<I, C>() -> impl FnMut(I) -> IResult<I, Vec<String>>
+fn label_list<I, C>(input: I) -> IResult<I, Vec<String>>
 where
 	I: Clone
 		+ AsBytes
@@ -213,7 +213,7 @@ where
 		char('('),
 		separated_list0(surrounded_ws(char(',')), label_name),
 		char(')')
-	)
+	)(input)
 }
 
 fn function_aggregation<I, C>(input: I) -> IResult<I, AggregationMod>
@@ -238,7 +238,7 @@ where
 				value(tag("by"), AggregationAction::By),
 				value(tag("without"), AggregationAction::Without),
 			)),
-			label_list(),
+			label_list,
 		)),
 		|(action, labels)| (AggregationMod { action, labels })
 	))(input)
@@ -467,7 +467,7 @@ where
 				value(tag("ignoring"), OpModAction::Ignore),
 			)),
 			// labels
-			label_list(),
+			label_list,
 			// group
 			// TODO > Grouping modifiers can only be used for comparison and arithmetic. Operations as and, unless and or operations match with all possible entries in the right vector by default.
 			opt(map(
@@ -477,7 +477,7 @@ where
 						value(tag("group_right"), OpGroupSide::Right),
 					)),
 					map(
-						opt(label_list()),
+						opt(label_list),
 						|labels| labels.unwrap_or_default()
 					),
 				)),
