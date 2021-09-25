@@ -309,7 +309,18 @@ where
 	)
 }
 
-fn atom<I, C>(opts: ParserOptions) -> impl Fn(I) -> IResult<I, Node>
+/*
+Unlike other functions, this one does not return Fn()-parser.
+This sucks ergonomically (need to write `foo(|i| atom(i, opts))` instead of `foo(atom(opts))`),
+but the closure-returning parser sucks more:
+- it allocates a lot of copies of the same closure on the stack
+  (and it's going to be multiple copies since this is part of a recursive expression),
+  overflowing the stack pretty quickly;
+- we also need to create temporary closures just to avoid recursive `impl Fn()` type
+  (see `rustc --explain E0720`);
+- we cannot reuse single closure simply because nom parsers don't accept refs to Fn().
+*/
+fn atom<I, C>(input: I, opts: ParserOptions) -> IResult<I, Node>
 where
 	I: Clone + Copy
 		+ AsBytes
@@ -328,9 +339,7 @@ where
 	&'static str: FindToken<C>,
 	<I as InputIter>::IterElem: Clone,
 {
-	// this closure somehow prevents `impl Fn` from being recursive
-	// see `rustc --explain E0720`
-	move |input| surrounded_ws(
+	surrounded_ws(
 		alt((
 			map(
 				tag_no_case("NaN"),
@@ -345,14 +354,14 @@ where
 			// unary + does nothing
 			preceded(
 				char('+'),
-				atom(opts)
+				|i| atom(i, opts)
 			)
 			,
 			// unary -, well, negates whatever is following it
 			map(
 				preceded(
 					char('-'),
-					atom(opts)
+					|i| atom(i, opts)
 				),
 				Node::negation
 			)
@@ -499,7 +508,7 @@ where
 	move |input|
 	surrounded_ws(map(
 		tuple((
-			atom(opts),
+			|i| atom(i, opts),
 			opt(tuple((
 				with_modifier("^", Op::Pow),
 				power(opts)
