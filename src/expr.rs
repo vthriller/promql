@@ -410,7 +410,7 @@ where
 	map(
 		preceded(
 			tag(literal),
-			opt(op_modifier()),
+			opt(op_modifier),
 		),
 		op,
 	)
@@ -436,14 +436,14 @@ where
 		tuple_separated!(multispace0, (
 			tag(literal),
 			opt(tag("bool")),
-			opt(op_modifier()),
+			opt(op_modifier),
 		)),
 		move |(_, boolness, op_mod)|
 			op(boolness.is_some(), op_mod)
 	)
 }
 
-fn op_modifier<I, C>() -> impl FnMut(I) -> IResult<I, OpMod>
+fn op_modifier<I, C>(input: I) -> IResult<I, OpMod>
 where
 	I: Clone
 		+ AsBytes
@@ -487,7 +487,7 @@ where
 		)),
 		|(action, labels, group)|
 			(OpMod { action, labels, group })
-	))
+	))(input)
 }
 
 // ^ is right-associative, so we can actually keep it simple and recursive
