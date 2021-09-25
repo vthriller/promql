@@ -404,7 +404,7 @@ where
 	map(
 		preceded(
 			tag(literal),
-			opt(op_modifier),
+			opt(|i| op_modifier(i, opts)),
 		),
 		op,
 	)
@@ -430,14 +430,14 @@ where
 		tuple_separated!(multispace0, (
 			tag(literal),
 			opt(tag("bool")),
-			opt(op_modifier),
+			opt(|i| op_modifier(i, opts)),
 		)),
 		move |(_, boolness, op_mod)|
 			op(boolness.is_some(), op_mod)
 	)
 }
 
-fn op_modifier<I, C>(input: I) -> IResult<I, OpMod>
+fn op_modifier<I, C>(input: I, opts: ParserOptions) -> IResult<I, OpMod>
 where
 	I: Clone
 		+ AsBytes
