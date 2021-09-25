@@ -309,7 +309,7 @@ where
 	}
 }
 
-pub(crate) fn vector<I, C>(opts: ParserOptions) -> impl FnMut(I) -> IResult<I, Vector>
+pub(crate) fn vector<I, C>(input: I, opts: ParserOptions) -> IResult<I, Vector>
 where
 	I: Clone + Copy
 		+ AsBytes
@@ -354,7 +354,7 @@ where
 				sign * value
 			})
 		}
-	)
+	)(input)
 }
 
 // > The metric name … must match the regex [a-zA-Z_:][a-zA-Z0-9_:]*.
@@ -439,10 +439,12 @@ mod tests {
 
 		// matches foo.bar{} entirely
 		assert_eq!(
-			vector(ParserOptions::new()
-				.allow_periods(true)
-				.build(),
-			)(cbs("foo.bar{}")),
+			vector(
+				cbs("foo.bar{}"),
+				ParserOptions::new()
+					.allow_periods(true)
+					.build(),
+			),
 			Ok((
 				cbs(""),
 				Vector {
@@ -464,10 +466,12 @@ mod tests {
 
 		// matches foo, leaves .bar{}
 		assert_eq!(
-			vector(ParserOptions::new()
-				.allow_periods(false)
-				.build()
-			)(cbs("foo.bar{}")),
+			vector(
+				cbs("foo.bar{}"),
+				ParserOptions::new()
+					.allow_periods(false)
+					.build(),
+			),
 			Ok((
 				cbs(".bar{}"),
 				Vector {
@@ -489,7 +493,7 @@ mod tests {
 			.build();
 
 		assert_eq!(
-			vector(opts)(cbs("foo")),
+			vector(cbs("foo"), opts),
 			Ok((
 				cbs(""),
 				Vector {
@@ -505,7 +509,7 @@ mod tests {
 		);
 
 		assert_eq!(
-			vector(opts)(cbs("foo { }")),
+			vector(cbs("foo { }"), opts),
 			Ok((
 				cbs(""),
 				Vector {
@@ -521,8 +525,9 @@ mod tests {
 		);
 
 		assert_eq!(
-			vector(opts)(
+			vector(
 				cbs("foo { bar = 'baz', quux !~ 'xyzzy', lorem = `ipsum \\n dolor \"sit amet\"` }"),
+				opts,
 			),
 			Ok((
 				cbs(""),
@@ -556,9 +561,10 @@ mod tests {
 		);
 
 		assert_eq!(
-			vector(opts)(
+			vector(
 				// testing whitespace
 				cbs("foo{a='b',c ='d' , e = 'f' }"),
+				opts,
 			),
 			Ok((
 				cbs(""),
@@ -592,7 +598,7 @@ mod tests {
 		);
 
 		assert_eq!(
-			vector(opts)(cbs("{lorem=~\"ipsum\"}")),
+			vector(cbs("{lorem=~\"ipsum\"}"), opts),
 			Ok((
 				cbs(""),
 				Vector {
@@ -608,7 +614,7 @@ mod tests {
 		);
 
 		assert_eq!(
-			vector(opts)(cbs("{}")),
+			vector(cbs("{}"), opts),
 			err(cbs("{}"), ErrorKind::MapRes)
 		);
 	}
@@ -689,26 +695,26 @@ mod tests {
 
 		let q = format!("{} [1m]", instant);
 		assert_eq!(
-			vector(opts)(cbs(&q)),
+			vector(cbs(&q), opts),
 			v("", Some(60.), None),
 		);
 
 		let q = format!("{} offset 5m", instant);
 		assert_eq!(
-			vector(opts)(cbs(&q)),
+			vector(cbs(&q), opts),
 			v("", None, Some(300.)),
 		);
 
 		let q = format!("{} [1m] offset 5m", instant);
 		assert_eq!(
-			vector(opts)(cbs(&q)),
+			vector(cbs(&q), opts),
 			v("", Some(60.), Some(300.)),
 		);
 
 		let q = format!("{} offset 5m [1m]", instant);
 		// FIXME should be Error()?
 		assert_eq!(
-			vector(opts)(cbs(&q)),
+			vector(cbs(&q), opts),
 			v("[1m]", None, Some(300.)),
 		);
 
@@ -716,7 +722,7 @@ mod tests {
 
 		let q = format!("{} offset -5m", instant);
 		assert_eq!(
-			vector(opts)(cbs(&q)),
+			vector(cbs(&q), opts),
 			if opts.negative_offsets {
 				v("", None, Some(-300.))
 			} else {

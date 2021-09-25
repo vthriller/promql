@@ -1,21 +1,3 @@
-/*
-Some functions parse input directly instead of returning Fn()-parsers.
-This sucks ergonomically (need to write `foo(|i| atom(i, opts))` instead of `foo(atom(opts))`),
-but closure-returning parsers suck more:
-
-- they allocate a lot of copies of the same closure on the stack
-  (since some of them are parts of a larger recursive expression),
-  and because some of them use a lot of nom-produced closures
-  (and, thus, use quite a lot of memory even if instantiated once),
-  they tend to overflow the stack pretty quickly;
-
-- some parser generators also need to create temporary closures
-  just to avoid recursive `impl Fn()` return type (see `rustc --explain E0720`),
-  making situation worse;
-
-- we cannot reuse single closure because nom parsers don't accept refs to Fn().
-*/
-
 use nom::IResult;
 use nom::{
 	AsBytes,
@@ -378,7 +360,7 @@ where
 			,
 			// FIXME? things like 'and' and 'group_left' are not supposed to parse as a vector: prometheus lexes them unambiguously
 			map(
-				vector(opts),
+				|i| vector(i, opts),
 				Node::Vector
 			)
 			,
@@ -652,7 +634,7 @@ mod tests {
 
 	// vector parsing is already tested in `mod vec`, so use that parser instead of crafting lengthy structs all over the test functions
 	fn vector(expr: &str) -> Node {
-		match vec::vector(ParserOptions::default())(cbs(expr)) {
+		match vec::vector(cbs(expr), ParserOptions::default()) {
 			Ok((b"", x)) => Node::Vector(x),
 			_ => panic!("failed to parse label correctly"),
 		}
