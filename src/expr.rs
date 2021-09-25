@@ -227,7 +227,7 @@ where
 }
 
 // it's up to the library user to decide whether argument list is valid or not
-fn function_args<I, C>(opts: ParserOptions) -> impl FnMut(I) -> IResult<I, Vec<Node>>
+fn function_args<I, C>(recursion_level: usize, opts: ParserOptions) -> impl FnMut(I) -> IResult<I, Vec<Node>>
 where
 	I: Clone + Copy
 		+ AsBytes
@@ -251,7 +251,7 @@ where
 		separated_list0(
 			surrounded_ws(char(',')),
 			alt((
-				move |i| expression(i, opts),
+				move |i| expression(recursion_level, i, opts),
 				map(string, Node::String),
 			))
 		),
@@ -271,7 +271,7 @@ macro_rules! pair_permutations {
 	};
 }
 
-fn function<I, C>(input: I, opts: ParserOptions) -> IResult<I, Node>
+fn function<I, C>(recursion_level: usize, input: I, opts: ParserOptions) -> IResult<I, Node>
 where
 	I: Clone + Copy
 		+ AsBytes
@@ -296,7 +296,7 @@ where
 			label_name,
 			// both 'sum by (label, label) (foo)' and 'sum(foo) by (label, label)' are valid
 			pair_permutations!(
-				function_args(opts),
+				function_args(recursion_level, opts),
 				opt(function_aggregation),
 			),
 		)),
@@ -309,7 +309,7 @@ where
 	)(input)
 }
 
-fn atom<I, C>(input: I, opts: ParserOptions) -> IResult<I, Node>
+fn atom<I, C>(recursion_level: usize, input: I, opts: ParserOptions) -> IResult<I, Node>
 where
 	I: Clone + Copy
 		+ AsBytes
@@ -328,6 +328,18 @@ where
 	&'static str: FindToken<C>,
 	<I as InputIter>::IterElem: Clone,
 {
+	if recursion_level > opts.recursion_limit {
+		return Err(
+			nom::Err::Failure(
+				nom::error::VerboseError {
+					errors: vec![
+						(input, nom::error::VerboseErrorKind::Context("reached recursion limit")),
+					]
+				}
+			)
+		);
+	}
+
 	surrounded_ws(
 		alt((
 			map(
@@ -343,20 +355,20 @@ where
 			// unary + does nothing
 			preceded(
 				char('+'),
-				|i| atom(i, opts)
+				|i| atom(recursion_level+1, i, opts)
 			)
 			,
 			// unary -, well, negates whatever is following it
 			map(
 				preceded(
 					char('-'),
-					|i| atom(i, opts)
+					|i| atom(recursion_level+1, i, opts)
 				),
 				Node::negation
 			)
 			,
 			// function call is parsed before vector: the latter can actually consume function name as a vector, effectively rendering the rest of the expression invalid
-			|i| function(i, opts)
+			|i| function(recursion_level, i, opts)
 			,
 			// FIXME? things like 'and' and 'group_left' are not supposed to parse as a vector: prometheus lexes them unambiguously
 			map(
@@ -366,7 +378,7 @@ where
 			,
 			delimited(
 				char('('),
-				|i| expression(i, opts),
+				|i| expression(recursion_level, i, opts),
 				char(')')
 			)
 		))
@@ -473,7 +485,7 @@ where
 }
 
 // ^ is right-associative, so we can actually keep it simple and recursive
-fn power<I, C>(input: I, opts: ParserOptions) -> IResult<I, Node>
+fn power<I, C>(recursion_level: usize, input: I, opts: ParserOptions) -> IResult<I, Node>
 where
 	I: Clone + Copy
 		+ AsBytes
@@ -494,10 +506,10 @@ where
 {
 	surrounded_ws(map(
 		tuple((
-			|i| atom(i, opts),
+			|i| atom(recursion_level, i, opts),
 			opt(tuple((
 				with_modifier("^", Op::Pow),
-				|i| power(i, opts)
+				|i| power(recursion_level, i, opts)
 			)))
 		)),
 		|(x, y)|
@@ -512,7 +524,7 @@ where
 macro_rules! left_op {
 	// $next is the parser for operator that takes precenence, or any other kind of non-operator token sequence
 	($name:ident, $next:ident, $op:expr) => (
-		fn $name<I, C>(input: I, opts: ParserOptions) -> IResult<I, Node>
+		fn $name<I, C>(recursion_level: usize, input: I, opts: ParserOptions) -> IResult<I, Node>
 		where
 			I: Clone + Copy
 				+ AsBytes
@@ -533,10 +545,10 @@ macro_rules! left_op {
 		{
 			surrounded_ws(
 				map(tuple((
-					|i| $next(i, opts),
+					|i| $next(recursion_level, i, opts),
 					many0(tuple((
 						$op(opts),
-						|i| $next(i, opts)
+						|i| $next(recursion_level, i, opts)
 					))),
 				)), |(x, ops)|
 					({
@@ -595,7 +607,7 @@ left_op!(
 
 left_op!(or_op, and_unless, |opts| with_modifier("or", Op::Or));
 
-pub(crate) fn expression<I, C>(input: I, opts: ParserOptions) -> IResult<I, Node>
+pub(crate) fn expression<I, C>(recursion_level: usize, input: I, opts: ParserOptions) -> IResult<I, Node>
 where
 	I: Clone + Copy
 		+ AsBytes
@@ -614,7 +626,19 @@ where
 	&'static str: FindToken<C>,
 	<I as InputIter>::IterElem: Clone,
 {
-	or_op(input, opts)
+	if recursion_level > opts.recursion_limit {
+		return Err(
+			nom::Err::Failure(
+				nom::error::VerboseError {
+					errors: vec![
+						(input, nom::error::VerboseErrorKind::Context("reached recursion limit")),
+					]
+				}
+			)
+		);
+	}
+
+	or_op(recursion_level+1, input, opts)
 }
 
 #[allow(unused_imports)]
@@ -625,6 +649,11 @@ mod tests {
 
 	use self::Node::{Function, Scalar};
 	use self::Op::*;
+
+	use nom::error::{
+		VerboseError,
+		VerboseErrorKind,
+	};
 
 	// cannot 'use self::Node::operator' for some reason
 	#[allow(non_upper_case_globals)]
@@ -669,13 +698,13 @@ mod tests {
 	}
 
 	fn scalar_single(input: &str, output: f32) {
-		assert_eq!(expression(cbs(input), Default::default()), Ok((cbs(""), Scalar(output))));
+		assert_eq!(expression(0, cbs(input), Default::default()), Ok((cbs(""), Scalar(output))));
 	}
 
 	#[test]
 	fn ops() {
 		assert_eq!(
-			expression(
+			expression(0,
 				cbs("foo > bar != 0 and 15.5 < xyzzy"),
 				Default::default(),
 			),
@@ -694,7 +723,7 @@ mod tests {
 		);
 
 		assert_eq!(
-			expression(
+			expression(0,
 				cbs("foo + bar - baz <= quux + xyzzy"),
 				Default::default(),
 			),
@@ -713,7 +742,7 @@ mod tests {
 		);
 
 		assert_eq!(
-			expression(
+			expression(0,
 				cbs("foo + bar % baz"),
 				Default::default(),
 			),
@@ -728,7 +757,7 @@ mod tests {
 		);
 
 		assert_eq!(
-			expression(
+			expression(0,
 				cbs("x^y^z"),
 				Default::default(),
 			),
@@ -743,7 +772,7 @@ mod tests {
 		);
 
 		assert_eq!(
-			expression(
+			expression(0,
 				cbs("(a+b)*c"),
 				Default::default(),
 			),
@@ -761,7 +790,7 @@ mod tests {
 	#[test]
 	fn op_mods() {
 		assert_eq!(
-			expression(
+			expression(0,
 				cbs("foo + ignoring (instance) bar / on (cluster) baz"),
 				Default::default(),
 			),
@@ -788,7 +817,7 @@ mod tests {
 		);
 
 		assert_eq!(
-			expression(
+			expression(0,
 				cbs("foo + ignoring (instance) group_right bar / on (cluster, shmuster) group_left (job) baz"),
 				Default::default(),
 			),
@@ -812,7 +841,7 @@ mod tests {
 		);
 
 		assert_eq!(
-			expression(
+			expression(0,
 				cbs("node_cpu{cpu='cpu0'} > bool ignoring (cpu) node_cpu{cpu='cpu1'}"),
 				Default::default(),
 			),
@@ -837,7 +866,7 @@ mod tests {
 	#[test]
 	fn unary() {
 		assert_eq!(
-			expression(
+			expression(0,
 				cbs("a + -b"),
 				Default::default(),
 			),
@@ -848,7 +877,7 @@ mod tests {
 		);
 
 		assert_eq!(
-			expression(
+			expression(0,
 				cbs("a ^ - 1 - b"),
 				Default::default(),
 			),
@@ -863,7 +892,7 @@ mod tests {
 		);
 
 		assert_eq!(
-			expression(
+			expression(0,
 				cbs("a ^ - (1 - b)"),
 				Default::default(),
 			),
@@ -880,7 +909,7 @@ mod tests {
 		// yes, these are also valid
 
 		assert_eq!(
-			expression(
+			expression(0,
 				cbs("a +++++++ b"),
 				Default::default(),
 			),
@@ -888,7 +917,7 @@ mod tests {
 		);
 
 		assert_eq!(
-			expression(
+			expression(0,
 				cbs("a * --+-b"),
 				Default::default(),
 			),
@@ -906,7 +935,7 @@ mod tests {
 	#[test]
 	fn functions() {
 		assert_eq!(
-			expression(
+			expression(0,
 				cbs("foo() + bar(baz) + quux(xyzzy, plough)"),
 				Default::default(),
 			),
@@ -937,7 +966,7 @@ mod tests {
 		);
 
 		assert_eq!(
-			expression(
+			expression(0,
 				cbs("round(rate(whatever [5m]) > 0, 0.2)"),
 				Default::default(),
 			),
@@ -963,7 +992,7 @@ mod tests {
 		);
 
 		assert_eq!(
-			expression(
+			expression(0,
 				cbs("label_replace(up, 'instance', '', 'instance', '.*')"),
 				Default::default(),
 			),
@@ -987,7 +1016,7 @@ mod tests {
 	#[test]
 	fn agg_functions() {
 		assert_eq!(
-			expression(
+			expression(0,
 				cbs("sum(foo) by (bar) * count(foo) without (bar)"),
 				Default::default(),
 			),
@@ -1016,7 +1045,7 @@ mod tests {
 		);
 
 		assert_eq!(
-			expression(
+			expression(0,
 				cbs("sum by (bar) (foo) * count without (bar) (foo)"),
 				Default::default(),
 			),
@@ -1042,6 +1071,38 @@ mod tests {
 					},
 				)
 			))
+		);
+	}
+
+	#[test]
+	fn recursion_limit() {
+		let opts = super::ParserOptions::new()
+			.recursion_limit(8)
+			.build();
+
+		let mut op = String::new();
+		for _ in 1..=9 {
+			op.push('+');
+		}
+
+		assert_eq!(
+			expression(0, format!("a {} b", op).as_str(), opts),
+			Err(nom::Err::Failure(VerboseError {
+				errors: vec![
+					(&" b"[..], VerboseErrorKind::Context("reached recursion limit")),
+				],
+			})),
+		);
+
+		op.push('+');
+
+		assert_eq!(
+			expression(0, format!("a {} b", op).as_str(), opts),
+			Err(nom::Err::Failure(VerboseError {
+				errors: vec![
+					(&"+ b"[..], VerboseErrorKind::Context("reached recursion limit")),
+				],
+			})),
 		);
 	}
 }

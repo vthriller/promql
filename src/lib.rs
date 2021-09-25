@@ -123,6 +123,11 @@ pub struct ParserOptions {
 	/// Allow `ms` as an interval suffix
 	#[default(false)]
 	ms_duration: bool,
+
+	/// How many `Node`-producing expressions and unary operators can be nested into each other
+	// affects expr::{expression, atom}
+	#[default(64)]
+	recursion_limit: usize,
 }
 
 impl Default for ParserOptions {
@@ -151,7 +156,7 @@ where
 	&'static str: nom::FindToken<C>,
 	<I as nom::InputIter>::IterElem: Clone,
 {
-	match nom::combinator::all_consuming(|i| expression(i, opts))(e) {
+	match nom::combinator::all_consuming(|i| expression(0, i, opts))(e) {
 		Ok((_, ast)) => Ok(ast),
 		Err(e) => Err(e),
 	}
