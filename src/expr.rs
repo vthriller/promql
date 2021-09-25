@@ -219,7 +219,7 @@ macro_rules! pair_permutations {
 	};
 }
 
-fn function<'a>(allow_periods: bool) -> impl FnMut(&'a [u8]) -> IResult<&[u8], Node> {
+fn function<'a>(input: &[u8], allow_periods: bool) -> IResult<&[u8], Node> {
 	map(
 		tuple((
 			// I have no idea what counts as a function name but label_name fits well for what's built into the prometheus so let's use that
@@ -236,7 +236,7 @@ fn function<'a>(allow_periods: bool) -> impl FnMut(&'a [u8]) -> IResult<&[u8], N
 				args,
 				aggregation: agg,
 			}
-	)
+	)(input)
 }
 
 fn atom(input: &[u8], allow_periods: bool) -> IResult<&[u8], Node> {
@@ -268,7 +268,7 @@ fn atom(input: &[u8], allow_periods: bool) -> IResult<&[u8], Node> {
 			)
 			,
 			// function call is parsed before vector: the latter can actually consume function name as a vector, effectively rendering the rest of the expression invalid
-			function(allow_periods)
+			|i| function(i, allow_periods)
 			,
 			// FIXME? things like 'and' and 'group_left' are not supposed to parse as a vector: prometheus lexes them unambiguously
 			map(
