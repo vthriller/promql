@@ -1,3 +1,21 @@
+/*
+Some functions parse input directly instead of returning Fn()-parsers.
+This sucks ergonomically (need to write `foo(|i| atom(i, opts))` instead of `foo(atom(opts))`),
+but closure-returning parsers suck more:
+
+- they allocate a lot of copies of the same closure on the stack
+  (since some of them are parts of a larger recursive expression),
+  and because some of them use a lot of nom-produced closures
+  (and, thus, use quite a lot of memory even if instantiated once),
+  they tend to overflow the stack pretty quickly;
+
+- some parser generators also need to create temporary closures
+  just to avoid recursive `impl Fn()` return type (see `rustc --explain E0720`),
+  making situation worse;
+
+- we cannot reuse single closure because nom parsers don't accept refs to Fn().
+*/
+
 use nom::IResult;
 use nom::{
 	AsBytes,
@@ -309,17 +327,6 @@ where
 	)
 }
 
-/*
-Unlike other functions, this one does not return Fn()-parser.
-This sucks ergonomically (need to write `foo(|i| atom(i, opts))` instead of `foo(atom(opts))`),
-but the closure-returning parser sucks more:
-- it allocates a lot of copies of the same closure on the stack
-  (and it's going to be multiple copies since this is part of a recursive expression),
-  overflowing the stack pretty quickly;
-- we also need to create temporary closures just to avoid recursive `impl Fn()` type
-  (see `rustc --explain E0720`);
-- we cannot reuse single closure simply because nom parsers don't accept refs to Fn().
-*/
 fn atom<I, C>(input: I, opts: ParserOptions) -> IResult<I, Node>
 where
 	I: Clone + Copy
@@ -484,7 +491,7 @@ where
 }
 
 // ^ is right-associative, so we can actually keep it simple and recursive
-fn power<I, C>(opts: ParserOptions) -> impl FnMut(I) -> IResult<I, Node>
+fn power<I, C>(input: I, opts: ParserOptions) -> IResult<I, Node>
 where
 	I: Clone + Copy
 		+ AsBytes
@@ -503,15 +510,12 @@ where
 	&'static str: FindToken<C>,
 	<I as InputIter>::IterElem: Clone,
 {
-	// this closure somehow prevents `impl Fn` from being recursive
-	// see `rustc --explain E0720`
-	move |input|
 	surrounded_ws(map(
 		tuple((
 			|i| atom(i, opts),
 			opt(tuple((
 				with_modifier("^", Op::Pow),
-				power(opts)
+				|i| power(i, opts)
 			)))
 		)),
 		|(x, y)|
@@ -526,7 +530,7 @@ where
 macro_rules! left_op {
 	// $next is the parser for operator that takes precenence, or any other kind of non-operator token sequence
 	($name:ident, $next:ident, $op:expr) => (
-		fn $name<I, C>(opts: ParserOptions) -> impl FnMut(I) -> IResult<I, Node>
+		fn $name<I, C>(input: I, opts: ParserOptions) -> IResult<I, Node>
 		where
 			I: Clone + Copy
 				+ AsBytes
@@ -547,10 +551,10 @@ macro_rules! left_op {
 		{
 			surrounded_ws(
 				map(tuple((
-					$next(opts),
+					|i| $next(i, opts),
 					many0(tuple((
 						$op(opts),
-						$next(opts)
+						|i| $next(i, opts)
 					))),
 				)), |(x, ops)|
 					({
@@ -561,7 +565,7 @@ macro_rules! left_op {
 						x
 					})
 				)
-			)
+			)(input)
 		}
 	);
 }
@@ -628,7 +632,7 @@ where
 	&'static str: FindToken<C>,
 	<I as InputIter>::IterElem: Clone,
 {
-	or_op(opts)
+	move |i| or_op(i, opts)
 }
 
 #[allow(unused_imports)]

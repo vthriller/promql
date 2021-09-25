@@ -158,7 +158,7 @@ mod tests {
 	#[test]
 	fn stack_overflow() {
 		let mut op = String::new();
-		for _ in 1..128 {
+		for _ in 1..256 {
 			op.push('+');
 			dbg!(op.len());
 
