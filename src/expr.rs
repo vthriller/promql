@@ -216,7 +216,7 @@ where
 	)
 }
 
-fn function_aggregation<I, C>() -> impl FnMut(I) -> IResult<I, AggregationMod>
+fn function_aggregation<I, C>(input: I) -> IResult<I, AggregationMod>
 where
 	I: Clone
 		+ AsBytes
@@ -241,7 +241,7 @@ where
 			label_list(),
 		)),
 		|(action, labels)| (AggregationMod { action, labels })
-	))
+	))(input)
 }
 
 // it's up to the library user to decide whether argument list is valid or not
@@ -315,7 +315,7 @@ where
 			// both 'sum by (label, label) (foo)' and 'sum(foo) by (label, label)' are valid
 			pair_permutations!(
 				function_args(opts),
-				opt(function_aggregation()),
+				opt(function_aggregation),
 			),
 		)),
 		|(name, (args, agg))|
