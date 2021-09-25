@@ -1,4 +1,4 @@
-use nom::IResult;
+use crate::utils::IResult;
 use nom::{
 	AsBytes,
 	AsChar,
@@ -171,7 +171,10 @@ where
 mod tests {
 	use super::*;
 	use crate::utils::tests::*;
-	use nom::error::ErrorKind;
+	use nom::error::{
+		ErrorKind,
+		VerboseErrorKind,
+	};
 
 	fn cbs(s: &str) -> &[u8] {
 		s.as_bytes()
@@ -201,10 +204,16 @@ mod tests {
 
 		assert_eq!(
 			string(cbs("'this\nis not valid'")),
-			err(
-				cbs("'this\nis not valid'"),
-				ErrorKind::Char
-			)
+			err(vec![
+				(
+					cbs("'this\nis not valid'"),
+					VerboseErrorKind::Char('`'),
+				),
+				(
+					cbs("'this\nis not valid'"),
+					VerboseErrorKind::Nom(ErrorKind::Alt),
+				),
+			])
 		);
 
 		assert_eq!(
@@ -227,7 +236,10 @@ mod tests {
 		// high surrogate
 		assert_eq!(
 			rune(cbs("\\uD801")),
-			err(cbs("uD801"), ErrorKind::Char)
+			err(vec![
+				(cbs("uD801"), VerboseErrorKind::Char('U')),
+				(cbs("uD801"), VerboseErrorKind::Nom(ErrorKind::Alt)),
+			])
 		);
 
 		assert_eq!(
@@ -238,19 +250,28 @@ mod tests {
 		// out of range
 		assert_eq!(
 			rune(cbs("\\UdeadDEAD")),
-			err(cbs("UdeadDEAD"), ErrorKind::MapOpt)
+			err(vec![
+				(cbs("UdeadDEAD"), VerboseErrorKind::Nom(ErrorKind::MapOpt)),
+				(cbs("UdeadDEAD"), VerboseErrorKind::Nom(ErrorKind::Alt)),
+			]),
 		);
 
 		// utter nonsense
 
 		assert_eq!(
 			rune(cbs("\\xxx")),
-			err(cbs("xxx"), ErrorKind::Char)
+			err(vec![
+				(cbs("xxx"), VerboseErrorKind::Char('U')),
+				(cbs("xxx"), VerboseErrorKind::Nom(ErrorKind::Alt)),
+			]),
 		);
 
 		assert_eq!(
 			rune(cbs("\\x1")),
-			err(cbs("x1"), ErrorKind::Char)
+			err(vec![
+				(cbs("x1"), VerboseErrorKind::Char('U')),
+				(cbs("x1"), VerboseErrorKind::Nom(ErrorKind::Alt)),
+			]),
 		);
 	}
 }

@@ -1,4 +1,3 @@
-use nom::IResult;
 use nom::{
 	AsBytes,
 	AsChar,
@@ -46,6 +45,7 @@ use crate::{
 	tuple_separated,
 };
 use crate::utils::{
+	IResult,
 	surrounded_ws,
 	delimited_ws,
 	value,

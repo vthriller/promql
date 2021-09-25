@@ -92,7 +92,7 @@ pub use expr::*;
 pub use vec::*;
 
 use nom::Err;
-use nom::error::{Error, ErrorKind};
+use nom::error::{VerboseError, ErrorKind};
 
 extern crate builder_pattern;
 use builder_pattern::Builder;
@@ -132,7 +132,7 @@ impl Default for ParserOptions {
 }
 
 /// Parse expression string into an AST.
-pub fn parse<I, C>(e: I, opts: ParserOptions) -> Result<Node, nom::Err<Error<I>>>
+pub fn parse<I, C>(e: I, opts: ParserOptions) -> Result<Node, nom::Err<VerboseError<I>>>
 where
 	I: Clone + Copy
 		+ nom::AsBytes
@@ -159,17 +159,19 @@ where
 
 #[cfg(test)]
 mod tests {
-	use nom::error::ErrorKind;
+	use nom::error::{
+		ErrorKind,
+		VerboseErrorKind,
+	};
 	use crate::utils::tests::*;
 
 	#[test]
 	fn completeness() {
 		assert_eq!(
 			super::parse(&b"asdf hjkl"[..], Default::default()),
-			err(
-				&b"hjkl"[..],
-				ErrorKind::Eof
-			)
+			err(vec![
+				(&b"hjkl"[..], VerboseErrorKind::Nom(ErrorKind::Eof)),
+			])
 		);
 	}
 

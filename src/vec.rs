@@ -1,4 +1,3 @@
-use nom::IResult;
 use nom::{
 	AsBytes,
 	Compare,
@@ -50,6 +49,7 @@ use crate::{
 	tuple_separated,
 };
 use crate::utils::{
+	IResult,
 	surrounded_ws,
 	value,
 };
@@ -425,7 +425,10 @@ where
 mod tests {
 	use super::*;
 	use crate::utils::tests::*;
-	use nom::error::ErrorKind;
+	use nom::error::{
+		ErrorKind,
+		VerboseErrorKind,
+	};
 
 	fn cbs(s: &str) -> &[u8] {
 		s.as_bytes()
@@ -613,7 +616,9 @@ mod tests {
 
 		assert_eq!(
 			vector(cbs("{}"), opts),
-			err(cbs("{}"), ErrorKind::MapRes)
+			err(vec![
+				(cbs("{}"), VerboseErrorKind::Nom(ErrorKind::MapRes)),
+			]),
 		);
 	}
 
