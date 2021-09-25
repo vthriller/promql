@@ -132,7 +132,7 @@ where
 	&'static str: nom::FindToken<C>,
 	<I as nom::InputIter>::IterElem: Clone,
 {
-	match nom::combinator::all_consuming(expression(opts))(e) {
+	match nom::combinator::all_consuming(|i| expression(i, opts))(e) {
 		Ok((_, ast)) => Ok(ast),
 		Err(e) => Err(e),
 	}

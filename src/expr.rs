@@ -269,7 +269,7 @@ where
 		separated_list0(
 			surrounded_ws(char(',')),
 			alt((
-				expression(opts),
+				move |i| expression(i, opts),
 				map(string, Node::String),
 			))
 		),
@@ -384,7 +384,7 @@ where
 			,
 			delimited(
 				char('('),
-				expression(opts),
+				|i| expression(i, opts),
 				char(')')
 			)
 		))
@@ -613,7 +613,7 @@ left_op!(
 
 left_op!(or_op, and_unless, |opts| with_modifier("or", Op::Or));
 
-pub(crate) fn expression<I, C>(opts: ParserOptions) -> impl FnMut(I) -> IResult<I, Node>
+pub(crate) fn expression<I, C>(input: I, opts: ParserOptions) -> IResult<I, Node>
 where
 	I: Clone + Copy
 		+ AsBytes
@@ -632,7 +632,7 @@ where
 	&'static str: FindToken<C>,
 	<I as InputIter>::IterElem: Clone,
 {
-	move |i| or_op(i, opts)
+	or_op(input, opts)
 }
 
 #[allow(unused_imports)]
@@ -687,13 +687,16 @@ mod tests {
 	}
 
 	fn scalar_single(input: &str, output: f32) {
-		assert_eq!(expression(Default::default())(cbs(input)), Ok((cbs(""), Scalar(output))));
+		assert_eq!(expression(cbs(input), Default::default()), Ok((cbs(""), Scalar(output))));
 	}
 
 	#[test]
 	fn ops() {
 		assert_eq!(
-			expression(Default::default())(cbs("foo > bar != 0 and 15.5 < xyzzy")),
+			expression(
+				cbs("foo > bar != 0 and 15.5 < xyzzy"),
+				Default::default(),
+			),
 			Ok((
 				cbs(""),
 				operator(
@@ -709,7 +712,10 @@ mod tests {
 		);
 
 		assert_eq!(
-			expression(Default::default())(cbs("foo + bar - baz <= quux + xyzzy")),
+			expression(
+				cbs("foo + bar - baz <= quux + xyzzy"),
+				Default::default(),
+			),
 			Ok((
 				cbs(""),
 				operator(
@@ -725,7 +731,10 @@ mod tests {
 		);
 
 		assert_eq!(
-			expression(Default::default())(cbs("foo + bar % baz")),
+			expression(
+				cbs("foo + bar % baz"),
+				Default::default(),
+			),
 			Ok((
 				cbs(""),
 				operator(
@@ -737,7 +746,10 @@ mod tests {
 		);
 
 		assert_eq!(
-			expression(Default::default())(cbs("x^y^z")),
+			expression(
+				cbs("x^y^z"),
+				Default::default(),
+			),
 			Ok((
 				cbs(""),
 				operator(
@@ -749,7 +761,10 @@ mod tests {
 		);
 
 		assert_eq!(
-			expression(Default::default())(cbs("(a+b)*c")),
+			expression(
+				cbs("(a+b)*c"),
+				Default::default(),
+			),
 			Ok((
 				cbs(""),
 				operator(
@@ -764,8 +779,9 @@ mod tests {
 	#[test]
 	fn op_mods() {
 		assert_eq!(
-			expression(Default::default())(
+			expression(
 				cbs("foo + ignoring (instance) bar / on (cluster) baz"),
+				Default::default(),
 			),
 			Ok((
 				cbs(""),
@@ -790,7 +806,10 @@ mod tests {
 		);
 
 		assert_eq!(
-			expression(Default::default())(cbs("foo + ignoring (instance) group_right bar / on (cluster, shmuster) group_left (job) baz")),
+			expression(
+				cbs("foo + ignoring (instance) group_right bar / on (cluster, shmuster) group_left (job) baz"),
+				Default::default(),
+			),
 			Ok((cbs(""), operator(
 				vector("foo"),
 				Plus(Some(OpMod {
@@ -811,8 +830,9 @@ mod tests {
 		);
 
 		assert_eq!(
-			expression(Default::default())(
+			expression(
 				cbs("node_cpu{cpu='cpu0'} > bool ignoring (cpu) node_cpu{cpu='cpu1'}"),
+				Default::default(),
 			),
 			Ok((
 				cbs(""),
@@ -835,7 +855,10 @@ mod tests {
 	#[test]
 	fn unary() {
 		assert_eq!(
-			expression(Default::default())(cbs("a + -b")),
+			expression(
+				cbs("a + -b"),
+				Default::default(),
+			),
 			Ok((
 				cbs(""),
 				operator(vector("a"), Plus(None), negation(vector("b")),)
@@ -843,7 +866,10 @@ mod tests {
 		);
 
 		assert_eq!(
-			expression(Default::default())(cbs("a ^ - 1 - b")),
+			expression(
+				cbs("a ^ - 1 - b"),
+				Default::default(),
+			),
 			Ok((
 				cbs(""),
 				operator(
@@ -855,7 +881,10 @@ mod tests {
 		);
 
 		assert_eq!(
-			expression(Default::default())(cbs("a ^ - (1 - b)")),
+			expression(
+				cbs("a ^ - (1 - b)"),
+				Default::default(),
+			),
 			Ok((
 				cbs(""),
 				operator(
@@ -869,12 +898,18 @@ mod tests {
 		// yes, these are also valid
 
 		assert_eq!(
-			expression(Default::default())(cbs("a +++++++ b")),
+			expression(
+				cbs("a +++++++ b"),
+				Default::default(),
+			),
 			Ok((cbs(""), operator(vector("a"), Plus(None), vector("b"),)))
 		);
 
 		assert_eq!(
-			expression(Default::default())(cbs("a * --+-b")),
+			expression(
+				cbs("a * --+-b"),
+				Default::default(),
+			),
 			Ok((
 				cbs(""),
 				operator(
@@ -889,7 +924,10 @@ mod tests {
 	#[test]
 	fn functions() {
 		assert_eq!(
-			expression(Default::default())(cbs("foo() + bar(baz) + quux(xyzzy, plough)")),
+			expression(
+				cbs("foo() + bar(baz) + quux(xyzzy, plough)"),
+				Default::default(),
+			),
 			Ok((
 				cbs(""),
 				operator(
@@ -917,7 +955,10 @@ mod tests {
 		);
 
 		assert_eq!(
-			expression(Default::default())(cbs("round(rate(whatever [5m]) > 0, 0.2)")),
+			expression(
+				cbs("round(rate(whatever [5m]) > 0, 0.2)"),
+				Default::default(),
+			),
 			Ok((
 				cbs(""),
 				Function {
@@ -940,8 +981,9 @@ mod tests {
 		);
 
 		assert_eq!(
-			expression(Default::default())(
+			expression(
 				cbs("label_replace(up, 'instance', '', 'instance', '.*')"),
+				Default::default(),
 			),
 			Ok((
 				cbs(""),
@@ -963,7 +1005,10 @@ mod tests {
 	#[test]
 	fn agg_functions() {
 		assert_eq!(
-			expression(Default::default())(cbs("sum(foo) by (bar) * count(foo) without (bar)")),
+			expression(
+				cbs("sum(foo) by (bar) * count(foo) without (bar)"),
+				Default::default(),
+			),
 			Ok((
 				cbs(""),
 				operator(
@@ -989,7 +1034,10 @@ mod tests {
 		);
 
 		assert_eq!(
-			expression(Default::default())(cbs("sum by (bar) (foo) * count without (bar) (foo)")),
+			expression(
+				cbs("sum by (bar) (foo) * count without (bar) (foo)"),
+				Default::default(),
+			),
 			Ok((
 				cbs(""),
 				operator(
