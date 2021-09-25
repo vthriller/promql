@@ -154,16 +154,18 @@ mod tests {
 		);
 	}
 
+	// run this test with `cargo test stack_overflow -- --nocapture`
 	#[test]
 	fn stack_overflow() {
-		let mut op = vec!["++++"];
-		op.append(&mut op.clone()); // 8
-		op.append(&mut op.clone()); // 16
-		//op.append(&mut op.clone()); // 32
-		//op.append(&mut op.clone()); // 64
-		//op.append(&mut op.clone()); // 128
-		let op = op.join("");
+		let mut op = String::new();
+		for _ in 1..128 {
+			op.push('+');
+			dbg!(op.len());
 
-		let _ = super::parse(format!("a {} b", op).as_str(), Default::default());
+			use std::io::Write;
+			std::io::stdout().flush().unwrap();
+
+			let _ = super::parse(format!("a {} b", op).as_str(), Default::default());
+		}
 	}
 }
