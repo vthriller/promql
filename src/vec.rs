@@ -151,7 +151,7 @@ pub struct Vector {
 
 fn instant_vec<I, C>(input: I, opts: ParserOptions) -> IResult<I, Vec<LabelMatch>>
 where
-	I: Clone
+	I: Clone + Copy
 		+ AsBytes
 		+ Compare<&'static str>
 		+ InputIter<Item = C>
@@ -165,12 +165,13 @@ where
 	C: AsChar + Clone,
 	&'static str: FindToken<C>,
 {
-	map_res(
+	let orig_input = input;
+	let (input, (name, labels)) =
 		tuple_separated!(multispace0, (
 			opt(move |i| metric_name(i, opts)),
 			opt(label_set),
-		)),
-		|(name, labels)| {
+		))(input)?;
+
 			let mut ret = match name {
 				Some(name) => vec![LabelMatch {
 					name: "__name__".to_string(),
@@ -184,15 +185,14 @@ where
 			}
 
 			if ret.is_empty() {
-				Err(
-					// FIXME how end-user can actually access this message?
-					"vector selector must contain label matchers or metric name",
-				)
+				Err(nom::Err::Error(nom::error::VerboseError {
+					errors: vec![
+						(orig_input, nom::error::VerboseErrorKind::Context("vector selector must contain label matchers or metric name")),
+					],
+				}))
 			} else {
-				Ok(ret)
+				Ok((input, ret))
 			}
-		}
-	)(input)
 }
 
 // `max_duration` limits set of available suffixes, allowing us to forbid intervals like `30s5m`
@@ -617,7 +617,7 @@ mod tests {
 		assert_eq!(
 			vector(cbs("{}"), opts),
 			err(vec![
-				(cbs("{}"), VerboseErrorKind::Nom(ErrorKind::MapRes)),
+				(cbs("{}"), VerboseErrorKind::Context("vector selector must contain label matchers or metric name")),
 			]),
 		);
 	}
