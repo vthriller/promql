@@ -221,10 +221,19 @@ fn function<'a>(allow_periods: bool) -> impl FnMut(&'a [u8]) -> IResult<&[u8], N
 	)
 }
 
-fn atom(allow_periods: bool) -> impl Fn(&[u8]) -> IResult<&[u8], Node> {
-	// this closure somehow prevents `impl Fn` from being recursive
-	// see `rustc --explain E0720`
-	move |input| surrounded_ws(
+/*
+Unlike other functions, this one does not return Fn()-parser.
+This sucks ergonomically (need to write `foo(|i| atom(i, opts))` instead of `foo(atom(opts))`),
+but the closure-returning parser sucks more:
+- it allocates a lot of copies of the same closure on the stack
+  (and it's going to be multiple copies since this is part of a recursive expression),
+  overflowing the stack pretty quickly;
+- we also need to create temporary closures just to avoid recursive `impl Fn()` type
+  (see `rustc --explain E0720`);
+- we cannot reuse single closure simply because nom parsers don't accept refs to Fn().
+*/
+fn atom(input: &[u8], allow_periods: bool) -> IResult<&[u8], Node> {
+	surrounded_ws(
 		alt((
 			map(
 				tag_no_case("NaN"),
@@ -239,14 +248,14 @@ fn atom(allow_periods: bool) -> impl Fn(&[u8]) -> IResult<&[u8], Node> {
 			// unary + does nothing
 			preceded(
 				char('+'),
-				atom(allow_periods)
+				|i| atom(i, allow_periods)
 			)
 			,
 			// unary -, well, negates whatever is following it
 			map(
 				preceded(
 					char('-'),
-					atom(allow_periods)
+					|i| atom(i, allow_periods)
 				),
 				Node::negation
 			)
@@ -328,7 +337,7 @@ fn power(allow_periods: bool) -> impl FnMut(&[u8]) -> IResult<&[u8], Node> {
 	move |input|
 	surrounded_ws(map(
 		tuple((
-			atom(allow_periods),
+			|i| atom(i, allow_periods),
 			opt(tuple((
 				with_modifier!("^", Op::Pow),
 				power(allow_periods)
