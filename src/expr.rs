@@ -289,7 +289,7 @@ macro_rules! pair_permutations {
 	};
 }
 
-fn function<I, C>(opts: ParserOptions) -> impl FnMut(I) -> IResult<I, Node>
+fn function<I, C>(input: I, opts: ParserOptions) -> IResult<I, Node>
 where
 	I: Clone + Copy
 		+ AsBytes
@@ -324,7 +324,7 @@ where
 				args,
 				aggregation: agg,
 			}
-	)
+	)(input)
 }
 
 fn atom<I, C>(input: I, opts: ParserOptions) -> IResult<I, Node>
@@ -374,7 +374,7 @@ where
 			)
 			,
 			// function call is parsed before vector: the latter can actually consume function name as a vector, effectively rendering the rest of the expression invalid
-			function(opts)
+			|i| function(i, opts)
 			,
 			// FIXME? things like 'and' and 'group_left' are not supposed to parse as a vector: prometheus lexes them unambiguously
 			map(
