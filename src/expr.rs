@@ -579,7 +579,10 @@ left_op!(
 	plus_minus,
 	mul_div_mod,
 	|opts|
-	alt((with_modifier("+", Op::Plus), with_modifier("-", Op::Minus)))
+	alt((
+		with_modifier("+", Op::Plus),
+		with_modifier("-", Op::Minus),
+	))
 );
 
 // if you thing this kind of operator chaining makes little to no sense, think again: it actually matches 'foo' that is both '> bar' and '!= baz'.
@@ -602,7 +605,10 @@ left_op!(
 	and_unless,
 	comparison,
 	|opts|
-	alt((with_modifier("and", Op::And), with_modifier("unless", Op::Unless)))
+	alt((
+		with_modifier("and", Op::And),
+		with_modifier("unless", Op::Unless),
+	))
 );
 
 left_op!(or_op, and_unless, |opts| with_modifier("or", Op::Or));
