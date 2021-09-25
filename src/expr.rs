@@ -385,7 +385,7 @@ where
 	)(input)
 }
 
-fn with_modifier<I, C>(literal: &'static str, op: fn(Option<OpMod>) -> Op) -> impl FnMut(I) -> IResult<I, Op>
+fn with_modifier<I, C>(opts: ParserOptions, literal: &'static str, op: fn(Option<OpMod>) -> Op) -> impl FnMut(I) -> IResult<I, Op>
 where
 	I: Clone
 		+ AsBytes
@@ -404,13 +404,13 @@ where
 	map(
 		preceded(
 			tag(literal),
-			opt(|i| op_modifier(i, opts)),
+			opt(move |i| op_modifier(i, opts)),
 		),
 		op,
 	)
 }
 
-fn with_bool_modifier<'a, I, C, O: Fn(bool, Option<OpMod>) -> Op>(literal: &'static str, op: O) -> impl FnMut(I) -> IResult<I, Op>
+fn with_bool_modifier<'a, I, C, O: Fn(bool, Option<OpMod>) -> Op>(opts: ParserOptions, literal: &'static str, op: O) -> impl FnMut(I) -> IResult<I, Op>
 where
 	I: Clone
 		+ AsBytes
@@ -430,7 +430,7 @@ where
 		tuple_separated!(multispace0, (
 			tag(literal),
 			opt(tag("bool")),
-			opt(|i| op_modifier(i, opts)),
+			opt(move |i| op_modifier(i, opts)),
 		)),
 		move |(_, boolness, op_mod)|
 			op(boolness.is_some(), op_mod)
@@ -508,7 +508,7 @@ where
 		tuple((
 			|i| atom(recursion_level, i, opts),
 			opt(tuple((
-				with_modifier("^", Op::Pow),
+				with_modifier(opts, "^", Op::Pow),
 				|i| power(recursion_level, i, opts)
 			)))
 		)),
@@ -569,9 +569,9 @@ left_op!(
 	power,
 	|opts|
 	alt((
-		with_modifier("*", Op::Mul),
-		with_modifier("/", Op::Div),
-		with_modifier("%", Op::Mod),
+		with_modifier(opts, "*", Op::Mul),
+		with_modifier(opts, "/", Op::Div),
+		with_modifier(opts, "%", Op::Mod),
 	))
 );
 
@@ -580,8 +580,8 @@ left_op!(
 	mul_div_mod,
 	|opts|
 	alt((
-		with_modifier("+", Op::Plus),
-		with_modifier("-", Op::Minus),
+		with_modifier(opts, "+", Op::Plus),
+		with_modifier(opts, "-", Op::Minus),
 	))
 );
 
@@ -592,12 +592,12 @@ left_op!(
 	plus_minus,
 	|opts|
 	alt((
-		with_bool_modifier("==", Op::Eq),
-		with_bool_modifier("!=", Op::Ne),
-		with_bool_modifier("<=", Op::Le),
-		with_bool_modifier(">=", Op::Ge),
-		with_bool_modifier("<", Op::Lt),
-		with_bool_modifier(">", Op::Gt),
+		with_bool_modifier(opts, "==", Op::Eq),
+		with_bool_modifier(opts, "!=", Op::Ne),
+		with_bool_modifier(opts, "<=", Op::Le),
+		with_bool_modifier(opts, ">=", Op::Ge),
+		with_bool_modifier(opts, "<", Op::Lt),
+		with_bool_modifier(opts, ">", Op::Gt),
 	))
 );
 
@@ -606,12 +606,12 @@ left_op!(
 	comparison,
 	|opts|
 	alt((
-		with_modifier("and", Op::And),
-		with_modifier("unless", Op::Unless),
+		with_modifier(opts, "and", Op::And),
+		with_modifier(opts, "unless", Op::Unless),
 	))
 );
 
-left_op!(or_op, and_unless, |opts| with_modifier("or", Op::Or));
+left_op!(or_op, and_unless, |opts| with_modifier(opts, "or", Op::Or));
 
 pub(crate) fn expression<I, C>(recursion_level: usize, input: I, opts: ParserOptions) -> IResult<I, Node>
 where
