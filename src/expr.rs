@@ -1,3 +1,21 @@
+/*
+Some functions parse input directly instead of returning Fn()-parsers.
+This sucks ergonomically (need to write `foo(|i| atom(i, opts))` instead of `foo(atom(opts))`),
+but closure-returning parsers suck more:
+
+- they allocate a lot of copies of the same closure on the stack
+  (since some of them are parts of a larger recursive expression),
+  and because some of them use a lot of nom-produced closures
+  (and, thus, use quite a lot of memory even if instantiated once),
+  they tend to overflow the stack pretty quickly;
+
+- some parser generators also need to create temporary closures
+  just to avoid recursive `impl Fn()` return type (see `rustc --explain E0720`),
+  making situation worse;
+
+- we cannot reuse single closure because nom parsers don't accept refs to Fn().
+*/
+
 use nom::IResult;
 use nom::branch::alt;
 use nom::bytes::complete::{
@@ -221,17 +239,6 @@ fn function<'a>(allow_periods: bool) -> impl FnMut(&'a [u8]) -> IResult<&[u8], N
 	)
 }
 
-/*
-Unlike other functions, this one does not return Fn()-parser.
-This sucks ergonomically (need to write `foo(|i| atom(i, opts))` instead of `foo(atom(opts))`),
-but the closure-returning parser sucks more:
-- it allocates a lot of copies of the same closure on the stack
-  (and it's going to be multiple copies since this is part of a recursive expression),
-  overflowing the stack pretty quickly;
-- we also need to create temporary closures just to avoid recursive `impl Fn()` type
-  (see `rustc --explain E0720`);
-- we cannot reuse single closure simply because nom parsers don't accept refs to Fn().
-*/
 fn atom(input: &[u8], allow_periods: bool) -> IResult<&[u8], Node> {
 	surrounded_ws(
 		alt((
@@ -331,16 +338,13 @@ fn op_modifier(input: &[u8]) -> IResult<&[u8], OpMod> {
 }
 
 // ^ is right-associative, so we can actually keep it simple and recursive
-fn power(allow_periods: bool) -> impl FnMut(&[u8]) -> IResult<&[u8], Node> {
-	// this closure somehow prevents `impl Fn` from being recursive
-	// see `rustc --explain E0720`
-	move |input|
+fn power(input: &[u8], allow_periods: bool) -> IResult<&[u8], Node> {
 	surrounded_ws(map(
 		tuple((
 			|i| atom(i, allow_periods),
 			opt(tuple((
 				with_modifier!("^", Op::Pow),
-				power(allow_periods)
+				|i| power(i, allow_periods)
 			)))
 		)),
 		|(x, y)|
@@ -355,13 +359,13 @@ fn power(allow_periods: bool) -> impl FnMut(&[u8]) -> IResult<&[u8], Node> {
 macro_rules! left_op {
 	// $next is the parser for operator that takes precenence, or any other kind of non-operator token sequence
 	($name:ident, $next:ident, $op:expr) => (
-		fn $name<'a>(allow_periods: bool) -> impl FnMut(&'a [u8]) -> IResult<&'a [u8], Node> {
+		fn $name<'a>(input: &'a [u8], allow_periods: bool) -> IResult<&'a [u8], Node> {
 			surrounded_ws(
 				map(tuple((
-					$next(allow_periods),
+					|i| $next(i, allow_periods),
 					many0(tuple((
 						$op,
-						$next(allow_periods)
+						|i| $next(i, allow_periods)
 					))),
 				)), |(x, ops)|
 					({
@@ -372,7 +376,7 @@ macro_rules! left_op {
 						x
 					})
 				)
-			)
+			)(input)
 		}
 	);
 }
@@ -419,7 +423,7 @@ left_op!(or_op, and_unless, with_modifier!("or", Op::Or));
 pub(crate) fn expression<'a>(
 	allow_periods: bool,
 ) -> impl FnMut(&'a [u8]) -> IResult<&'a [u8], Node> {
-	or_op(allow_periods)
+	move |input| or_op(input, allow_periods)
 }
 
 #[allow(unused_imports)]
