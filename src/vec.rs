@@ -167,7 +167,7 @@ where
 {
 	map_res(
 		tuple_separated!(multispace0, (
-			opt(metric_name(opts)),
+			opt(move |i| metric_name(i, opts)),
 			opt(label_set),
 		)),
 		|(name, labels)| {
@@ -360,7 +360,7 @@ where
 // > The metric name … must match the regex [a-zA-Z_:][a-zA-Z0-9_:]*.
 // > Label names … must match the regex [a-zA-Z_][a-zA-Z0-9_]*. Label names beginning with __ are reserved for internal use.
 
-fn metric_name<I, C>(opts: ParserOptions) -> impl FnMut(I) -> IResult<I, String>
+fn metric_name<I, C>(input: I, opts: ParserOptions) -> IResult<I, String>
 where
 	I: Clone
 		+ AsBytes
@@ -382,7 +382,7 @@ where
 			))),
 		))),
 		|s: I| String::from_utf8(s.as_bytes().to_vec())
-	)
+	)(input)
 }
 
 pub(crate) fn label_name<I, C>(input: I) -> IResult<I, String>
