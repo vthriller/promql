@@ -1105,4 +1105,23 @@ mod tests {
 			})),
 		);
 	}
+
+	// run this test with `cargo test stack_overflow -- --nocapture`
+	#[test]
+	fn stack_overflow() {
+		let opts = super::ParserOptions::new()
+			.recursion_limit(1024)
+			.build();
+
+		let mut op = String::new();
+		for _ in 1..256 {
+			op.push('+');
+			dbg!(op.len());
+
+			use std::io::Write;
+			std::io::stdout().flush().unwrap();
+
+			let _ = expression(0, format!("a {} b", op).as_str(), opts);
+		}
+	}
 }
