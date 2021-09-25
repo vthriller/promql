@@ -198,7 +198,7 @@ where
 // `max_duration` limits set of available suffixes, allowing us to forbid intervals like `30s5m`
 // not using vecs/slices to limit set of acceptable suffixes: they're expensive,
 // and we cannot build an alt() from them anyway (even recursive one, like alt(alt(), ...))
-fn range_literal_part<I, C>(opts: ParserOptions, max_duration: Option<f32>) -> impl FnMut(I) -> IResult<I, (f32, f32)>
+fn range_literal_part<I, C>(input: I, opts: ParserOptions, max_duration: Option<f32>) -> IResult<I, (f32, f32)>
 where
 	I: Clone
 		+ AsBytes
@@ -255,10 +255,10 @@ where
 				None
 			},
 		}
-	)
+	)(input)
 }
 
-fn range_compound_literal<I, C>(opts: ParserOptions, max_duration: Option<f32>) -> impl FnMut(I) -> IResult<I, f32>
+fn range_compound_literal<I, C>(input: I, opts: ParserOptions, max_duration: Option<f32>) -> IResult<I, f32>
 where
 	I: Clone + Copy
 		+ AsBytes
@@ -273,18 +273,16 @@ where
 		,
 	C: AsChar,
 {
-	move |input| {
-		let (input, (amount, duration)) = range_literal_part(opts, max_duration)(input)?;
+		let (input, (amount, duration)) = range_literal_part(input, opts, max_duration)?;
 		// use matched duration as a new cap so we don't match the same durations or longer
-		let (input, rest) = match range_compound_literal(opts, Some(duration))(input) {
+		let (input, rest) = match range_compound_literal(input, opts, Some(duration)) {
 			Ok((input, rest)) => (input, rest),
 			Err(_) => (input, 0.), // the rest doesn't look like compound literal
 		};
 		Ok((input, amount * duration + rest))
-	}
 }
 
-fn range_literal<I, C>(opts: ParserOptions) -> impl FnMut(I) -> IResult<I, f32>
+fn range_literal<I, C>(input: I, opts: ParserOptions) -> IResult<I, f32>
 where
 	I: Clone + Copy
 		+ AsBytes
@@ -299,11 +297,11 @@ where
 		,
 	C: AsChar,
 {
-	move |input| if opts.compound_intervals {
-		range_compound_literal(opts, None)(input)
+	if opts.compound_intervals {
+		range_compound_literal(input, opts, None)
 	} else {
 		map(
-			range_literal_part(opts, None),
+			|i| range_literal_part(i, opts, None),
 			|(amount, duration)| amount * duration
 		)(input)
 	}
@@ -329,7 +327,7 @@ where
 		// labels and offset parsers already handle whitespace, no need to use ws!() here
 		tuple((
 			|i| instant_vec(i, opts),
-			opt(delimited(char('['), range_literal(opts), char(']'))),
+			opt(delimited(char('['), |i| range_literal(i, opts), char(']'))),
 			opt(preceded(
 				surrounded_ws(tag("offset")),
 				tuple((
@@ -340,7 +338,7 @@ where
 						// mark offset interval as positive
 						Ok((input, None))
 					},
-					range_literal(opts),
+					|i| range_literal(i, opts),
 				)),
 			)),
 			multispace0,
@@ -765,7 +763,7 @@ mod tests {
 					.compound_intervals(compound_intervals)
 					.build();
 
-				let output = range_literal(opts)(cbs(&src));
+				let output = range_literal(cbs(&src), opts);
 				if let Some(value) = value {
 					let (tail, output) = output.unwrap(); // panics if not Ok()
 					assert_eq!(output, value,
@@ -786,7 +784,7 @@ mod tests {
 			.ms_duration(true)
 			.build();
 		assert_eq!(
-			range_literal(opts)(cbs("500ms")),
+			range_literal(cbs("500ms"), opts),
 			Ok((cbs(""), 0.5))
 		);
 
@@ -794,7 +792,7 @@ mod tests {
 			.ms_duration(false)
 			.build();
 		assert_eq!(
-			range_literal(opts)(cbs("500ms")),
+			range_literal(cbs("500ms"), opts),
 			Ok((cbs("s"), 500. * 60.))
 		);
 	}
