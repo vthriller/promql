@@ -54,6 +54,25 @@ extern crate nom;
 #[macro_use]
 extern crate quick_error;
 
+/* Nota bene
+
+Some functions parse input directly instead of returning Fn()-parsers.
+This sucks ergonomically (need to write `foo(|i| atom(i, opts))` instead of `foo(atom(opts))`),
+but closure-returning parsers suck more:
+
+- they allocate a lot of copies of the same closure on the stack
+  (since some of them are parts of a larger recursive expression),
+  and because some of them use a lot of nom-produced closures
+  (and, thus, use quite a lot of memory even if instantiated once),
+  they tend to overflow the stack pretty quickly;
+
+- some parser generators also need to create temporary closures
+  just to avoid recursive `impl Fn()` return type (see `rustc --explain E0720`),
+  making situation worse;
+
+- we cannot reuse single closure because nom parsers don't accept refs to Fn().
+*/
+
 pub(crate) mod expr;
 pub(crate) mod str;
 pub(crate) mod vec;
