@@ -149,7 +149,7 @@ pub struct Vector {
 	pub offset: Option<f32>,
 }
 
-fn instant_vec<I, C>(opts: ParserOptions) -> impl FnMut(I) -> IResult<I, Vec<LabelMatch>>
+fn instant_vec<I, C>(input: I, opts: ParserOptions) -> IResult<I, Vec<LabelMatch>>
 where
 	I: Clone
 		+ AsBytes
@@ -192,7 +192,7 @@ where
 				Ok(ret)
 			}
 		}
-	)
+	)(input)
 }
 
 // `max_duration` limits set of available suffixes, allowing us to forbid intervals like `30s5m`
@@ -328,7 +328,7 @@ where
 	map(
 		// labels and offset parsers already handle whitespace, no need to use ws!() here
 		tuple((
-			instant_vec(opts),
+			|i| instant_vec(i, opts),
 			opt(delimited(char('['), range_literal(opts), char(']'))),
 			opt(preceded(
 				surrounded_ws(tag("offset")),
