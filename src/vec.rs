@@ -172,27 +172,27 @@ where
 			opt(label_set),
 		))(input)?;
 
-			let mut ret = match name {
-				Some(name) => vec![LabelMatch {
-					name: "__name__".to_string(),
-					op: LabelMatchOp::Eq,
-					value: name.into_bytes(),
-				}],
-				None => vec![],
-			};
-			if let Some(labels) = labels {
-				ret.extend(labels)
-			}
+	let mut ret = match name {
+		Some(name) => vec![LabelMatch {
+			name: "__name__".to_string(),
+			op: LabelMatchOp::Eq,
+			value: name.into_bytes(),
+		}],
+		None => vec![],
+	};
+	if let Some(labels) = labels {
+		ret.extend(labels)
+	}
 
-			if ret.is_empty() {
-				Err(nom::Err::Error(nom::error::VerboseError {
-					errors: vec![
-						(orig_input, nom::error::VerboseErrorKind::Context("vector selector must contain label matchers or metric name")),
-					],
-				}))
-			} else {
-				Ok((input, ret))
-			}
+	if ret.is_empty() {
+		Err(nom::Err::Error(nom::error::VerboseError {
+			errors: vec![
+				(orig_input, nom::error::VerboseErrorKind::Context("vector selector must contain label matchers or metric name")),
+			],
+		}))
+	} else {
+		Ok((input, ret))
+	}
 }
 
 // `max_duration` limits set of available suffixes, allowing us to forbid intervals like `30s5m`
