@@ -22,11 +22,14 @@ use nom::bytes::complete::{
 };
 use nom::character::complete::{
 	char,
-	multispace0,
+	multispace1,
+	not_line_ending,
 };
 use nom::combinator::{
+	fail,
 	map,
 	opt,
+	recognize,
 };
 use nom::multi::{
 	many0,
@@ -46,7 +49,6 @@ use crate::{
 };
 use crate::utils::{
 	IResult,
-	surrounded_ws,
 	delimited_ws,
 	value,
 };
@@ -176,15 +178,73 @@ impl Node {
 	}
 }
 
-fn label_list<I, C>(input: I, opts: ParserOptions) -> IResult<I, Vec<String>>
+fn ws_or_comment<I, C>(opts: ParserOptions) -> impl FnMut(I) -> IResult<I, ()>
 where
 	I: Clone
-		+ AsBytes
+		+ Compare<&'static str>
 		+ InputIter<Item = C>
 		+ InputLength
 		+ InputTake
 		+ InputTakeAtPosition<Item = C>
 		+ Offset
+		+ Slice<Range<usize>>
+		+ Slice<RangeFrom<usize>>
+		+ Slice<RangeTo<usize>>
+		,
+	C: AsChar + Clone,
+{
+	value(
+		many0(alt((
+			move |input| if opts.comments {
+				recognize(
+					tuple((
+						char('#'),
+						not_line_ending,
+					))
+				)(input)
+			} else {
+				fail(input)
+			},
+			recognize(multispace1),
+		))),
+		(),
+	)
+}
+
+fn surrounded_ws_or_comment<I, C, O, P>(opts: ParserOptions, parser: P) -> impl FnMut(I) -> IResult<I, O>
+where
+	P: FnMut(I) -> IResult<I, O>,
+	I: Clone
+		+ Compare<&'static str>
+		+ InputIter<Item = C>
+		+ InputLength
+		+ InputTake
+		+ InputTakeAtPosition<Item = C>
+		+ Offset
+		+ Slice<Range<usize>>
+		+ Slice<RangeFrom<usize>>
+		+ Slice<RangeTo<usize>>
+		,
+	C: AsChar + Clone,
+{
+	delimited(
+		ws_or_comment(opts),
+		parser,
+		ws_or_comment(opts),
+	)
+}
+
+fn label_list<I, C>(input: I, opts: ParserOptions) -> IResult<I, Vec<String>>
+where
+	I: Clone
+		+ AsBytes
+		+ Compare<&'static str>
+		+ InputIter<Item = C>
+		+ InputLength
+		+ InputTake
+		+ InputTakeAtPosition<Item = C>
+		+ Offset
+		+ Slice<Range<usize>>
 		+ Slice<RangeFrom<usize>>
 		+ Slice<RangeTo<usize>>
 		,
@@ -193,7 +253,7 @@ where
 {
 	delimited_ws(
 		char('('),
-		separated_list0(surrounded_ws(char(',')), label_name),
+		separated_list0(surrounded_ws_or_comment(opts, char(',')), label_name),
 		char(')')
 	)(input)
 }
@@ -208,13 +268,14 @@ where
 		+ InputTake
 		+ InputTakeAtPosition<Item = C>
 		+ Offset
+		+ Slice<Range<usize>>
 		+ Slice<RangeFrom<usize>>
 		+ Slice<RangeTo<usize>>
 		,
 	C: AsChar + Clone,
 	&'static str: FindToken<C>,
 {
-	surrounded_ws(map(
+	surrounded_ws_or_comment(opts, map(
 		tuple((
 			alt((
 				value(tag("by"), AggregationAction::By),
@@ -249,7 +310,7 @@ where
 	delimited_ws(
 		char('('),
 		separated_list0(
-			surrounded_ws(char(',')),
+			surrounded_ws_or_comment(opts, char(',')),
 			alt((
 				move |i| expression(recursion_level, i, opts),
 				map(string, Node::String),
@@ -340,7 +401,7 @@ where
 		);
 	}
 
-	surrounded_ws(
+	surrounded_ws_or_comment(opts,
 		alt((
 			map(
 				tag_no_case("NaN"),
@@ -395,6 +456,7 @@ where
 		+ InputTake
 		+ InputTakeAtPosition<Item = C>
 		+ Offset
+		+ Slice<Range<usize>>
 		+ Slice<RangeFrom<usize>>
 		+ Slice<RangeTo<usize>>
 		,
@@ -420,6 +482,7 @@ where
 		+ InputTake
 		+ InputTakeAtPosition<Item = C>
 		+ Offset
+		+ Slice<Range<usize>>
 		+ Slice<RangeFrom<usize>>
 		+ Slice<RangeTo<usize>>
 		,
@@ -427,7 +490,7 @@ where
 	&'static str: FindToken<C>,
 {
 	map(
-		tuple_separated!(multispace0, (
+		tuple_separated!(ws_or_comment(opts), (
 			tag(literal),
 			opt(tag("bool")),
 			opt(move |i| op_modifier(i, opts)),
@@ -447,13 +510,14 @@ where
 		+ InputTake
 		+ InputTakeAtPosition<Item = C>
 		+ Offset
+		+ Slice<Range<usize>>
 		+ Slice<RangeFrom<usize>>
 		+ Slice<RangeTo<usize>>
 		,
 	C: AsChar + Clone,
 	&'static str: FindToken<C>,
 {
-	surrounded_ws(map(
+	surrounded_ws_or_comment(opts, map(
 		tuple((
 			// action
 			alt((
@@ -504,7 +568,7 @@ where
 	&'static str: FindToken<C>,
 	<I as InputIter>::IterElem: Clone,
 {
-	surrounded_ws(map(
+	surrounded_ws_or_comment(opts, map(
 		tuple((
 			|i| atom(recursion_level, i, opts),
 			opt(tuple((
@@ -543,7 +607,7 @@ macro_rules! left_op {
 			&'static str: FindToken<C>,
 			<I as InputIter>::IterElem: Clone,
 		{
-			surrounded_ws(
+			surrounded_ws_or_comment(opts,
 				map(tuple((
 					|i| $next(recursion_level, i, opts),
 					many0(tuple((
@@ -1076,6 +1140,41 @@ mod tests {
 						}),
 					},
 				)
+			))
+		);
+	}
+
+	#[test]
+	fn comments() {
+		let opts = ParserOptions::new()
+			.comments(true)
+			.build();
+
+		assert_eq!(
+			ws_or_comment(opts)("# sfdjvdkfjvbh\n"),
+			Ok(("", ())),
+		);
+
+		assert_eq!(
+			expression(0, cbs("foo # / bar\n/ baz"), opts),
+			Ok((
+				cbs(""),
+				operator(vector("foo"), Div(None), vector("baz"))
+			))
+		);
+
+		assert_eq!(
+			expression(0, cbs("sum(foo) # by (bar)\nby (baz)"), opts),
+			Ok((
+				cbs(""),
+				Function {
+					name: "sum".to_string(),
+					args: vec![vector("foo")],
+					aggregation: Some(AggregationMod {
+						action: AggregationAction::By,
+						labels: vec!["baz".to_string()]
+					}),
+				},
 			))
 		);
 	}

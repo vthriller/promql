@@ -124,6 +124,10 @@ pub struct ParserOptions {
 	#[default(false)]
 	ms_duration: bool,
 
+	/// Allow `#`-prefixed comments
+	#[default(true)]
+	comments: bool,
+
 	/// How many `Node`-producing expressions and unary operators can be nested into each other
 	// affects expr::{expression, atom}
 	#[default(64)]
