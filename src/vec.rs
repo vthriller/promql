@@ -75,7 +75,7 @@ pub struct LabelMatch {
 	pub value: Vec<u8>,
 }
 
-fn label_set<I, C>(input: I) -> IResult<I, Vec<LabelMatch>>
+fn label_set<I, C>(input: I, opts: ParserOptions) -> IResult<I, Vec<LabelMatch>>
 where
 	I: Clone
 		+ AsBytes
@@ -169,7 +169,7 @@ where
 	let (input, (name, labels)) =
 		tuple_separated!(multispace0, (
 			opt(move |i| metric_name(i, opts)),
-			opt(label_set),
+			opt(|i| label_set(i, opts)),
 		))(input)?;
 
 	let mut ret = match name {
