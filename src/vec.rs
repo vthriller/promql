@@ -430,10 +430,6 @@ mod tests {
 		VerboseErrorKind,
 	};
 
-	fn cbs(s: &str) -> &[u8] {
-		s.as_bytes()
-	}
-
 	#[test]
 	fn instant_vectors_period() {
 		instant_vectors(true);

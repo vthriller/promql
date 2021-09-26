@@ -681,10 +681,6 @@ mod tests {
 		}
 	}
 
-	fn cbs(s: &str) -> &[u8] {
-		s.as_bytes()
-	}
-
 	#[test]
 	fn scalar() {
 		scalar_single("123", 123.);

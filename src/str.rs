@@ -176,10 +176,6 @@ mod tests {
 		VerboseErrorKind,
 	};
 
-	fn cbs(s: &str) -> &[u8] {
-		s.as_bytes()
-	}
-
 	#[test]
 	fn strings() {
 		assert_eq!(
