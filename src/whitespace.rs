@@ -94,7 +94,7 @@ where
 #[cfg(test)]
 mod tests {
 	use super::*;
-	use vec;
+	use crate::vec;
 
 	use nom::error::{
 		VerboseError,

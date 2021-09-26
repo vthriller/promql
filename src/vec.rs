@@ -44,11 +44,11 @@ use nom::sequence::{
 	preceded,
 	tuple,
 };
-use str::string;
 use crate::{
 	ParserOptions,
 	tuple_separated,
 };
+use crate::str::string;
 use crate::whitespace::ws_or_comment;
 use crate::utils::{
 	IResult,

@@ -35,12 +35,12 @@ use nom::sequence::{
 	preceded,
 	tuple,
 };
-use str::string;
 use vec::{label_name, vector, Vector};
 use crate::{
 	ParserOptions,
 	tuple_separated,
 };
+use crate::str::string;
 use crate::whitespace::{
 	ws_or_comment,
 	surrounded_ws_or_comment,
@@ -657,7 +657,7 @@ where
 #[cfg(test)]
 mod tests {
 	use super::*;
-	use vec;
+	use crate::vec;
 
 	use self::Node::{Function, Scalar};
 	use self::Op::*;
