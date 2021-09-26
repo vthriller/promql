@@ -216,6 +216,36 @@ mod tests {
 			string("`but this\nis`"),
 			Ok(("", b"but this\nis".to_vec()))
 		);
+
+		// strings with runes
+
+		for s in [
+			r#"'inf: ∞'"#,
+			r#"'inf: \u221e'"#,
+			r#"'inf: \u221E'"#,
+			r#"'inf: \U0000221e'"#,
+			r#"'inf: \U0000221E'"#,
+			r#"'inf: \xe2\x88\x9e'"#,
+			r#"'inf: \xE2\x88\x9E'"#,
+		] {
+			assert_eq!(
+				string(s),
+				Ok(("", b"inf: \xe2\x88\x9e".to_vec()))
+			);
+		}
+
+		for s in [
+			r#"'thinking: 🤔'"#,
+			r#"'thinking: \U0001f914'"#,
+			r#"'thinking: \U0001F914'"#,
+			r#"'thinking: \xf0\x9f\xa4\x94'"#,
+			r#"'thinking: \xF0\x9F\xA4\x94'"#,
+		] {
+			assert_eq!(
+				string(s),
+				Ok(("", b"thinking: \xf0\x9f\xa4\x94".to_vec()))
+			);
+		}
 	}
 
 	#[test]
