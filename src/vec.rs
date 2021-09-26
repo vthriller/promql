@@ -646,6 +646,7 @@ mod tests {
 				}]
 			},
 			opts,
+			false, // is_offset_concat_valid
 		);
 
 		for q in [
@@ -669,6 +670,7 @@ mod tests {
 					]
 				},
 				opts,
+				true, // is_offset_concat_valid
 			);
 		}
 
@@ -686,6 +688,7 @@ mod tests {
 					}]
 				},
 				opts,
+				true, // is_offset_concat_valid
 			);
 		}
 	}
@@ -694,6 +697,7 @@ mod tests {
 		instant: &str,
 		labels: fn(bool) -> Vec<LabelMatch>, // args: (is_offset_concat)
 		opts: ParserOptions,
+		is_offset_concat_valid: bool, // true for "foo{}offset 5m", false for "foooffset 5m"
 	) {
 		let v = |tail, range, offset, is_offset_concat| Ok((
 			tail,
@@ -715,12 +719,20 @@ mod tests {
 			);
 		}
 
-		// TODO test "{}offset" without spaces (fail after [a-z0-9], pass otherwise)
 		// TODO failing "offset5m"
 		let q = format!("{} offset 5m", instant);
 		assert_eq!(
 			vector(q.as_str(), opts),
 			v("", None, Some(300.), false),
+		);
+		let q = format!("{}offset 5m", instant);
+		assert_eq!(
+			vector(q.as_str(), opts),
+			if is_offset_concat_valid {
+				v("", None, Some(300.), false)
+			} else {
+				v("5m", None, None, true)
+			}
 		);
 
 		// TODO failing "offset5m"
@@ -734,7 +746,6 @@ mod tests {
 			);
 		}
 
-		// TODO test "{}offset" without spaces (fail after [a-z0-9], pass otherwise)
 		// TODO failing "offset5m"
 		// not testing "5m[1m]" since this order of tokens doesn't parse regardless of whitespace
 		let q = format!("{} offset 5m [1m]", instant);
@@ -743,10 +754,18 @@ mod tests {
 			vector(q.as_str(), opts),
 			v("[1m]", None, Some(300.), false),
 		);
+		let q = format!("{}offset 5m [1m]", instant);
+		assert_eq!(
+			vector(q.as_str(), opts),
+			if is_offset_concat_valid {
+				v("[1m]", None, Some(300.), false)
+			} else {
+				v("5m [1m]", None, None, true)
+			}
+		);
 
 		// negative_offsets
 
-		// TODO test "{}offset" without spaces (fail after [a-z0-9], pass otherwise)
 		// TODO *passing* "offset-5m"
 		let q = format!("{} offset -5m", instant);
 		assert_eq!(
@@ -756,6 +775,16 @@ mod tests {
 			} else {
 				v("offset -5m", None, None, false)
 			}
+		);
+		let q = format!("{}offset -5m", instant);
+		assert_eq!(
+			vector(q.as_str(), opts),
+			match (opts.negative_offsets, is_offset_concat_valid) {
+				(true,  true)  => v("",           None, Some(-300.), false),
+				(true,  false) => v("-5m",        None, None,        true),
+				(false, true)  => v("offset -5m", None, None,        false),
+				(false, false) => v("-5m",        None, None,        true),
+			},
 		);
 	}
 
