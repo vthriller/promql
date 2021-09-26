@@ -86,6 +86,11 @@ but closure-returning parsers suck more:
 
 Individual parsers should never handle leading/trailing whitespace.
 Let external parsers deal with acceptable delimiters.
+
+When writing tests, write three versions of queries:
+- with all optional whitespace in place,
+- with only necessary whitespace delimiters,
+- without required whitespace, for which parsers should fail.
 */
 
 pub(crate) mod expr;
