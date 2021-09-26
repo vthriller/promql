@@ -1112,14 +1112,6 @@ mod tests {
 				},
 			))
 		);
-
-		assert_eq!(
-			expression(0, "foo#{bar = '/'}\n{baz\n#=\n!=\n'/'}", opts),
-			Ok((
-				"",
-				vector("foo{baz!='/'}"),
-			))
-		);
 	}
 
 	#[test]

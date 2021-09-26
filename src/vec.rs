@@ -492,6 +492,7 @@ mod tests {
 	fn instant_vectors(allow_periods: bool) {
 		let opts = ParserOptions::new()
 			.allow_periods(allow_periods)
+			.comments(true)
 			.build();
 
 		assert_eq!(
@@ -595,6 +596,29 @@ mod tests {
 					],
 					range: None,
 					offset: None
+				}
+			))
+		);
+
+		assert_eq!(
+			vector("foo#{bar = '/'}\n{baz\n#=\n!=\n'/'}", opts),
+			Ok((
+				"",
+				Vector {
+					labels: vec![
+						LabelMatch {
+							name: "__name__".to_string(),
+							op: LabelMatchOp::Eq,
+							value: b"foo".to_vec(),
+						},
+						LabelMatch {
+							name: "baz".to_string(),
+							op: LabelMatchOp::Ne,
+							value: b"/".to_vec(),
+						},
+					],
+					range: None,
+					offset: None,
 				}
 			))
 		);
