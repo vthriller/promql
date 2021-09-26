@@ -184,18 +184,18 @@ mod tests {
 	fn strings() {
 		assert_eq!(
 			string(cbs("\"lorem ipsum \\\"dolor\\nsit amet\\\"\"")),
-			Ok((cbs(""), b"lorem ipsum \"dolor\nsit amet\"".to_vec()))
+			Ok(("", b"lorem ipsum \"dolor\nsit amet\"".to_vec()))
 		);
 
 		assert_eq!(
-			string(cbs("'lorem ipsum \\'dolor\\nsit\\tamet\\''")),
-			Ok((cbs(""), b"lorem ipsum 'dolor\nsit\tamet'".to_vec()))
+			string("'lorem ipsum \\'dolor\\nsit\\tamet\\''"),
+			Ok(("", b"lorem ipsum 'dolor\nsit\tamet'".to_vec()))
 		);
 
 		assert_eq!(
 			string(cbs("`lorem ipsum \\\"dolor\\nsit\\tamet\\\"`")),
 			Ok((
-				cbs(""),
+				"",
 				b"lorem ipsum \\\"dolor\\nsit\\tamet\\\"".to_vec()
 			))
 		);
@@ -203,74 +203,74 @@ mod tests {
 		// literal, non-escaped newlines
 
 		assert_eq!(
-			string(cbs("'this\nis not valid'")),
+			string("'this\nis not valid'"),
 			err(vec![
 				(
-					cbs("'this\nis not valid'"),
+					"'this\nis not valid'",
 					VerboseErrorKind::Char('`'),
 				),
 				(
-					cbs("'this\nis not valid'"),
+					"'this\nis not valid'",
 					VerboseErrorKind::Nom(ErrorKind::Alt),
 				),
 			])
 		);
 
 		assert_eq!(
-			string(cbs("`but this\nis`")),
-			Ok((cbs(""), b"but this\nis".to_vec()))
+			string("`but this\nis`"),
+			Ok(("", b"but this\nis".to_vec()))
 		);
 	}
 
 	#[test]
 	fn runes() {
-		assert_eq!(rune(cbs("\\123")), Ok((cbs(""), vec![0o123])));
+		assert_eq!(rune("\\123"), Ok(("", vec![0o123])));
 
-		assert_eq!(rune(cbs("\\x23")), Ok((cbs(""), vec![0x23])));
+		assert_eq!(rune("\\x23"), Ok(("", vec![0x23])));
 
 		assert_eq!(
-			rune(cbs("\\uabcd")),
-			Ok((cbs(""), "\u{abcd}".as_bytes().to_vec()))
+			rune("\\uabcd"),
+			Ok(("", "\u{abcd}".as_bytes().to_vec()))
 		);
 
 		// high surrogate
 		assert_eq!(
-			rune(cbs("\\uD801")),
+			rune("\\uD801"),
 			err(vec![
-				(cbs("uD801"), VerboseErrorKind::Char('U')),
-				(cbs("uD801"), VerboseErrorKind::Nom(ErrorKind::Alt)),
+				("uD801", VerboseErrorKind::Char('U')),
+				("uD801", VerboseErrorKind::Nom(ErrorKind::Alt)),
 			])
 		);
 
 		assert_eq!(
-			rune(cbs("\\U00010330")),
-			Ok((cbs(""), "\u{10330}".as_bytes().to_vec()))
+			rune("\\U00010330"),
+			Ok(("", "\u{10330}".as_bytes().to_vec()))
 		);
 
 		// out of range
 		assert_eq!(
-			rune(cbs("\\UdeadDEAD")),
+			rune("\\UdeadDEAD"),
 			err(vec![
-				(cbs("UdeadDEAD"), VerboseErrorKind::Nom(ErrorKind::MapOpt)),
-				(cbs("UdeadDEAD"), VerboseErrorKind::Nom(ErrorKind::Alt)),
+				("UdeadDEAD", VerboseErrorKind::Nom(ErrorKind::MapOpt)),
+				("UdeadDEAD", VerboseErrorKind::Nom(ErrorKind::Alt)),
 			]),
 		);
 
 		// utter nonsense
 
 		assert_eq!(
-			rune(cbs("\\xxx")),
+			rune("\\xxx"),
 			err(vec![
-				(cbs("xxx"), VerboseErrorKind::Char('U')),
-				(cbs("xxx"), VerboseErrorKind::Nom(ErrorKind::Alt)),
+				("xxx", VerboseErrorKind::Char('U')),
+				("xxx", VerboseErrorKind::Nom(ErrorKind::Alt)),
 			]),
 		);
 
 		assert_eq!(
-			rune(cbs("\\x1")),
+			rune("\\x1"),
 			err(vec![
-				(cbs("x1"), VerboseErrorKind::Char('U')),
-				(cbs("x1"), VerboseErrorKind::Nom(ErrorKind::Alt)),
+				("x1", VerboseErrorKind::Char('U')),
+				("x1", VerboseErrorKind::Nom(ErrorKind::Alt)),
 			]),
 		);
 	}

@@ -710,18 +710,18 @@ mod tests {
 	}
 
 	fn scalar_single(input: &str, output: f32) {
-		assert_eq!(expression(0, cbs(input), Default::default()), Ok((cbs(""), Scalar(output))));
+		assert_eq!(expression(0, cbs(input), Default::default()), Ok(("", Scalar(output))));
 	}
 
 	#[test]
 	fn ops() {
 		assert_eq!(
 			expression(0,
-				cbs("foo > bar != 0 and 15.5 < xyzzy"),
+				"foo > bar != 0 and 15.5 < xyzzy",
 				Default::default(),
 			),
 			Ok((
-				cbs(""),
+				"",
 				operator(
 					operator(
 						operator(vector("foo"), Gt(false, None), vector("bar")),
@@ -736,11 +736,11 @@ mod tests {
 
 		assert_eq!(
 			expression(0,
-				cbs("foo + bar - baz <= quux + xyzzy"),
+				"foo + bar - baz <= quux + xyzzy",
 				Default::default(),
 			),
 			Ok((
-				cbs(""),
+				"",
 				operator(
 					operator(
 						operator(vector("foo"), Plus(None), vector("bar")),
@@ -755,11 +755,11 @@ mod tests {
 
 		assert_eq!(
 			expression(0,
-				cbs("foo + bar % baz"),
+				"foo + bar % baz",
 				Default::default(),
 			),
 			Ok((
-				cbs(""),
+				"",
 				operator(
 					vector("foo"),
 					Plus(None),
@@ -770,11 +770,11 @@ mod tests {
 
 		assert_eq!(
 			expression(0,
-				cbs("x^y^z"),
+				"x^y^z",
 				Default::default(),
 			),
 			Ok((
-				cbs(""),
+				"",
 				operator(
 					vector("x"),
 					Pow(None),
@@ -785,11 +785,11 @@ mod tests {
 
 		assert_eq!(
 			expression(0,
-				cbs("(a+b)*c"),
+				"(a+b)*c",
 				Default::default(),
 			),
 			Ok((
-				cbs(""),
+				"",
 				operator(
 					operator(vector("a"), Plus(None), vector("b")),
 					Mul(None),
@@ -803,11 +803,11 @@ mod tests {
 	fn op_mods() {
 		assert_eq!(
 			expression(0,
-				cbs("foo + ignoring (instance) bar / on (cluster) baz"),
+				"foo + ignoring (instance) bar / on (cluster) baz",
 				Default::default(),
 			),
 			Ok((
-				cbs(""),
+				"",
 				operator(
 					vector("foo"),
 					Plus(Some(OpMod {
@@ -830,10 +830,10 @@ mod tests {
 
 		assert_eq!(
 			expression(0,
-				cbs("foo + ignoring (instance) group_right bar / on (cluster, shmuster) group_left (job) baz"),
+				"foo + ignoring (instance) group_right bar / on (cluster, shmuster) group_left (job) baz",
 				Default::default(),
 			),
-			Ok((cbs(""), operator(
+			Ok(("", operator(
 				vector("foo"),
 				Plus(Some(OpMod {
 					action: OpModAction::Ignore,
@@ -854,11 +854,11 @@ mod tests {
 
 		assert_eq!(
 			expression(0,
-				cbs("node_cpu{cpu='cpu0'} > bool ignoring (cpu) node_cpu{cpu='cpu1'}"),
+				"node_cpu{cpu='cpu0'} > bool ignoring (cpu) node_cpu{cpu='cpu1'}",
 				Default::default(),
 			),
 			Ok((
-				cbs(""),
+				"",
 				operator(
 					vector("node_cpu{cpu='cpu0'}"),
 					Gt(
@@ -879,22 +879,22 @@ mod tests {
 	fn unary() {
 		assert_eq!(
 			expression(0,
-				cbs("a + -b"),
+				"a + -b",
 				Default::default(),
 			),
 			Ok((
-				cbs(""),
+				"",
 				operator(vector("a"), Plus(None), negation(vector("b")),)
 			))
 		);
 
 		assert_eq!(
 			expression(0,
-				cbs("a ^ - 1 - b"),
+				"a ^ - 1 - b",
 				Default::default(),
 			),
 			Ok((
-				cbs(""),
+				"",
 				operator(
 					operator(vector("a"), Pow(None), negation(Scalar(1.)),),
 					Minus(None),
@@ -905,11 +905,11 @@ mod tests {
 
 		assert_eq!(
 			expression(0,
-				cbs("a ^ - (1 - b)"),
+				"a ^ - (1 - b)",
 				Default::default(),
 			),
 			Ok((
-				cbs(""),
+				"",
 				operator(
 					vector("a"),
 					Pow(None),
@@ -922,19 +922,19 @@ mod tests {
 
 		assert_eq!(
 			expression(0,
-				cbs("a +++++++ b"),
+				"a +++++++ b",
 				Default::default(),
 			),
-			Ok((cbs(""), operator(vector("a"), Plus(None), vector("b"),)))
+			Ok(("", operator(vector("a"), Plus(None), vector("b"),)))
 		);
 
 		assert_eq!(
 			expression(0,
-				cbs("a * --+-b"),
+				"a * --+-b",
 				Default::default(),
 			),
 			Ok((
-				cbs(""),
+				"",
 				operator(
 					vector("a"),
 					Mul(None),
@@ -948,11 +948,11 @@ mod tests {
 	fn functions() {
 		assert_eq!(
 			expression(0,
-				cbs("foo() + bar(baz) + quux(xyzzy, plough)"),
+				"foo() + bar(baz) + quux(xyzzy, plough)",
 				Default::default(),
 			),
 			Ok((
-				cbs(""),
+				"",
 				operator(
 					operator(
 						Function {
@@ -979,11 +979,11 @@ mod tests {
 
 		assert_eq!(
 			expression(0,
-				cbs("round(rate(whatever [5m]) > 0, 0.2)"),
+				"round(rate(whatever [5m]) > 0, 0.2)",
 				Default::default(),
 			),
 			Ok((
-				cbs(""),
+				"",
 				Function {
 					name: "round".to_string(),
 					args: vec![
@@ -1005,11 +1005,11 @@ mod tests {
 
 		assert_eq!(
 			expression(0,
-				cbs("label_replace(up, 'instance', '', 'instance', '.*')"),
+				"label_replace(up, 'instance', '', 'instance', '.*')",
 				Default::default(),
 			),
 			Ok((
-				cbs(""),
+				"",
 				Function {
 					name: "label_replace".to_string(),
 					args: vec![
@@ -1029,11 +1029,11 @@ mod tests {
 	fn agg_functions() {
 		assert_eq!(
 			expression(0,
-				cbs("sum(foo) by (bar) * count(foo) without (bar)"),
+				"sum(foo) by (bar) * count(foo) without (bar)",
 				Default::default(),
 			),
 			Ok((
-				cbs(""),
+				"",
 				operator(
 					Function {
 						name: "sum".to_string(),
@@ -1058,11 +1058,11 @@ mod tests {
 
 		assert_eq!(
 			expression(0,
-				cbs("sum by (bar) (foo) * count without (bar) (foo)"),
+				"sum by (bar) (foo) * count without (bar) (foo)",
 				Default::default(),
 			),
 			Ok((
-				cbs(""),
+				"",
 				operator(
 					Function {
 						name: "sum".to_string(),
@@ -1095,17 +1095,17 @@ mod tests {
 			.build();
 
 		assert_eq!(
-			expression(0, cbs("foo # / bar\n/ baz"), opts),
+			expression(0, "foo # / bar\n/ baz", opts),
 			Ok((
-				cbs(""),
+				"",
 				operator(vector("foo"), Div(None), vector("baz"))
 			))
 		);
 
 		assert_eq!(
-			expression(0, cbs("sum(foo) # by (bar)\nby (baz)"), opts),
+			expression(0, "sum(foo) # by (bar)\nby (baz)", opts),
 			Ok((
-				cbs(""),
+				"",
 				Function {
 					name: "sum".to_string(),
 					args: vec![vector("foo")],

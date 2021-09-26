@@ -441,13 +441,13 @@ mod tests {
 		// matches foo.bar{} entirely
 		assert_eq!(
 			vector(
-				cbs("foo.bar{}"),
+				"foo.bar{}",
 				ParserOptions::new()
 					.allow_periods(true)
 					.build(),
 			),
 			Ok((
-				cbs(""),
+				"",
 				Vector {
 					labels: vec![LabelMatch {
 						name: "__name__".to_string(),
@@ -468,13 +468,13 @@ mod tests {
 		// matches foo, leaves .bar{}
 		assert_eq!(
 			vector(
-				cbs("foo.bar{}"),
+				"foo.bar{}",
 				ParserOptions::new()
 					.allow_periods(false)
 					.build(),
 			),
 			Ok((
-				cbs(".bar{}"),
+				".bar{}",
 				Vector {
 					labels: vec![LabelMatch {
 						name: "__name__".to_string(),
@@ -494,9 +494,9 @@ mod tests {
 			.build();
 
 		assert_eq!(
-			vector(cbs("foo"), opts),
+			vector("foo", opts),
 			Ok((
-				cbs(""),
+				"",
 				Vector {
 					labels: vec![LabelMatch {
 						name: "__name__".to_string(),
@@ -510,9 +510,9 @@ mod tests {
 		);
 
 		assert_eq!(
-			vector(cbs("foo { }"), opts),
+			vector("foo { }", opts),
 			Ok((
-				cbs(""),
+				"",
 				Vector {
 					labels: vec![LabelMatch {
 						name: "__name__".to_string(),
@@ -531,7 +531,7 @@ mod tests {
 				opts,
 			),
 			Ok((
-				cbs(""),
+				"",
 				Vector {
 					labels: vec![
 						LabelMatch {
@@ -564,11 +564,11 @@ mod tests {
 		assert_eq!(
 			vector(
 				// testing whitespace
-				cbs("foo{a='b',c ='d' , e = 'f' }"),
+				"foo{a='b',c ='d' , e = 'f' }",
 				opts,
 			),
 			Ok((
-				cbs(""),
+				"",
 				Vector {
 					labels: vec![
 						LabelMatch {
@@ -601,7 +601,7 @@ mod tests {
 		assert_eq!(
 			vector(cbs("{lorem=~\"ipsum\"}"), opts),
 			Ok((
-				cbs(""),
+				"",
 				Vector {
 					labels: vec![LabelMatch {
 						name: "lorem".to_string(),
@@ -615,9 +615,9 @@ mod tests {
 		);
 
 		assert_eq!(
-			vector(cbs("{}"), opts),
+			vector("{}", opts),
 			err(vec![
-				(cbs("{}"), VerboseErrorKind::Context("vector selector must contain label matchers or metric name")),
+				("{}", VerboseErrorKind::Context("vector selector must contain label matchers or metric name")),
 			]),
 		);
 	}
@@ -789,16 +789,16 @@ mod tests {
 			.ms_duration(true)
 			.build();
 		assert_eq!(
-			range_literal(cbs("500ms"), opts),
-			Ok((cbs(""), 0.5))
+			range_literal("500ms", opts),
+			Ok(("", 0.5))
 		);
 
 		let opts = ParserOptions::new()
 			.ms_duration(false)
 			.build();
 		assert_eq!(
-			range_literal(cbs("500ms"), opts),
-			Ok((cbs("s"), 500. * 60.))
+			range_literal("500ms", opts),
+			Ok(("s", 500. * 60.))
 		);
 	}
 }
