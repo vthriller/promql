@@ -183,7 +183,7 @@ mod tests {
 	#[test]
 	fn strings() {
 		assert_eq!(
-			string(cbs("\"lorem ipsum \\\"dolor\\nsit amet\\\"\"")),
+			string("\"lorem ipsum \\\"dolor\\nsit amet\\\"\""),
 			Ok(("", b"lorem ipsum \"dolor\nsit amet\"".to_vec()))
 		);
 
@@ -193,7 +193,7 @@ mod tests {
 		);
 
 		assert_eq!(
-			string(cbs("`lorem ipsum \\\"dolor\\nsit\\tamet\\\"`")),
+			string("`lorem ipsum \\\"dolor\\nsit\\tamet\\\"`"),
 			Ok((
 				"",
 				b"lorem ipsum \\\"dolor\\nsit\\tamet\\\"".to_vec()

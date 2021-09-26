@@ -527,7 +527,7 @@ mod tests {
 
 		assert_eq!(
 			vector(
-				cbs("foo { bar = 'baz', quux !~ 'xyzzy', lorem = `ipsum \\n dolor \"sit amet\"` }"),
+				"foo { bar = 'baz', quux !~ 'xyzzy', lorem = `ipsum \\n dolor \"sit amet\"` }",
 				opts,
 			),
 			Ok((
@@ -599,7 +599,7 @@ mod tests {
 		);
 
 		assert_eq!(
-			vector(cbs("{lorem=~\"ipsum\"}"), opts),
+			vector("{lorem=~\"ipsum\"}", opts),
 			Ok((
 				"",
 				Vector {
@@ -687,7 +687,7 @@ mod tests {
 		opts: ParserOptions,
 	) {
 		let v = |tail, range, offset| Ok((
-			cbs(tail),
+			tail,
 			Vector {
 				labels: labels(),
 				range, offset,
@@ -698,26 +698,26 @@ mod tests {
 
 		let q = format!("{} [1m]", instant);
 		assert_eq!(
-			vector(cbs(&q), opts),
+			vector(&q, opts),
 			v("", Some(60.), None),
 		);
 
 		let q = format!("{} offset 5m", instant);
 		assert_eq!(
-			vector(cbs(&q), opts),
+			vector(&q, opts),
 			v("", None, Some(300.)),
 		);
 
 		let q = format!("{} [1m] offset 5m", instant);
 		assert_eq!(
-			vector(cbs(&q), opts),
+			vector(&q, opts),
 			v("", Some(60.), Some(300.)),
 		);
 
 		let q = format!("{} offset 5m [1m]", instant);
 		// FIXME should be Error()?
 		assert_eq!(
-			vector(cbs(&q), opts),
+			vector(&q, opts),
 			v("[1m]", None, Some(300.)),
 		);
 
@@ -725,7 +725,7 @@ mod tests {
 
 		let q = format!("{} offset -5m", instant);
 		assert_eq!(
-			vector(cbs(&q), opts),
+			vector(&q, opts),
 			if opts.negative_offsets {
 				v("", None, Some(-300.))
 			} else {
@@ -768,7 +768,7 @@ mod tests {
 					.compound_intervals(compound_intervals)
 					.build();
 
-				let output = range_literal(cbs(&src), opts);
+				let output = range_literal(&src, opts);
 				if let Some(value) = value {
 					let (tail, output) = output.unwrap(); // panics if not Ok()
 					assert_eq!(output, value,

@@ -675,7 +675,7 @@ mod tests {
 
 	// vector parsing is already tested in `mod vec`, so use that parser instead of crafting lengthy structs all over the test functions
 	fn vector(expr: &str) -> Node {
-		match vec::vector(cbs(expr), ParserOptions::default()) {
+		match vec::vector(expr, ParserOptions::default()) {
 			Ok((b"", x)) => Node::Vector(x),
 			_ => panic!("failed to parse label correctly"),
 		}
@@ -710,7 +710,7 @@ mod tests {
 	}
 
 	fn scalar_single(input: &str, output: f32) {
-		assert_eq!(expression(0, cbs(input), Default::default()), Ok(("", Scalar(output))));
+		assert_eq!(expression(0, input, Default::default()), Ok(("", Scalar(output))));
 	}
 
 	#[test]
