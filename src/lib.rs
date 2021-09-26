@@ -59,7 +59,6 @@ This parser emits `Vec<u8>` for most string literals because PromQL, like Go, al
 
 #![cfg_attr(feature = "cargo-clippy", allow(clippy::tabs_in_doc_comments))]
 
-#[macro_use]
 extern crate nom;
 #[macro_use]
 extern crate quick_error;
@@ -99,7 +98,7 @@ pub use expr::*;
 pub use vec::*;
 
 use nom::Err;
-use nom::error::{VerboseError, ErrorKind};
+use nom::error::VerboseError;
 
 extern crate builder_pattern;
 use builder_pattern::Builder;
@@ -148,7 +147,7 @@ impl Default for ParserOptions {
 }
 
 /// Parse expression string into an AST.
-pub fn parse<I, C>(e: I, opts: ParserOptions) -> Result<Node, nom::Err<VerboseError<I>>>
+pub fn parse<I, C>(e: I, opts: ParserOptions) -> Result<Node, Err<VerboseError<I>>>
 where
 	I: Clone + Copy
 		+ nom::AsBytes

@@ -10,7 +10,6 @@ use nom::{
 	AsChar,
 	InputTakeAtPosition,
 };
-use nom::error::ParseError;
 
 use nom::Parser;
 
