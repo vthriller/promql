@@ -440,9 +440,13 @@ mod tests {
 		instant_vectors(true);
 
 		// matches foo.bar{} entirely
+		for q in [
+			"foo.bar{}",
+			"foo.bar { }",
+		] {
 		assert_eq!(
 			vector(
-				"foo.bar{}",
+				q,
 				ParserOptions::new()
 					.allow_periods(true)
 					.build(),
@@ -460,6 +464,7 @@ mod tests {
 				}
 			))
 		);
+		}
 	}
 
 	#[test]
@@ -467,15 +472,19 @@ mod tests {
 		instant_vectors(false);
 
 		// matches foo, leaves .bar{}
+		for (q, tail) in [
+			("foo.bar{}",   ".bar{}"),
+			("foo.bar { }", ".bar { }"),
+		] {
 		assert_eq!(
 			vector(
-				"foo.bar{}",
+				q,
 				ParserOptions::new()
 					.allow_periods(false)
 					.build(),
 			),
 			Ok((
-				".bar{}",
+				tail,
 				Vector {
 					labels: vec![LabelMatch {
 						name: "__name__".to_string(),
@@ -487,6 +496,7 @@ mod tests {
 				}
 			))
 		);
+		}
 	}
 
 	fn instant_vectors(allow_periods: bool) {
@@ -511,8 +521,12 @@ mod tests {
 			))
 		);
 
+		for q in [
+			"foo{}",
+			"foo { }",
+		] {
 		assert_eq!(
-			vector("foo { }", opts),
+			vector(q, opts),
 			Ok((
 				"",
 				Vector {
@@ -526,10 +540,15 @@ mod tests {
 				}
 			))
 		);
+		}
 
+		for q in [
+			"foo{bar='baz',quux!~'xyzzy',lorem=`ipsum \\n dolor \"sit amet\"`}",
+			"foo { bar = 'baz' , quux !~ 'xyzzy' , lorem = `ipsum \\n dolor \"sit amet\"` }",
+		] {
 		assert_eq!(
 			vector(
-				"foo { bar = 'baz', quux !~ 'xyzzy', lorem = `ipsum \\n dolor \"sit amet\"` }",
+				q,
 				opts,
 			),
 			Ok((
@@ -562,69 +581,14 @@ mod tests {
 				}
 			))
 		);
+		}
 
+		for q in [
+			"{lorem=~\"ipsum\"}",
+			"{ lorem =~ \"ipsum\" }",
+		] {
 		assert_eq!(
-			vector(
-				// testing whitespace
-				"foo{a='b',c ='d' , e = 'f' }",
-				opts,
-			),
-			Ok((
-				"",
-				Vector {
-					labels: vec![
-						LabelMatch {
-							name: "__name__".to_string(),
-							op: LabelMatchOp::Eq,
-							value: b"foo".to_vec(),
-						},
-						LabelMatch {
-							name: "a".to_string(),
-							op: LabelMatchOp::Eq,
-							value: b"b".to_vec(),
-						},
-						LabelMatch {
-							name: "c".to_string(),
-							op: LabelMatchOp::Eq,
-							value: b"d".to_vec(),
-						},
-						LabelMatch {
-							name: "e".to_string(),
-							op: LabelMatchOp::Eq,
-							value: b"f".to_vec(),
-						},
-					],
-					range: None,
-					offset: None
-				}
-			))
-		);
-
-		assert_eq!(
-			vector("foo#{bar = '/'}\n{baz\n#=\n!=\n'/'}", opts),
-			Ok((
-				"",
-				Vector {
-					labels: vec![
-						LabelMatch {
-							name: "__name__".to_string(),
-							op: LabelMatchOp::Eq,
-							value: b"foo".to_vec(),
-						},
-						LabelMatch {
-							name: "baz".to_string(),
-							op: LabelMatchOp::Ne,
-							value: b"/".to_vec(),
-						},
-					],
-					range: None,
-					offset: None,
-				}
-			))
-		);
-
-		assert_eq!(
-			vector("{lorem=~\"ipsum\"}", opts),
+			vector(q, opts),
 			Ok((
 				"",
 				Vector {
@@ -638,13 +602,19 @@ mod tests {
 				}
 			))
 		);
+		}
 
+		for q in [
+			"{}",
+			"{ }",
+		] {
 		assert_eq!(
-			vector("{}", opts),
+			vector(q, opts),
 			err(vec![
-				("{}", VerboseErrorKind::Context("vector selector must contain label matchers or metric name")),
+				(q, VerboseErrorKind::Context("vector selector must contain label matchers or metric name")),
 			]),
 		);
+		}
 	}
 
 	#[test]
