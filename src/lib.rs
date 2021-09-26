@@ -89,12 +89,14 @@ Let external parsers deal with acceptable delimiters.
 */
 
 pub(crate) mod expr;
+pub(crate) mod functions;
 pub(crate) mod str;
 pub(crate) mod vec;
 pub(crate) mod utils;
 pub(crate) mod whitespace;
 
 pub use expr::*;
+pub use functions::*;
 pub use vec::*;
 
 use nom::Err;
