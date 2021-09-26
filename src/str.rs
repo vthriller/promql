@@ -179,20 +179,20 @@ mod tests {
 	#[test]
 	fn strings() {
 		assert_eq!(
-			string("\"lorem ipsum \\\"dolor\\nsit amet\\\"\""),
+			string(r#""lorem ipsum \"dolor\nsit amet\"""#),
 			Ok(("", b"lorem ipsum \"dolor\nsit amet\"".to_vec()))
 		);
 
 		assert_eq!(
-			string("'lorem ipsum \\'dolor\\nsit\\tamet\\''"),
+			string(r#"'lorem ipsum \'dolor\nsit\tamet\''"#),
 			Ok(("", b"lorem ipsum 'dolor\nsit\tamet'".to_vec()))
 		);
 
 		assert_eq!(
-			string("`lorem ipsum \\\"dolor\\nsit\\tamet\\\"`"),
+			string(r#"`lorem ipsum \"dolor\nsit\tamet\"`"#),
 			Ok((
 				"",
-				b"lorem ipsum \\\"dolor\\nsit\\tamet\\\"".to_vec()
+				br#"lorem ipsum \"dolor\nsit\tamet\""#.to_vec() // N.B. r# literal
 			))
 		);
 
