@@ -218,7 +218,7 @@ where
 	&'static str: FindToken<C>,
 {
 	surrounded_ws_or_comment(opts, map(
-		tuple((
+		tuple_separated!(ws_or_comment(opts), (
 			alt((
 				value(tag("by"), AggregationAction::By),
 				value(tag("without"), AggregationAction::Without),
@@ -460,7 +460,7 @@ where
 	&'static str: FindToken<C>,
 {
 	surrounded_ws_or_comment(opts, map(
-		tuple((
+		tuple_separated!(ws_or_comment(opts), (
 			// action
 			alt((
 				value(tag("on"), OpModAction::RestrictTo),
@@ -471,7 +471,7 @@ where
 			// group
 			// TODO > Grouping modifiers can only be used for comparison and arithmetic. Operations as and, unless and or operations match with all possible entries in the right vector by default.
 			opt(map(
-				tuple((
+				tuple_separated!(ws_or_comment(opts), (
 					alt((
 						value(tag("group_left"), OpGroupSide::Left),
 						value(tag("group_right"), OpGroupSide::Right),

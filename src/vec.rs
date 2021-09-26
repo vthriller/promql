@@ -330,7 +330,7 @@ where
 {
 	map(
 		// labels and offset parsers already handle whitespace, no need to use ws!() here
-		tuple((
+		tuple_separated!(ws_or_comment(opts), (
 			|i| instant_vec(i, opts),
 			opt(delimited(char('['), |i| range_literal(i, opts), char(']'))),
 			opt(preceded(
