@@ -11,6 +11,7 @@ use nom::{
 	AsChar,
 };
 use std::ops::{
+	Range,
 	RangeFrom,
 	RangeTo,
 };
@@ -48,6 +49,7 @@ use crate::{
 	ParserOptions,
 	tuple_separated,
 };
+use crate::whitespace::ws_or_comment;
 use crate::utils::{
 	IResult,
 	surrounded_ws,
@@ -85,6 +87,7 @@ where
 		+ InputTake
 		+ InputTakeAtPosition<Item = C>
 		+ Offset
+		+ Slice<Range<usize>>
 		+ Slice<RangeFrom<usize>>
 		+ Slice<RangeTo<usize>>
 		,
@@ -97,7 +100,7 @@ where
 			separated_list0(
 				surrounded_ws(char(',')),
 				map(
-					tuple_separated!(multispace0, (
+					tuple_separated!(ws_or_comment(opts), (
 						label_name,
 						label_op,
 						string,
@@ -159,6 +162,7 @@ where
 		+ InputTake
 		+ InputTakeAtPosition<Item = C>
 		+ Offset
+		+ Slice<Range<usize>>
 		+ Slice<RangeFrom<usize>>
 		+ Slice<RangeTo<usize>>
 		,
@@ -167,7 +171,7 @@ where
 {
 	let orig_input = input;
 	let (input, (name, labels)) =
-		tuple_separated!(multispace0, (
+		tuple_separated!(ws_or_comment(opts), (
 			opt(move |i| metric_name(i, opts)),
 			opt(|i| label_set(i, opts)),
 		))(input)?;
@@ -317,6 +321,7 @@ where
 		+ InputTake
 		+ InputTakeAtPosition<Item = C>
 		+ Offset
+		+ Slice<Range<usize>>
 		+ Slice<RangeFrom<usize>>
 		+ Slice<RangeTo<usize>>
 		,
