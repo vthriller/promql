@@ -678,41 +678,41 @@ mod tests {
 			"foo{bar!~'baz'}",
 			"foo { bar !~ 'baz' }",
 		] {
-		modified_vectors_for_instant(
-			q,
-			|| {
-				vec![
-					LabelMatch {
-						name: "__name__".to_string(),
-						op: LabelMatchOp::Eq,
-						value: b"foo".to_vec(),
-					},
-					LabelMatch {
-						name: "bar".to_string(),
-						op: LabelMatchOp::RNe,
-						value: b"baz".to_vec(),
-					},
-				]
-			},
-			opts,
-		);
+			modified_vectors_for_instant(
+				q,
+				|| {
+					vec![
+						LabelMatch {
+							name: "__name__".to_string(),
+							op: LabelMatchOp::Eq,
+							value: b"foo".to_vec(),
+						},
+						LabelMatch {
+							name: "bar".to_string(),
+							op: LabelMatchOp::RNe,
+							value: b"baz".to_vec(),
+						},
+					]
+				},
+				opts,
+			);
 		}
 
 		for q in [
 			"{instance!=`localhost`}",
 			"{ instance != `localhost` }",
 		] {
-		modified_vectors_for_instant(
-			q,
-			|| {
-				vec![LabelMatch {
-					name: "instance".to_string(),
-					op: LabelMatchOp::Ne,
-					value: b"localhost".to_vec(),
-				}]
-			},
-			opts,
-		);
+			modified_vectors_for_instant(
+				q,
+				|| {
+					vec![LabelMatch {
+						name: "instance".to_string(),
+						op: LabelMatchOp::Ne,
+						value: b"localhost".to_vec(),
+					}]
+				},
+				opts,
+			);
 		}
 	}
 
@@ -735,10 +735,10 @@ mod tests {
 			format!("{}[1m]", instant),
 			format!("{} [ 1m ]", instant),
 		] {
-		assert_eq!(
-			vector(q.as_str(), opts),
-			v("", Some(60.), None),
-		);
+			assert_eq!(
+				vector(q.as_str(), opts),
+				v("", Some(60.), None),
+			);
 		}
 
 		// TODO test "{}offset" without spaces (fail after [a-z0-9], pass otherwise)
@@ -754,10 +754,10 @@ mod tests {
 			format!("{}[1m]offset 5m", instant),
 			format!("{} [ 1m ] offset 5m", instant),
 		] {
-		assert_eq!(
-			vector(q.as_str(), opts),
-			v("", Some(60.), Some(300.)),
-		);
+			assert_eq!(
+				vector(q.as_str(), opts),
+				v("", Some(60.), Some(300.)),
+			);
 		}
 
 		// TODO test "{}offset" without spaces (fail after [a-z0-9], pass otherwise)
