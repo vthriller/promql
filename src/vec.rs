@@ -634,11 +634,15 @@ mod tests {
 	fn modified_vectors(opts: ParserOptions) {
 		modified_vectors_for_instant(
 			"foo",
-			|| {
+			|is_offset_concat| {
 				vec![LabelMatch {
 					name: "__name__".to_string(),
 					op: LabelMatchOp::Eq,
-					value: b"foo".to_vec(),
+					value: if is_offset_concat {
+						b"foooffset".to_vec()
+					} else {
+						b"foo".to_vec()
+					},
 				}]
 			},
 			opts,
@@ -650,7 +654,7 @@ mod tests {
 		] {
 			modified_vectors_for_instant(
 				q,
-				|| {
+				|_| {
 					vec![
 						LabelMatch {
 							name: "__name__".to_string(),
@@ -674,7 +678,7 @@ mod tests {
 		] {
 			modified_vectors_for_instant(
 				q,
-				|| {
+				|_| {
 					vec![LabelMatch {
 						name: "instance".to_string(),
 						op: LabelMatchOp::Ne,
@@ -688,13 +692,13 @@ mod tests {
 
 	fn modified_vectors_for_instant(
 		instant: &str,
-		labels: fn() -> Vec<LabelMatch>,
+		labels: fn(bool) -> Vec<LabelMatch>, // args: (is_offset_concat)
 		opts: ParserOptions,
 	) {
-		let v = |tail, range, offset| Ok((
+		let v = |tail, range, offset, is_offset_concat| Ok((
 			tail,
 			Vector {
-				labels: labels(),
+				labels: labels(is_offset_concat),
 				range, offset,
 			},
 		));
@@ -707,7 +711,7 @@ mod tests {
 		] {
 			assert_eq!(
 				vector(q.as_str(), opts),
-				v("", Some(60.), None),
+				v("", Some(60.), None, false),
 			);
 		}
 
@@ -716,7 +720,7 @@ mod tests {
 		let q = format!("{} offset 5m", instant);
 		assert_eq!(
 			vector(q.as_str(), opts),
-			v("", None, Some(300.)),
+			v("", None, Some(300.), false),
 		);
 
 		// TODO failing "offset5m"
@@ -726,7 +730,7 @@ mod tests {
 		] {
 			assert_eq!(
 				vector(q.as_str(), opts),
-				v("", Some(60.), Some(300.)),
+				v("", Some(60.), Some(300.), false),
 			);
 		}
 
@@ -737,7 +741,7 @@ mod tests {
 		// FIXME should be Error()?
 		assert_eq!(
 			vector(q.as_str(), opts),
-			v("[1m]", None, Some(300.)),
+			v("[1m]", None, Some(300.), false),
 		);
 
 		// negative_offsets
@@ -748,9 +752,9 @@ mod tests {
 		assert_eq!(
 			vector(q.as_str(), opts),
 			if opts.negative_offsets {
-				v("", None, Some(-300.))
+				v("", None, Some(-300.), false)
 			} else {
-				v("offset -5m", None, None)
+				v("offset -5m", None, None, false)
 			}
 		);
 	}
