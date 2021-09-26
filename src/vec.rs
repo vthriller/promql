@@ -444,26 +444,26 @@ mod tests {
 			"foo.bar{}",
 			"foo.bar { }",
 		] {
-		assert_eq!(
-			vector(
-				q,
-				ParserOptions::new()
-					.allow_periods(true)
-					.build(),
-			),
-			Ok((
-				"",
-				Vector {
-					labels: vec![LabelMatch {
-						name: "__name__".to_string(),
-						op: LabelMatchOp::Eq,
-						value: b"foo.bar".to_vec(),
-					},],
-					range: None,
-					offset: None
-				}
-			))
-		);
+			assert_eq!(
+				vector(
+					q,
+					ParserOptions::new()
+						.allow_periods(true)
+						.build(),
+				),
+				Ok((
+					"",
+					Vector {
+						labels: vec![LabelMatch {
+							name: "__name__".to_string(),
+							op: LabelMatchOp::Eq,
+							value: b"foo.bar".to_vec(),
+						},],
+						range: None,
+						offset: None
+					}
+				))
+			);
 		}
 	}
 
@@ -476,26 +476,26 @@ mod tests {
 			("foo.bar{}",   ".bar{}"),
 			("foo.bar { }", ".bar { }"),
 		] {
-		assert_eq!(
-			vector(
-				q,
-				ParserOptions::new()
-					.allow_periods(false)
-					.build(),
-			),
-			Ok((
-				tail,
-				Vector {
-					labels: vec![LabelMatch {
-						name: "__name__".to_string(),
-						op: LabelMatchOp::Eq,
-						value: b"foo".to_vec(),
-					},],
-					range: None,
-					offset: None
-				}
-			))
-		);
+			assert_eq!(
+				vector(
+					q,
+					ParserOptions::new()
+						.allow_periods(false)
+						.build(),
+				),
+				Ok((
+					tail,
+					Vector {
+						labels: vec![LabelMatch {
+							name: "__name__".to_string(),
+							op: LabelMatchOp::Eq,
+							value: b"foo".to_vec(),
+						},],
+						range: None,
+						offset: None
+					}
+				))
+			);
 		}
 	}
 
@@ -525,95 +525,95 @@ mod tests {
 			"foo{}",
 			"foo { }",
 		] {
-		assert_eq!(
-			vector(q, opts),
-			Ok((
-				"",
-				Vector {
-					labels: vec![LabelMatch {
-						name: "__name__".to_string(),
-						op: LabelMatchOp::Eq,
-						value: b"foo".to_vec(),
-					},],
-					range: None,
-					offset: None
-				}
-			))
-		);
+			assert_eq!(
+				vector(q, opts),
+				Ok((
+					"",
+					Vector {
+						labels: vec![LabelMatch {
+							name: "__name__".to_string(),
+							op: LabelMatchOp::Eq,
+							value: b"foo".to_vec(),
+						},],
+						range: None,
+						offset: None
+					}
+				))
+			);
 		}
 
 		for q in [
 			"foo{bar='baz',quux!~'xyzzy',lorem=`ipsum \\n dolor \"sit amet\"`}",
 			"foo { bar = 'baz' , quux !~ 'xyzzy' , lorem = `ipsum \\n dolor \"sit amet\"` }",
 		] {
-		assert_eq!(
-			vector(
-				q,
-				opts,
-			),
-			Ok((
-				"",
-				Vector {
-					labels: vec![
-						LabelMatch {
-							name: "__name__".to_string(),
-							op: LabelMatchOp::Eq,
-							value: b"foo".to_vec(),
-						},
-						LabelMatch {
-							name: "bar".to_string(),
-							op: LabelMatchOp::Eq,
-							value: b"baz".to_vec(),
-						},
-						LabelMatch {
-							name: "quux".to_string(),
-							op: LabelMatchOp::RNe,
-							value: b"xyzzy".to_vec(),
-						},
-						LabelMatch {
-							name: "lorem".to_string(),
-							op: LabelMatchOp::Eq,
-							value: b"ipsum \\n dolor \"sit amet\"".to_vec(),
-						},
-					],
-					range: None,
-					offset: None
-				}
-			))
-		);
+			assert_eq!(
+				vector(
+					q,
+					opts,
+				),
+				Ok((
+					"",
+					Vector {
+						labels: vec![
+							LabelMatch {
+								name: "__name__".to_string(),
+								op: LabelMatchOp::Eq,
+								value: b"foo".to_vec(),
+							},
+							LabelMatch {
+								name: "bar".to_string(),
+								op: LabelMatchOp::Eq,
+								value: b"baz".to_vec(),
+							},
+							LabelMatch {
+								name: "quux".to_string(),
+								op: LabelMatchOp::RNe,
+								value: b"xyzzy".to_vec(),
+							},
+							LabelMatch {
+								name: "lorem".to_string(),
+								op: LabelMatchOp::Eq,
+								value: b"ipsum \\n dolor \"sit amet\"".to_vec(),
+							},
+						],
+						range: None,
+						offset: None
+					}
+				))
+			);
 		}
 
 		for q in [
 			"{lorem=~\"ipsum\"}",
 			"{ lorem =~ \"ipsum\" }",
 		] {
-		assert_eq!(
-			vector(q, opts),
-			Ok((
-				"",
-				Vector {
-					labels: vec![LabelMatch {
-						name: "lorem".to_string(),
-						op: LabelMatchOp::REq,
-						value: b"ipsum".to_vec(),
-					},],
-					range: None,
-					offset: None
-				}
-			))
-		);
+			assert_eq!(
+				vector(q, opts),
+				Ok((
+					"",
+					Vector {
+						labels: vec![LabelMatch {
+							name: "lorem".to_string(),
+							op: LabelMatchOp::REq,
+							value: b"ipsum".to_vec(),
+						},],
+						range: None,
+						offset: None
+					}
+				))
+			);
 		}
 
 		for q in [
 			"{}",
 			"{ }",
 		] {
-		assert_eq!(
-			vector(q, opts),
-			err(vec![
-				(q, VerboseErrorKind::Context("vector selector must contain label matchers or metric name")),
-			]),
-		);
+			assert_eq!(
+				vector(q, opts),
+				err(vec![
+					(q, VerboseErrorKind::Context("vector selector must contain label matchers or metric name")),
+				]),
+			);
 		}
 	}
 
