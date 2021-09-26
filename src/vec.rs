@@ -51,6 +51,7 @@ use crate::str::string;
 use crate::whitespace::ws_or_comment;
 use crate::utils::{
 	IResult,
+	delimited_ws,
 	surrounded_ws,
 	value,
 };
@@ -331,7 +332,7 @@ where
 		// labels and offset parsers already handle whitespace, no need to use ws!() here
 		tuple_separated!(ws_or_comment(opts), (
 			|i| instant_vec(i, opts),
-			opt(delimited(char('['), |i| range_literal(i, opts), char(']'))),
+			opt(delimited_ws(char('['), |i| range_literal(i, opts), char(']'))),
 			opt(preceded(
 				surrounded_ws(tag("offset")),
 				tuple((
