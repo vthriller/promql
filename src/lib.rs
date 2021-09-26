@@ -83,6 +83,12 @@ but closure-returning parsers suck more:
 - we cannot reuse single closure because nom parsers don't accept refs to Fn().
 */
 
+/* Nota bene
+
+Individual parsers should never handle leading/trailing whitespace.
+Let external parsers deal with acceptable delimiters.
+*/
+
 pub(crate) mod expr;
 pub(crate) mod str;
 pub(crate) mod vec;
