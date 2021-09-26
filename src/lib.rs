@@ -87,6 +87,7 @@ pub(crate) mod expr;
 pub(crate) mod str;
 pub(crate) mod vec;
 pub(crate) mod utils;
+pub(crate) mod whitespace;
 
 pub use expr::*;
 pub use vec::*;

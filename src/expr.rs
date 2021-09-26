@@ -20,16 +20,10 @@ use nom::bytes::complete::{
 	tag,
 	tag_no_case,
 };
-use nom::character::complete::{
-	char,
-	multispace1,
-	not_line_ending,
-};
+use nom::character::complete::char;
 use nom::combinator::{
-	fail,
 	map,
 	opt,
-	recognize,
 };
 use nom::multi::{
 	many0,
@@ -46,6 +40,10 @@ use vec::{label_name, vector, Vector};
 use crate::{
 	ParserOptions,
 	tuple_separated,
+};
+use crate::whitespace::{
+	ws_or_comment,
+	surrounded_ws_or_comment,
 };
 use crate::utils::{
 	IResult,
@@ -176,62 +174,6 @@ impl Node {
 	fn negation(x: Node) -> Node {
 		Node::Negation(Box::new(x))
 	}
-}
-
-fn ws_or_comment<I, C>(opts: ParserOptions) -> impl FnMut(I) -> IResult<I, ()>
-where
-	I: Clone
-		+ Compare<&'static str>
-		+ InputIter<Item = C>
-		+ InputLength
-		+ InputTake
-		+ InputTakeAtPosition<Item = C>
-		+ Offset
-		+ Slice<Range<usize>>
-		+ Slice<RangeFrom<usize>>
-		+ Slice<RangeTo<usize>>
-		,
-	C: AsChar + Clone,
-{
-	value(
-		many0(alt((
-			move |input| if opts.comments {
-				recognize(
-					tuple((
-						char('#'),
-						not_line_ending,
-					))
-				)(input)
-			} else {
-				fail(input)
-			},
-			recognize(multispace1),
-		))),
-		(),
-	)
-}
-
-fn surrounded_ws_or_comment<I, C, O, P>(opts: ParserOptions, parser: P) -> impl FnMut(I) -> IResult<I, O>
-where
-	P: FnMut(I) -> IResult<I, O>,
-	I: Clone
-		+ Compare<&'static str>
-		+ InputIter<Item = C>
-		+ InputLength
-		+ InputTake
-		+ InputTakeAtPosition<Item = C>
-		+ Offset
-		+ Slice<Range<usize>>
-		+ Slice<RangeFrom<usize>>
-		+ Slice<RangeTo<usize>>
-		,
-	C: AsChar + Clone,
-{
-	delimited(
-		ws_or_comment(opts),
-		parser,
-		ws_or_comment(opts),
-	)
 }
 
 fn label_list<I, C>(input: I, opts: ParserOptions) -> IResult<I, Vec<String>>
@@ -1144,16 +1086,13 @@ mod tests {
 		);
 	}
 
+	// this one tests comments embedded in different expressions
+	// see also `crate::whitestpace::tests::comments
 	#[test]
 	fn comments() {
 		let opts = ParserOptions::new()
 			.comments(true)
 			.build();
-
-		assert_eq!(
-			ws_or_comment(opts)("# sfdjvdkfjvbh\n"),
-			Ok(("", ())),
-		);
 
 		assert_eq!(
 			expression(0, cbs("foo # / bar\n/ baz"), opts),
