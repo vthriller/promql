@@ -643,12 +643,28 @@ mod tests {
 			},
 			opts,
 		);
+		modified_vectors_for_instant_concat_offset(
+			"foo",
+			|| {
+				vec![LabelMatch {
+					name: "__name__".to_string(),
+					op: LabelMatchOp::Eq,
+					value: b"foooffset".to_vec(), // N.B. different label
+				}]
+			},
+			opts,
+			false, // should_parse_offset
+		);
 
 		for q in [
 			"foo{bar!~'baz'}",
 			"foo { bar !~ 'baz' }",
 		] {
-			modified_vectors_for_instant(
+			for f in [
+				|instant, labels, opts| modified_vectors_for_instant(instant, labels, opts),
+				|instant, labels, opts| modified_vectors_for_instant_concat_offset(instant, labels, opts, true),
+			] {
+			f(
 				q,
 				|| {
 					vec![
@@ -666,13 +682,18 @@ mod tests {
 				},
 				opts,
 			);
+			}
 		}
 
 		for q in [
 			"{instance!=`localhost`}",
 			"{ instance != `localhost` }",
 		] {
-			modified_vectors_for_instant(
+			for f in [
+				|instant, labels, opts| modified_vectors_for_instant(instant, labels, opts),
+				|instant, labels, opts| modified_vectors_for_instant_concat_offset(instant, labels, opts, true),
+			] {
+			f(
 				q,
 				|| {
 					vec![LabelMatch {
@@ -683,6 +704,7 @@ mod tests {
 				},
 				opts,
 			);
+			}
 		}
 	}
 
@@ -711,13 +733,13 @@ mod tests {
 			);
 		}
 
-		// TODO test "{}offset" without spaces (fail after [a-z0-9], pass otherwise)
 		// TODO failing "offset5m"
 		let q = format!("{} offset 5m", instant);
 		assert_eq!(
 			vector(q.as_str(), opts),
 			v("", None, Some(300.)),
 		);
+		// for "{}offset" without space see `modified_vectors_for_instant_concat_offset`
 
 		// TODO failing "offset5m"
 		for q in [
@@ -729,8 +751,8 @@ mod tests {
 				v("", Some(60.), Some(300.)),
 			);
 		}
+		// for "{}offset" without space see `modified_vectors_for_instant_concat_offset`
 
-		// TODO test "{}offset" without spaces (fail after [a-z0-9], pass otherwise)
 		// TODO failing "offset5m"
 		// not testing "5m[1m]" since this order of tokens doesn't parse regardless of whitespace
 		let q = format!("{} offset 5m [1m]", instant);
@@ -742,15 +764,51 @@ mod tests {
 
 		// negative_offsets
 
-		// TODO test "{}offset" without spaces (fail after [a-z0-9], pass otherwise)
 		// TODO *passing* "offset-5m"
 		let q = format!("{} offset -5m", instant);
+		// "{}offset -5m" (no space before "offset") should be already covered by the case above
 		assert_eq!(
 			vector(q.as_str(), opts),
 			if opts.negative_offsets {
 				v("", None, Some(-300.))
 			} else {
 				v("offset -5m", None, None)
+			}
+		);
+	}
+
+	// similar to `modified_vectors_for_instant` except it has no space between vector and "offset"
+	fn modified_vectors_for_instant_concat_offset(
+		instant: &str,
+		labels: fn() -> Vec<LabelMatch>,
+		opts: ParserOptions,
+		should_parse_offset: bool,
+	) {
+		let v = |tail, range, offset| Ok((
+			tail,
+			Vector {
+				labels: labels(),
+				range, offset,
+			},
+		));
+
+		let q = format!("{}offset 5m", instant);
+		assert_eq!(
+			vector(q.as_str(), opts),
+			if should_parse_offset {
+				v("", None, Some(300.))
+			} else {
+				v("5m", None, None)
+			},
+		);
+
+		let q = format!("{}offset 5m [1m]", instant);
+		assert_eq!(
+			vector(q.as_str(), opts),
+			if should_parse_offset {
+				v("[1m]", None, Some(300.))
+			} else {
+				v("5m [1m]", None, None)
 			}
 		);
 	}
