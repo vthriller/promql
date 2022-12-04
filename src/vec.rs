@@ -1,61 +1,20 @@
-use nom::{
-	AsBytes,
-	Compare,
-	InputIter,
-	InputLength,
-	InputTake,
-	InputTakeAtPosition,
-	Offset,
-	Slice,
-	FindToken,
-	AsChar,
-};
-use std::ops::{
-	RangeFrom,
-	RangeTo,
-};
+use crate::utils::{surrounded_ws, value, IResult};
+use crate::{tuple_separated, ParserOptions};
 use nom::branch::alt;
-use nom::bytes::complete::{
-	is_a,
-	tag,
+use nom::bytes::complete::{is_a, tag};
+use nom::character::complete::{alpha1, alphanumeric1, char, digit1, multispace0};
+use nom::combinator::{cond, map, map_opt, map_res, opt, recognize};
+use nom::multi::{many0, separated_list0};
+use nom::sequence::{delimited, preceded, tuple};
+use nom::{
+	AsBytes, AsChar, Compare, FindToken, InputIter, InputLength, InputTake, InputTakeAtPosition,
+	Offset, Slice,
 };
-use nom::character::complete::{
-	alpha1,
-	alphanumeric1,
-	digit1,
-	char,
-	multispace0,
-};
-use nom::combinator::{
-	cond,
-	map,
-	map_opt,
-	map_res,
-	opt,
-	recognize,
-};
-use nom::multi::{
-	many0,
-	separated_list0,
-};
-use nom::sequence::{
-	delimited,
-	preceded,
-	tuple,
-};
+use std::ops::{RangeFrom, RangeTo};
 use str::string;
-use crate::{
-	ParserOptions,
-	tuple_separated,
-};
-use crate::utils::{
-	IResult,
-	surrounded_ws,
-	value,
-};
 
 /// Label filter operators.
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Eq)]
 pub enum LabelMatchOp {
 	/** `=`  */
 	Eq,
@@ -68,7 +27,7 @@ pub enum LabelMatchOp {
 }
 
 /// Single label filter.
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct LabelMatch {
 	pub name: String,
 	pub op: LabelMatchOp,
@@ -86,28 +45,20 @@ where
 		+ InputTakeAtPosition<Item = C>
 		+ Offset
 		+ Slice<RangeFrom<usize>>
-		+ Slice<RangeTo<usize>>
-		,
+		+ Slice<RangeTo<usize>>,
 	C: AsChar + Clone,
 	&'static str: FindToken<C>,
 {
 	delimited(
 		char('{'),
-		surrounded_ws(
-			separated_list0(
-				surrounded_ws(char(',')),
-				map(
-					tuple_separated!(multispace0, (
-						label_name,
-						label_op,
-						string,
-					)),
-					|(name, op, value)|
-						LabelMatch { name, op, value }
-				)
+		surrounded_ws(separated_list0(
+			surrounded_ws(char(',')),
+			map(
+				tuple_separated!(multispace0, (label_name, label_op, string,)),
+				|(name, op, value)| LabelMatch { name, op, value },
 			),
-		),
-		char('}')
+		)),
+		char('}'),
 	)(input)
 }
 
@@ -151,7 +102,8 @@ pub struct Vector {
 
 fn instant_vec<I, C>(input: I, opts: ParserOptions) -> IResult<I, Vec<LabelMatch>>
 where
-	I: Clone + Copy
+	I: Clone
+		+ Copy
 		+ AsBytes
 		+ Compare<&'static str>
 		+ InputIter<Item = C>
@@ -160,17 +112,15 @@ where
 		+ InputTakeAtPosition<Item = C>
 		+ Offset
 		+ Slice<RangeFrom<usize>>
-		+ Slice<RangeTo<usize>>
-		,
+		+ Slice<RangeTo<usize>>,
 	C: AsChar + Clone,
 	&'static str: FindToken<C>,
 {
 	let orig_input = input;
-	let (input, (name, labels)) =
-		tuple_separated!(multispace0, (
-			opt(move |i| metric_name(i, opts)),
-			opt(label_set),
-		))(input)?;
+	let (input, (name, labels)) = tuple_separated!(
+		multispace0,
+		(opt(move |i| metric_name(i, opts)), opt(label_set),)
+	)(input)?;
 
 	let mut ret = match name {
 		Some(name) => vec![LabelMatch {
@@ -186,9 +136,12 @@ where
 
 	if ret.is_empty() {
 		Err(nom::Err::Error(nom::error::VerboseError {
-			errors: vec![
-				(orig_input, nom::error::VerboseErrorKind::Context("vector selector must contain label matchers or metric name")),
-			],
+			errors: vec![(
+				orig_input,
+				nom::error::VerboseErrorKind::Context(
+					"vector selector must contain label matchers or metric name",
+				),
+			)],
 		}))
 	} else {
 		Ok((input, ret))
@@ -198,7 +151,11 @@ where
 // `max_duration` limits set of available suffixes, allowing us to forbid intervals like `30s5m`
 // not using vecs/slices to limit set of acceptable suffixes: they're expensive,
 // and we cannot build an alt() from them anyway (even recursive one, like alt(alt(), ...))
-fn range_literal_part<I, C>(input: I, opts: ParserOptions, max_duration: Option<f32>) -> IResult<I, (f32, f32)>
+fn range_literal_part<I, C>(
+	input: I,
+	opts: ParserOptions,
+	max_duration: Option<f32>,
+) -> IResult<I, (f32, f32)>
 where
 	I: Clone
 		+ AsBytes
@@ -209,36 +166,34 @@ where
 		+ InputTakeAtPosition<Item = C>
 		+ Offset
 		+ Slice<RangeFrom<usize>>
-		+ Slice<RangeTo<usize>>
-		,
+		+ Slice<RangeTo<usize>>,
 	C: AsChar,
 {
 	map_opt(
 		tuple((
 			map(
-				move |input: I| if opts.fractional_intervals {
-					// not using nom's `float` here as it allows literals like `1e3`, which is not what we want
-					// TODO should `.5d`/`5.d` (without leading/trailing digits) be allowed?
-					recognize(tuple((
-						digit1,
-						opt(tuple((
-							char('.'),
-							digit1,
-						))),
-					)))(input)
-				} else {
-					digit1(input)
+				move |input: I| {
+					if opts.fractional_intervals {
+						// not using nom's `float` here as it allows literals like `1e3`, which is not what we want
+						// TODO should `.5d`/`5.d` (without leading/trailing digits) be allowed?
+						recognize(tuple((digit1, opt(tuple((char('.'), digit1))))))(input)
+					} else {
+						digit1(input)
+					}
 				},
 				// from_utf8_unchecked() on [0-9.]+ is actually totally safe
 				// FIXME unwrap? FIXME copy-pasted from expr.rs
-				|n| unsafe { String::from_utf8_unchecked(n.as_bytes().to_vec()) }.parse::<f32>().unwrap()
+				|n| {
+					unsafe { String::from_utf8_unchecked(n.as_bytes().to_vec()) }
+						.parse::<f32>()
+						.unwrap()
+				},
 			),
 			alt((
 				// 'ms' should come before 'm'
-				map_opt(
-					cond(opts.ms_duration, tag("ms")),
-					|option| option.map(|_| 1e-3),
-				),
+				map_opt(cond(opts.ms_duration, tag("ms")), |option| {
+					option.map(|_| 1e-3)
+				}),
 				value(char('s'), 1.),
 				value(char('m'), 60.),
 				value(char('h'), 60. * 60.),
@@ -249,18 +204,25 @@ where
 		)),
 		move |(num, suffix)| match max_duration {
 			None => Some((num, suffix)),
-			Some(max) => if suffix < max {
-				Some((num, suffix))
-			} else {
-				None
-			},
-		}
+			Some(max) => {
+				if suffix < max {
+					Some((num, suffix))
+				} else {
+					None
+				}
+			}
+		},
 	)(input)
 }
 
-fn range_compound_literal<I, C>(input: I, opts: ParserOptions, max_duration: Option<f32>) -> IResult<I, f32>
+fn range_compound_literal<I, C>(
+	input: I,
+	opts: ParserOptions,
+	max_duration: Option<f32>,
+) -> IResult<I, f32>
 where
-	I: Clone + Copy
+	I: Clone
+		+ Copy
 		+ AsBytes
 		+ Compare<&'static str>
 		+ InputIter<Item = C>
@@ -269,22 +231,22 @@ where
 		+ InputTakeAtPosition<Item = C>
 		+ Offset
 		+ Slice<RangeFrom<usize>>
-		+ Slice<RangeTo<usize>>
-		,
+		+ Slice<RangeTo<usize>>,
 	C: AsChar,
 {
-		let (input, (amount, duration)) = range_literal_part(input, opts, max_duration)?;
-		// use matched duration as a new cap so we don't match the same durations or longer
-		let (input, rest) = match range_compound_literal(input, opts, Some(duration)) {
-			Ok((input, rest)) => (input, rest),
-			Err(_) => (input, 0.), // the rest doesn't look like compound literal
-		};
-		Ok((input, amount * duration + rest))
+	let (input, (amount, duration)) = range_literal_part(input, opts, max_duration)?;
+	// use matched duration as a new cap so we don't match the same durations or longer
+	let (input, rest) = match range_compound_literal(input, opts, Some(duration)) {
+		Ok((input, rest)) => (input, rest),
+		Err(_) => (input, 0.), // the rest doesn't look like compound literal
+	};
+	Ok((input, amount * duration + rest))
 }
 
 fn range_literal<I, C>(input: I, opts: ParserOptions) -> IResult<I, f32>
 where
-	I: Clone + Copy
+	I: Clone
+		+ Copy
 		+ AsBytes
 		+ Compare<&'static str>
 		+ InputIter<Item = C>
@@ -293,8 +255,7 @@ where
 		+ InputTakeAtPosition<Item = C>
 		+ Offset
 		+ Slice<RangeFrom<usize>>
-		+ Slice<RangeTo<usize>>
-		,
+		+ Slice<RangeTo<usize>>,
 	C: AsChar,
 {
 	if opts.compound_intervals {
@@ -302,14 +263,15 @@ where
 	} else {
 		map(
 			|i| range_literal_part(i, opts, None),
-			|(amount, duration)| amount * duration
+			|(amount, duration)| amount * duration,
 		)(input)
 	}
 }
 
 pub(crate) fn vector<I, C>(input: I, opts: ParserOptions) -> IResult<I, Vector>
 where
-	I: Clone + Copy
+	I: Clone
+		+ Copy
 		+ AsBytes
 		+ Compare<&'static str>
 		+ InputIter<Item = C>
@@ -318,8 +280,7 @@ where
 		+ InputTakeAtPosition<Item = C>
 		+ Offset
 		+ Slice<RangeFrom<usize>>
-		+ Slice<RangeTo<usize>>
-		,
+		+ Slice<RangeTo<usize>>,
 	C: AsChar + Clone,
 	&'static str: FindToken<C>,
 {
@@ -331,27 +292,28 @@ where
 			opt(preceded(
 				surrounded_ws(tag("offset")),
 				tuple((
-					move |input| if opts.negative_offsets {
-						opt(char('-'))(input)
-					} else {
-						// match empty string (let next parser fail),
-						// mark offset interval as positive
-						Ok((input, None))
+					move |input| {
+						if opts.negative_offsets {
+							opt(char('-'))(input)
+						} else {
+							// match empty string (let next parser fail),
+							// mark offset interval as positive
+							Ok((input, None))
+						}
 					},
 					|i| range_literal(i, opts),
 				)),
 			)),
 			multispace0,
 		)),
-		|(labels, range, offset, _)|
-		Vector {
+		|(labels, range, offset, _)| Vector {
 			labels,
 			range,
 			offset: offset.map(|(sign, value)| {
 				let sign = sign.map(|_| -1.).unwrap_or(1.);
 				sign * value
-			})
-		}
+			}),
+		},
 	)(input)
 }
 
@@ -367,19 +329,19 @@ where
 		+ InputTake
 		+ InputTakeAtPosition<Item = C>
 		+ Offset
-		+ Slice<RangeTo<usize>>
-		,
+		+ Slice<RangeTo<usize>>,
 	C: AsChar,
-	&'static str: FindToken<C>
+	&'static str: FindToken<C>,
 {
 	map_res(
 		recognize(tuple((
 			alt((alpha1, is_a("_:"))),
 			many0(alt((
-				alphanumeric1, is_a(if opts.allow_periods { "_:." } else { "_:" }),
+				alphanumeric1,
+				is_a(if opts.allow_periods { "_:." } else { "_:" }),
 			))),
 		))),
-		|s: I| String::from_utf8(s.as_bytes().to_vec())
+		|s: I| String::from_utf8(s.as_bytes().to_vec()),
 	)(input)
 }
 
@@ -392,30 +354,27 @@ where
 		+ InputTake
 		+ InputTakeAtPosition<Item = C>
 		+ Offset
-		+ Slice<RangeTo<usize>>
-		,
+		+ Slice<RangeTo<usize>>,
 	C: AsChar,
-	&'static str: FindToken<C>
+	&'static str: FindToken<C>,
 {
-map_res(
-	recognize(tuple((
-		alt((alpha1, is_a("_"))),
-		many0(alt((alphanumeric1, is_a("_")))),
-	))),
-	|s: I| String::from_utf8(s.as_bytes().to_vec())
-)(input)
+	map_res(
+		recognize(tuple((
+			alt((alpha1, is_a("_"))),
+			many0(alt((alphanumeric1, is_a("_")))),
+		))),
+		|s: I| String::from_utf8(s.as_bytes().to_vec()),
+	)(input)
 }
 
 fn label_op<I>(input: I) -> IResult<I, LabelMatchOp>
 where
-	I: Clone
-		+ Compare<&'static str>
-		+ InputTake
+	I: Clone + Compare<&'static str> + InputTake,
 {
 	alt((
 		value(tag("=~"), LabelMatchOp::REq),
 		value(tag("!~"), LabelMatchOp::RNe),
-		value(tag("="),  LabelMatchOp::Eq), // should come after =~
+		value(tag("="), LabelMatchOp::Eq), // should come after =~
 		value(tag("!="), LabelMatchOp::Ne),
 	))(input)
 }
@@ -425,10 +384,7 @@ where
 mod tests {
 	use super::*;
 	use crate::utils::tests::*;
-	use nom::error::{
-		ErrorKind,
-		VerboseErrorKind,
-	};
+	use nom::error::{ErrorKind, VerboseErrorKind};
 
 	fn cbs(s: &str) -> &[u8] {
 		s.as_bytes()
@@ -442,9 +398,7 @@ mod tests {
 		assert_eq!(
 			vector(
 				cbs("foo.bar{}"),
-				ParserOptions::new()
-					.allow_periods(true)
-					.build(),
+				ParserOptions::new().allow_periods(true).build(),
 			),
 			Ok((
 				cbs(""),
@@ -469,9 +423,7 @@ mod tests {
 		assert_eq!(
 			vector(
 				cbs("foo.bar{}"),
-				ParserOptions::new()
-					.allow_periods(false)
-					.build(),
+				ParserOptions::new().allow_periods(false).build(),
 			),
 			Ok((
 				cbs(".bar{}"),
@@ -489,9 +441,7 @@ mod tests {
 	}
 
 	fn instant_vectors(allow_periods: bool) {
-		let opts = ParserOptions::new()
-			.allow_periods(allow_periods)
-			.build();
+		let opts = ParserOptions::new().allow_periods(allow_periods).build();
 
 		assert_eq!(
 			vector(cbs("foo"), opts),
@@ -616,23 +566,26 @@ mod tests {
 
 		assert_eq!(
 			vector(cbs("{}"), opts),
-			err(vec![
-				(cbs("{}"), VerboseErrorKind::Context("vector selector must contain label matchers or metric name")),
-			]),
+			err(vec![(
+				cbs("{}"),
+				VerboseErrorKind::Context(
+					"vector selector must contain label matchers or metric name"
+				)
+			),]),
 		);
 	}
 
 	#[test]
 	fn modified_vectors_permutations() {
 		for &allow_periods in &[true, false] {
-		for &negative_offsets in &[true, false] {
-			let opts = ParserOptions::new()
-				.allow_periods(allow_periods)
-				.negative_offsets(negative_offsets)
-				.build();
+			for &negative_offsets in &[true, false] {
+				let opts = ParserOptions::new()
+					.allow_periods(allow_periods)
+					.negative_offsets(negative_offsets)
+					.build();
 
-			modified_vectors(opts)
-		}
+				modified_vectors(opts)
+			}
 		}
 	}
 
@@ -686,40 +639,31 @@ mod tests {
 		labels: fn() -> Vec<LabelMatch>,
 		opts: ParserOptions,
 	) {
-		let v = |tail, range, offset| Ok((
-			cbs(tail),
-			Vector {
-				labels: labels(),
-				range, offset,
-			},
-		));
+		let v = |tail, range, offset| {
+			Ok((
+				cbs(tail),
+				Vector {
+					labels: labels(),
+					range,
+					offset,
+				},
+			))
+		};
 
 		// regular
 
 		let q = format!("{} [1m]", instant);
-		assert_eq!(
-			vector(cbs(&q), opts),
-			v("", Some(60.), None),
-		);
+		assert_eq!(vector(cbs(&q), opts), v("", Some(60.), None),);
 
 		let q = format!("{} offset 5m", instant);
-		assert_eq!(
-			vector(cbs(&q), opts),
-			v("", None, Some(300.)),
-		);
+		assert_eq!(vector(cbs(&q), opts), v("", None, Some(300.)),);
 
 		let q = format!("{} [1m] offset 5m", instant);
-		assert_eq!(
-			vector(cbs(&q), opts),
-			v("", Some(60.), Some(300.)),
-		);
+		assert_eq!(vector(cbs(&q), opts), v("", Some(60.), Some(300.)),);
 
 		let q = format!("{} offset 5m [1m]", instant);
 		// FIXME should be Error()?
-		assert_eq!(
-			vector(cbs(&q), opts),
-			v("[1m]", None, Some(300.)),
-		);
+		assert_eq!(vector(cbs(&q), opts), v("[1m]", None, Some(300.)),);
 
 		// negative_offsets
 
@@ -748,54 +692,58 @@ mod tests {
 			// Some(123) for Ok((..., 123)), None for any Err()
 			value,
 		) in [
-			(None,        None,        "1m",    true,  Some(60.)),
-			(Some(true),  None,        "1.5m",  true,  Some(90.)),
-			(Some(false), None,        "1.5m",  false, None),
-			(None,        Some(true),  "1m30s", true,  Some(90.)),
-			(None,        Some(false), "1m30s", false, Some(60.)),
+			(None, None, "1m", true, Some(60.)),
+			(Some(true), None, "1.5m", true, Some(90.)),
+			(Some(false), None, "1.5m", false, None),
+			(None, Some(true), "1m30s", true, Some(90.)),
+			(None, Some(false), "1m30s", false, Some(60.)),
 			// should not parse completely if in wrong order
-			(None,        Some(true),  "30s1m", false, Some(30.)),
+			(None, Some(true), "30s1m", false, Some(30.)),
 			// should not parse completely if some suffixes repeat
-			(None,        Some(true),  "30s5s", false, Some(30.)),
+			(None, Some(true), "30s5s", false, Some(30.)),
 			// should parse if some suffixes are skipped
-			(None,        Some(true),  "1d5m",  true,  Some(60. * 60. * 24. + 60. * 5.)),
+			(
+				None,
+				Some(true),
+				"1d5m",
+				true,
+				Some(60. * 60. * 24. + 60. * 5.),
+			),
 			// TODO? `1.5h 30s`
 		] {
-			for fractional_intervals in fractional_intervals.map(|i| vec![i]).unwrap_or_else(|| vec![true, false]) {
-			for compound_intervals   in compound_intervals  .map(|i| vec![i]).unwrap_or_else(|| vec![true, false]) {
-				let opts = ParserOptions::new()
-					.fractional_intervals(fractional_intervals)
-					.compound_intervals(compound_intervals)
-					.build();
+			for fractional_intervals in fractional_intervals
+				.map(|i| vec![i])
+				.unwrap_or_else(|| vec![true, false])
+			{
+				for compound_intervals in compound_intervals
+					.map(|i| vec![i])
+					.unwrap_or_else(|| vec![true, false])
+				{
+					let opts = ParserOptions::new()
+						.fractional_intervals(fractional_intervals)
+						.compound_intervals(compound_intervals)
+						.build();
 
-				let output = range_literal(cbs(&src), opts);
-				if let Some(value) = value {
-					let (tail, output) = output.unwrap(); // panics if not Ok()
-					assert_eq!(output, value,
-						"\n fractional_intervals = {} \n compound_intervals = {} \n src = {}",
-						fractional_intervals,
-						compound_intervals,
-						src,
-					);
-					assert_eq!(tail.is_empty(), expect_complete);
-				} else {
-					assert!(output.is_err());
+					let output = range_literal(cbs(src), opts);
+					if let Some(value) = value {
+						let (tail, output) = output.unwrap(); // panics if not Ok()
+						assert_eq!(
+							output, value,
+							"\n fractional_intervals = {} \n compound_intervals = {} \n src = {}",
+							fractional_intervals, compound_intervals, src,
+						);
+						assert_eq!(tail.is_empty(), expect_complete);
+					} else {
+						assert!(output.is_err());
+					}
 				}
-			}
 			}
 		}
 
-		let opts = ParserOptions::new()
-			.ms_duration(true)
-			.build();
-		assert_eq!(
-			range_literal(cbs("500ms"), opts),
-			Ok((cbs(""), 0.5))
-		);
+		let opts = ParserOptions::new().ms_duration(true).build();
+		assert_eq!(range_literal(cbs("500ms"), opts), Ok((cbs(""), 0.5)));
 
-		let opts = ParserOptions::new()
-			.ms_duration(false)
-			.build();
+		let opts = ParserOptions::new().ms_duration(false).build();
 		assert_eq!(
 			range_literal(cbs("500ms"), opts),
 			Ok((cbs("s"), 500. * 60.))

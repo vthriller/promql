@@ -1,27 +1,14 @@
 use crate::utils::IResult;
-use nom::{
-	AsBytes,
-	AsChar,
-	FindToken,
-	InputIter,
-	InputLength,
-	InputTake,
-	InputTakeAtPosition,
-	Slice,
-};
-use std::ops::RangeFrom;
-use nom::bytes::complete::{
-	is_not,
-	take,
-};
 use nom::branch::alt;
+use nom::bytes::complete::{is_not, take};
 use nom::character::complete::char;
 use nom::combinator::{map, map_opt, map_res};
 use nom::multi::many0;
-use nom::sequence::{
-	delimited,
-	preceded,
+use nom::sequence::{delimited, preceded};
+use nom::{
+	AsBytes, AsChar, FindToken, InputIter, InputLength, InputTake, InputTakeAtPosition, Slice,
 };
+use std::ops::RangeFrom;
 
 // > Label values may contain any Unicode characters.
 // > PromQL follows the same [escaping rules as Go](https://golang.org/ref/spec#String_literals).
@@ -46,15 +33,12 @@ macro_rules! fixed_length_radix {
 	($input:ty, $type:ident, $len:expr, $radix:expr) => {
 		// there's no easy way to combine nom::is_(whatever)_digit with something like length_count
 		// besides u123::from_str_radix will validate chars anyways, so why do extra work?
-		map_res(
-			take($len),
-			|n: $input| -> Result<_, UnicodeRuneError> {
-				Ok($type::from_str_radix(
-					&String::from_utf8(n.as_bytes().to_vec())?,
-					$radix,
-				)?)
-				}
-			)
+		map_res(take($len), |n: $input| -> Result<_, UnicodeRuneError> {
+			Ok($type::from_str_radix(
+				&String::from_utf8(n.as_bytes().to_vec())?,
+				$radix,
+			)?)
+		})
 	};
 }
 
@@ -68,15 +52,11 @@ fn validate_unicode_scalar(n: u32) -> Option<Vec<u8>> {
 
 fn rune<I, C>(input: I) -> IResult<I, Vec<u8>>
 where
-	I: Clone
-		+ AsBytes
-		+ InputIter<Item = C>
-		+ InputTake
-		+ Slice<RangeFrom<usize>>
-		,
+	I: Clone + AsBytes + InputIter<Item = C> + InputTake + Slice<RangeFrom<usize>>,
 	C: AsChar,
 {
-	preceded(char('\\'),
+	preceded(
+		char('\\'),
 		alt((
 			// not using value() here to avoid allocation of lots of temporary Vec *per rune() call*
 			map(char('a'), |_| vec![0x07]),
@@ -90,23 +70,20 @@ where
 			map(char('\\'), |_| vec![0x5c]),
 			map(char('\''), |_| vec![0x27]),
 			map(char('"'), |_| vec![0x22]),
-			map(
-				fixed_length_radix!(I, u8, 3u8, 8),
-				|n| vec![n]
-			),
+			map(fixed_length_radix!(I, u8, 3u8, 8), |n| vec![n]),
 			map(
 				preceded(char('x'), fixed_length_radix!(I, u8, 2u8, 16)),
-				|n| vec![n]
+				|n| vec![n],
 			),
 			map_opt(
 				preceded(char('u'), fixed_length_radix!(I, u32, 4u8, 16)),
-				validate_unicode_scalar
+				validate_unicode_scalar,
 			),
 			map_opt(
 				preceded(char('U'), fixed_length_radix!(I, u32, 8u8, 16)),
-				validate_unicode_scalar
+				validate_unicode_scalar,
 			),
-		))
+		)),
 	)(input)
 }
 
@@ -119,8 +96,7 @@ where
 		+ InputIter<Item = C>
 		+ InputLength
 		+ InputTake
-		+ InputTakeAtPosition<Item = C>
-		,
+		+ InputTakeAtPosition<Item = C>,
 	&'static str: FindToken<C>,
 {
 	map(is_not(arg), |bytes: I| bytes.as_bytes().to_vec())
@@ -135,8 +111,7 @@ where
 		+ InputLength
 		+ InputTake
 		+ InputTakeAtPosition<Item = C>
-		+ Slice<RangeFrom<usize>>
-		,
+		+ Slice<RangeFrom<usize>>,
 	C: AsChar,
 	&'static str: FindToken<C>,
 {
@@ -152,18 +127,17 @@ where
 		+ InputLength
 		+ InputTake
 		+ InputTakeAtPosition<Item = C>
-		+ Slice<RangeFrom<usize>>
-		,
+		+ Slice<RangeFrom<usize>>,
 	C: AsChar,
 	&'static str: FindToken<C>,
 {
-		alt((
-			// newlines are not allowed in interpreted quotes, but are totally fine in raw string literals
-			delimited(char('"'), chars_except("\n\"\\"), char('"')),
-			delimited(char('\''), chars_except("\n'\\"), char('\'')),
-			// raw string literals, where "backslashes have no special meaning"
-			delimited(char('`'), is_not_v("`"), char('`')),
-		))(input)
+	alt((
+		// newlines are not allowed in interpreted quotes, but are totally fine in raw string literals
+		delimited(char('"'), chars_except("\n\"\\"), char('"')),
+		delimited(char('\''), chars_except("\n'\\"), char('\'')),
+		// raw string literals, where "backslashes have no special meaning"
+		delimited(char('`'), is_not_v("`"), char('`')),
+	))(input)
 }
 
 #[allow(unused_imports)]
@@ -171,10 +145,7 @@ where
 mod tests {
 	use super::*;
 	use crate::utils::tests::*;
-	use nom::error::{
-		ErrorKind,
-		VerboseErrorKind,
-	};
+	use nom::error::{ErrorKind, VerboseErrorKind};
 
 	fn cbs(s: &str) -> &[u8] {
 		s.as_bytes()
@@ -194,10 +165,7 @@ mod tests {
 
 		assert_eq!(
 			string(cbs("`lorem ipsum \\\"dolor\\nsit\\tamet\\\"`")),
-			Ok((
-				cbs(""),
-				b"lorem ipsum \\\"dolor\\nsit\\tamet\\\"".to_vec()
-			))
+			Ok((cbs(""), b"lorem ipsum \\\"dolor\\nsit\\tamet\\\"".to_vec()))
 		);
 
 		// literal, non-escaped newlines
@@ -205,10 +173,7 @@ mod tests {
 		assert_eq!(
 			string(cbs("'this\nis not valid'")),
 			err(vec![
-				(
-					cbs("'this\nis not valid'"),
-					VerboseErrorKind::Char('`'),
-				),
+				(cbs("'this\nis not valid'"), VerboseErrorKind::Char('`'),),
 				(
 					cbs("'this\nis not valid'"),
 					VerboseErrorKind::Nom(ErrorKind::Alt),

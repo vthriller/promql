@@ -1,60 +1,22 @@
-use nom::{
-	AsBytes,
-	AsChar,
-	Compare,
-	FindToken,
-	InputIter,
-	InputLength,
-	InputTake,
-	InputTakeAtPosition,
-	Offset,
-	Slice,
-};
-use std::ops::{
-	Range,
-	RangeFrom,
-	RangeTo,
-};
+use crate::utils::{delimited_ws, value, IResult};
+use crate::{tuple_separated, ParserOptions};
 use nom::branch::alt;
-use nom::bytes::complete::{
-	tag,
-	tag_no_case,
-};
-use nom::character::complete::{
-	char,
-	multispace1,
-	not_line_ending,
-};
-use nom::combinator::{
-	fail,
-	map,
-	opt,
-	recognize,
-};
-use nom::multi::{
-	many0,
-	separated_list0,
-};
+use nom::bytes::complete::{tag, tag_no_case};
+use nom::character::complete::{char, multispace1, not_line_ending};
+use nom::combinator::{fail, map, opt, recognize};
+use nom::multi::{many0, separated_list0};
 use nom::number::complete::float;
-use nom::sequence::{
-	delimited,
-	preceded,
-	tuple,
+use nom::sequence::{delimited, preceded, tuple};
+use nom::{
+	AsBytes, AsChar, Compare, FindToken, InputIter, InputLength, InputTake, InputTakeAtPosition,
+	Offset, ParseTo, Slice,
 };
+use std::ops::{Range, RangeFrom, RangeTo};
 use str::string;
 use vec::{label_name, vector, Vector};
-use crate::{
-	ParserOptions,
-	tuple_separated,
-};
-use crate::utils::{
-	IResult,
-	delimited_ws,
-	value,
-};
 
 /// PromQL operators
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum Op {
 	/** `^` */
 	Pow(Option<OpMod>),
@@ -93,13 +55,13 @@ pub enum Op {
 	Or(Option<OpMod>),
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub enum OpModAction {
 	RestrictTo,
 	Ignore,
 }
 /// Vector matching operator modifier (`on (…)`/`ignoring (…)`).
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct OpMod {
 	/// Action applied to a list of vectors; whether `on (…)` or `ignored(…)` is used after the operator.
 	pub action: OpModAction,
@@ -109,24 +71,24 @@ pub struct OpMod {
 	pub group: Option<OpGroupMod>,
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub enum OpGroupSide {
 	Left,
 	Right,
 }
 /// Vector grouping operator modifier (`group_left(…)`/`group_right(…)`).
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct OpGroupMod {
 	pub side: OpGroupSide,
 	pub labels: Vec<String>,
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub enum AggregationAction {
 	Without,
 	By,
 }
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct AggregationMod {
 	// Action applied to a list of vectors; whether `by (…)` or `without (…)` is used.
 	pub action: AggregationAction,
@@ -181,6 +143,7 @@ impl Node {
 fn ws_or_comment<I, C>(opts: ParserOptions) -> impl FnMut(I) -> IResult<I, ()>
 where
 	I: Clone
+		+ ParseTo<f32>
 		+ Compare<&'static str>
 		+ InputIter<Item = C>
 		+ InputLength
@@ -189,21 +152,17 @@ where
 		+ Offset
 		+ Slice<Range<usize>>
 		+ Slice<RangeFrom<usize>>
-		+ Slice<RangeTo<usize>>
-		,
+		+ Slice<RangeTo<usize>>,
 	C: AsChar + Clone,
 {
 	value(
 		many0(alt((
-			move |input| if opts.comments {
-				recognize(
-					tuple((
-						char('#'),
-						not_line_ending,
-					))
-				)(input)
-			} else {
-				fail(input)
+			move |input| {
+				if opts.comments {
+					recognize(tuple((char('#'), not_line_ending)))(input)
+				} else {
+					fail(input)
+				}
 			},
 			recognize(multispace1),
 		))),
@@ -211,10 +170,14 @@ where
 	)
 }
 
-fn surrounded_ws_or_comment<I, C, O, P>(opts: ParserOptions, parser: P) -> impl FnMut(I) -> IResult<I, O>
+fn surrounded_ws_or_comment<I, C, O, P>(
+	opts: ParserOptions,
+	parser: P,
+) -> impl FnMut(I) -> IResult<I, O>
 where
 	P: FnMut(I) -> IResult<I, O>,
 	I: Clone
+		+ ParseTo<f32>
 		+ Compare<&'static str>
 		+ InputIter<Item = C>
 		+ InputLength
@@ -223,21 +186,17 @@ where
 		+ Offset
 		+ Slice<Range<usize>>
 		+ Slice<RangeFrom<usize>>
-		+ Slice<RangeTo<usize>>
-		,
+		+ Slice<RangeTo<usize>>,
 	C: AsChar + Clone,
 {
-	delimited(
-		ws_or_comment(opts),
-		parser,
-		ws_or_comment(opts),
-	)
+	delimited(ws_or_comment(opts), parser, ws_or_comment(opts))
 }
 
 fn label_list<I, C>(input: I, opts: ParserOptions) -> IResult<I, Vec<String>>
 where
 	I: Clone
 		+ AsBytes
+		+ ParseTo<f32>
 		+ Compare<&'static str>
 		+ InputIter<Item = C>
 		+ InputLength
@@ -246,21 +205,21 @@ where
 		+ Offset
 		+ Slice<Range<usize>>
 		+ Slice<RangeFrom<usize>>
-		+ Slice<RangeTo<usize>>
-		,
+		+ Slice<RangeTo<usize>>,
 	C: AsChar + Clone,
 	&'static str: FindToken<C>,
 {
 	delimited_ws(
 		char('('),
 		separated_list0(surrounded_ws_or_comment(opts, char(',')), label_name),
-		char(')')
+		char(')'),
 	)(input)
 }
 
 fn function_aggregation<I, C>(input: I, opts: ParserOptions) -> IResult<I, AggregationMod>
 where
 	I: Clone
+		+ ParseTo<f32>
 		+ AsBytes
 		+ Compare<&'static str>
 		+ InputIter<Item = C>
@@ -270,27 +229,34 @@ where
 		+ Offset
 		+ Slice<Range<usize>>
 		+ Slice<RangeFrom<usize>>
-		+ Slice<RangeTo<usize>>
-		,
+		+ Slice<RangeTo<usize>>,
 	C: AsChar + Clone,
 	&'static str: FindToken<C>,
 {
-	surrounded_ws_or_comment(opts, map(
-		tuple((
-			alt((
-				value(tag("by"), AggregationAction::By),
-				value(tag("without"), AggregationAction::Without),
+	surrounded_ws_or_comment(
+		opts,
+		map(
+			tuple((
+				alt((
+					value(tag("by"), AggregationAction::By),
+					value(tag("without"), AggregationAction::Without),
+				)),
+				|i| label_list(i, opts),
 			)),
-			|i| label_list(i, opts),
-		)),
-		|(action, labels)| (AggregationMod { action, labels })
-	))(input)
+			|(action, labels)| (AggregationMod { action, labels }),
+		),
+	)(input)
 }
 
 // it's up to the library user to decide whether argument list is valid or not
-fn function_args<I, C>(recursion_level: usize, opts: ParserOptions) -> impl FnMut(I) -> IResult<I, Vec<Node>>
+fn function_args<I, C>(
+	recursion_level: usize,
+	opts: ParserOptions,
+) -> impl FnMut(I) -> IResult<I, Vec<Node>>
 where
-	I: Clone + Copy
+	I: Clone
+		+ Copy
+		+ ParseTo<f32>
 		+ AsBytes
 		+ Compare<&'static str>
 		+ for<'a> Compare<&'a [u8]>
@@ -301,8 +267,7 @@ where
 		+ Offset
 		+ Slice<Range<usize>>
 		+ Slice<RangeFrom<usize>>
-		+ Slice<RangeTo<usize>>
-		,
+		+ Slice<RangeTo<usize>>,
 	C: AsChar + Clone + Copy,
 	&'static str: FindToken<C>,
 	<I as InputIter>::IterElem: Clone,
@@ -314,27 +279,26 @@ where
 			alt((
 				move |i| expression(recursion_level, i, opts),
 				map(string, Node::String),
-			))
+			)),
 		),
-		char(')')
+		char(')'),
 	)
 }
 
 macro_rules! pair_permutations {
 	($p1:expr, $p2:expr $(,)?) => {
-	alt((
-		tuple(($p1, $p2)),
-		map(
-			tuple(($p2, $p1)),
-			|(o2, o1)| (o1, o2),
-		),
-	))
+		alt((
+			tuple(($p1, $p2)),
+			map(tuple(($p2, $p1)), |(o2, o1)| (o1, o2)),
+		))
 	};
 }
 
 fn function<I, C>(recursion_level: usize, input: I, opts: ParserOptions) -> IResult<I, Node>
 where
-	I: Clone + Copy
+	I: Clone
+		+ Copy
+		+ ParseTo<f32>
 		+ AsBytes
 		+ Compare<&'static str>
 		+ for<'a> Compare<&'a [u8]>
@@ -345,8 +309,7 @@ where
 		+ Offset
 		+ Slice<Range<usize>>
 		+ Slice<RangeFrom<usize>>
-		+ Slice<RangeTo<usize>>
-		,
+		+ Slice<RangeTo<usize>>,
 	C: AsChar + Clone + Copy,
 	&'static str: FindToken<C>,
 	<I as InputIter>::IterElem: Clone,
@@ -361,18 +324,19 @@ where
 				opt(|i| function_aggregation(i, opts)),
 			),
 		)),
-		|(name, (args, agg))|
-			Node::Function {
-				name,
-				args,
-				aggregation: agg,
-			}
+		|(name, (args, agg))| Node::Function {
+			name,
+			args,
+			aggregation: agg,
+		},
 	)(input)
 }
 
 fn atom<I, C>(recursion_level: usize, input: I, opts: ParserOptions) -> IResult<I, Node>
 where
-	I: Clone + Copy
+	I: Clone
+		+ Copy
+		+ ParseTo<f32>
 		+ AsBytes
 		+ Compare<&'static str>
 		+ for<'a> Compare<&'a [u8]>
@@ -383,72 +347,53 @@ where
 		+ Offset
 		+ Slice<Range<usize>>
 		+ Slice<RangeFrom<usize>>
-		+ Slice<RangeTo<usize>>
-		,
+		+ Slice<RangeTo<usize>>,
 	C: AsChar + Clone + Copy,
 	&'static str: FindToken<C>,
 	<I as InputIter>::IterElem: Clone,
 {
 	if recursion_level > opts.recursion_limit {
-		return Err(
-			nom::Err::Failure(
-				nom::error::VerboseError {
-					errors: vec![
-						(input, nom::error::VerboseErrorKind::Context("reached recursion limit")),
-					]
-				}
-			)
-		);
+		return Err(nom::Err::Failure(nom::error::VerboseError {
+			errors: vec![(
+				input,
+				nom::error::VerboseErrorKind::Context("reached recursion limit"),
+			)],
+		}));
 	}
 
-	surrounded_ws_or_comment(opts,
+	surrounded_ws_or_comment(
+		opts,
 		alt((
-			map(
-				tag_no_case("NaN"),
-				|_| Node::Scalar(::std::f32::NAN)
-			) // XXX define Node::NaN instead?
-			,
-			map(
-				float,
-				Node::Scalar
-			)
-			,
+			map(tag_no_case("NaN"), |_| Node::Scalar(::std::f32::NAN)), // XXX define Node::NaN instead?
+			map(float, Node::Scalar),
 			// unary + does nothing
-			preceded(
-				char('+'),
-				|i| atom(recursion_level+1, i, opts)
-			)
-			,
+			preceded(char('+'), |i| atom(recursion_level + 1, i, opts)),
 			// unary -, well, negates whatever is following it
 			map(
-				preceded(
-					char('-'),
-					|i| atom(recursion_level+1, i, opts)
-				),
-				Node::negation
-			)
-			,
+				preceded(char('-'), |i| atom(recursion_level + 1, i, opts)),
+				Node::negation,
+			),
 			// function call is parsed before vector: the latter can actually consume function name as a vector, effectively rendering the rest of the expression invalid
-			|i| function(recursion_level, i, opts)
-			,
+			|i| function(recursion_level, i, opts),
 			// FIXME? things like 'and' and 'group_left' are not supposed to parse as a vector: prometheus lexes them unambiguously
-			map(
-				|i| vector(i, opts),
-				Node::Vector
-			)
-			,
+			map(|i| vector(i, opts), Node::Vector),
 			delimited(
 				char('('),
 				|i| expression(recursion_level, i, opts),
-				char(')')
-			)
-		))
+				char(')'),
+			),
+		)),
 	)(input)
 }
 
-fn with_modifier<I, C>(opts: ParserOptions, literal: &'static str, op: fn(Option<OpMod>) -> Op) -> impl FnMut(I) -> IResult<I, Op>
+fn with_modifier<I, C>(
+	opts: ParserOptions,
+	literal: &'static str,
+	op: fn(Option<OpMod>) -> Op,
+) -> impl FnMut(I) -> IResult<I, Op>
 where
 	I: Clone
+		+ ParseTo<f32>
 		+ AsBytes
 		+ Compare<&'static str>
 		+ InputIter<Item = C>
@@ -458,25 +403,26 @@ where
 		+ Offset
 		+ Slice<Range<usize>>
 		+ Slice<RangeFrom<usize>>
-		+ Slice<RangeTo<usize>>
-		,
+		+ Slice<RangeTo<usize>>,
 	C: AsChar + Clone,
 	&'static str: FindToken<C>,
 {
 	map(
-		preceded(
-			tag(literal),
-			opt(move |i| op_modifier(i, opts)),
-		),
+		preceded(tag(literal), opt(move |i| op_modifier(i, opts))),
 		op,
 	)
 }
 
-fn with_bool_modifier<'a, I, C, O: Fn(bool, Option<OpMod>) -> Op>(opts: ParserOptions, literal: &'static str, op: O) -> impl FnMut(I) -> IResult<I, Op>
+fn with_bool_modifier<'a, I, C, O: Fn(bool, Option<OpMod>) -> Op>(
+	opts: ParserOptions,
+	literal: &'static str,
+	op: O,
+) -> impl FnMut(I) -> IResult<I, Op>
 where
 	I: Clone
 		+ AsBytes
 		+ Compare<&'static str>
+		+ ParseTo<f32>
 		+ InputIter<Item = C>
 		+ InputLength
 		+ InputTake
@@ -484,25 +430,27 @@ where
 		+ Offset
 		+ Slice<Range<usize>>
 		+ Slice<RangeFrom<usize>>
-		+ Slice<RangeTo<usize>>
-		,
+		+ Slice<RangeTo<usize>>,
 	C: AsChar + Clone,
 	&'static str: FindToken<C>,
 {
 	map(
-		tuple_separated!(ws_or_comment(opts), (
-			tag(literal),
-			opt(tag("bool")),
-			opt(move |i| op_modifier(i, opts)),
-		)),
-		move |(_, boolness, op_mod)|
-			op(boolness.is_some(), op_mod)
+		tuple_separated!(
+			ws_or_comment(opts),
+			(
+				tag(literal),
+				opt(tag("bool")),
+				opt(move |i| op_modifier(i, opts)),
+			)
+		),
+		move |(_, boolness, op_mod)| op(boolness.is_some(), op_mod),
 	)
 }
 
 fn op_modifier<I, C>(input: I, opts: ParserOptions) -> IResult<I, OpMod>
 where
 	I: Clone
+		+ ParseTo<f32>
 		+ AsBytes
 		+ Compare<&'static str>
 		+ InputIter<Item = C>
@@ -512,46 +460,51 @@ where
 		+ Offset
 		+ Slice<Range<usize>>
 		+ Slice<RangeFrom<usize>>
-		+ Slice<RangeTo<usize>>
-		,
+		+ Slice<RangeTo<usize>>,
 	C: AsChar + Clone,
 	&'static str: FindToken<C>,
 {
-	surrounded_ws_or_comment(opts, map(
-		tuple((
-			// action
-			alt((
-				value(tag("on"), OpModAction::RestrictTo),
-				value(tag("ignoring"), OpModAction::Ignore),
-			)),
-			// labels
-			|i| label_list(i, opts),
-			// group
-			// TODO > Grouping modifiers can only be used for comparison and arithmetic. Operations as and, unless and or operations match with all possible entries in the right vector by default.
-			opt(map(
-				tuple((
-					alt((
-						value(tag("group_left"), OpGroupSide::Left),
-						value(tag("group_right"), OpGroupSide::Right),
-					)),
-					map(
-						opt(|i| label_list(i, opts)),
-						|labels| labels.unwrap_or_default()
-					),
+	surrounded_ws_or_comment(
+		opts,
+		map(
+			tuple((
+				// action
+				alt((
+					value(tag("on"), OpModAction::RestrictTo),
+					value(tag("ignoring"), OpModAction::Ignore),
 				)),
-				|(side, labels)|
-					(OpGroupMod { side, labels })
+				// labels
+				|i| label_list(i, opts),
+				// group
+				// TODO > Grouping modifiers can only be used for comparison and arithmetic. Operations as and, unless and or operations match with all possible entries in the right vector by default.
+				opt(map(
+					tuple((
+						alt((
+							value(tag("group_left"), OpGroupSide::Left),
+							value(tag("group_right"), OpGroupSide::Right),
+						)),
+						map(opt(|i| label_list(i, opts)), |labels| {
+							labels.unwrap_or_default()
+						}),
+					)),
+					|(side, labels)| (OpGroupMod { side, labels }),
+				)),
 			)),
-		)),
-		|(action, labels, group)|
-			(OpMod { action, labels, group })
-	))(input)
+			|(action, labels, group)| OpMod {
+				action,
+				labels,
+				group,
+			},
+		),
+	)(input)
 }
 
 // ^ is right-associative, so we can actually keep it simple and recursive
 fn power<I, C>(recursion_level: usize, input: I, opts: ParserOptions) -> IResult<I, Node>
 where
-	I: Clone + Copy
+	I: Clone
+		+ ParseTo<f32>
+		+ Copy
 		+ AsBytes
 		+ Compare<&'static str>
 		+ for<'a> Compare<&'a [u8]>
@@ -562,35 +515,37 @@ where
 		+ Offset
 		+ Slice<Range<usize>>
 		+ Slice<RangeFrom<usize>>
-		+ Slice<RangeTo<usize>>
-		,
+		+ Slice<RangeTo<usize>>,
 	C: AsChar + Clone + Copy,
 	&'static str: FindToken<C>,
 	<I as InputIter>::IterElem: Clone,
 {
-	surrounded_ws_or_comment(opts, map(
-		tuple((
-			|i| atom(recursion_level, i, opts),
-			opt(tuple((
-				with_modifier(opts, "^", Op::Pow),
-				|i| power(recursion_level, i, opts)
-			)))
-		)),
-		|(x, y)|
-			match y {
+	surrounded_ws_or_comment(
+		opts,
+		map(
+			tuple((
+				|i| atom(recursion_level, i, opts),
+				opt(tuple((with_modifier(opts, "^", Op::Pow), |i| {
+					power(recursion_level, i, opts)
+				}))),
+			)),
+			|(x, y)| match y {
 				None => x,
 				Some((op, y)) => Node::operator(x, op, y),
-			}
-	))(input)
+			},
+		),
+	)(input)
 }
 
 // foo op bar op baz → Node[Node[foo op bar] op baz]
 macro_rules! left_op {
 	// $next is the parser for operator that takes precenence, or any other kind of non-operator token sequence
-	($name:ident, $next:ident, $op:expr) => (
+	($name:ident, $next:ident, $op:expr) => {
 		fn $name<I, C>(recursion_level: usize, input: I, opts: ParserOptions) -> IResult<I, Node>
 		where
-			I: Clone + Copy
+			I: Clone
+				+ ParseTo<f32>
+				+ Copy
 				+ AsBytes
 				+ Compare<&'static str>
 				+ for<'a> Compare<&'a [u8]>
@@ -601,85 +556,71 @@ macro_rules! left_op {
 				+ Offset
 				+ Slice<Range<usize>>
 				+ Slice<RangeFrom<usize>>
-				+ Slice<RangeTo<usize>>
-				,
+				+ Slice<RangeTo<usize>>,
 			C: AsChar + Clone + Copy,
 			&'static str: FindToken<C>,
 			<I as InputIter>::IterElem: Clone,
 		{
-			surrounded_ws_or_comment(opts,
-				map(tuple((
-					|i| $next(recursion_level, i, opts),
-					many0(tuple((
-						$op(opts),
-						|i| $next(recursion_level, i, opts)
-					))),
-				)), |(x, ops)|
-					({
-						let mut x = x;
-						for (op, y) in ops {
-							x = Node::operator(x, op, y);
-						}
-						x
-					})
-				)
+			surrounded_ws_or_comment(
+				opts,
+				map(
+					tuple((
+						|i| $next(recursion_level, i, opts),
+						many0(tuple(($op(opts), |i| $next(recursion_level, i, opts)))),
+					)),
+					|(x, ops)| {
+						({
+							let mut x = x;
+							for (op, y) in ops {
+								x = Node::operator(x, op, y);
+							}
+							x
+						})
+					},
+				),
 			)(input)
 		}
-	);
+	};
 }
 
-left_op!(
-	mul_div_mod,
-	power,
-	|opts|
-	alt((
-		with_modifier(opts, "*", Op::Mul),
-		with_modifier(opts, "/", Op::Div),
-		with_modifier(opts, "%", Op::Mod),
-	))
-);
+left_op!(mul_div_mod, power, |opts| alt((
+	with_modifier(opts, "*", Op::Mul),
+	with_modifier(opts, "/", Op::Div),
+	with_modifier(opts, "%", Op::Mod),
+)));
 
-left_op!(
-	plus_minus,
-	mul_div_mod,
-	|opts|
-	alt((
-		with_modifier(opts, "+", Op::Plus),
-		with_modifier(opts, "-", Op::Minus),
-	))
-);
+left_op!(plus_minus, mul_div_mod, |opts| alt((
+	with_modifier(opts, "+", Op::Plus),
+	with_modifier(opts, "-", Op::Minus),
+)));
 
 // if you thing this kind of operator chaining makes little to no sense, think again: it actually matches 'foo' that is both '> bar' and '!= baz'.
 // or, speaking another way: comparison operators are really just filters for values in a vector, and this is a chain of filters.
-left_op!(
-	comparison,
-	plus_minus,
-	|opts|
-	alt((
-		with_bool_modifier(opts, "==", Op::Eq),
-		with_bool_modifier(opts, "!=", Op::Ne),
-		with_bool_modifier(opts, "<=", Op::Le),
-		with_bool_modifier(opts, ">=", Op::Ge),
-		with_bool_modifier(opts, "<", Op::Lt),
-		with_bool_modifier(opts, ">", Op::Gt),
-	))
-);
+left_op!(comparison, plus_minus, |opts| alt((
+	with_bool_modifier(opts, "==", Op::Eq),
+	with_bool_modifier(opts, "!=", Op::Ne),
+	with_bool_modifier(opts, "<=", Op::Le),
+	with_bool_modifier(opts, ">=", Op::Ge),
+	with_bool_modifier(opts, "<", Op::Lt),
+	with_bool_modifier(opts, ">", Op::Gt),
+)));
 
-left_op!(
-	and_unless,
-	comparison,
-	|opts|
-	alt((
-		with_modifier(opts, "and", Op::And),
-		with_modifier(opts, "unless", Op::Unless),
-	))
-);
+left_op!(and_unless, comparison, |opts| alt((
+	with_modifier(opts, "and", Op::And),
+	with_modifier(opts, "unless", Op::Unless),
+)));
 
 left_op!(or_op, and_unless, |opts| with_modifier(opts, "or", Op::Or));
 
-pub(crate) fn expression<I, C>(recursion_level: usize, input: I, opts: ParserOptions) -> IResult<I, Node>
+pub(crate) fn expression<I, C>(
+	recursion_level: usize,
+	input: I,
+	opts: ParserOptions,
+) -> IResult<I, Node>
 where
-	I: Clone + Copy
+	I: Clone
+		+ ParseTo<f32>
+		+ Copy
 		+ AsBytes
 		+ Compare<&'static str>
 		+ for<'a> Compare<&'a [u8]>
@@ -690,25 +631,21 @@ where
 		+ Offset
 		+ Slice<Range<usize>>
 		+ Slice<RangeFrom<usize>>
-		+ Slice<RangeTo<usize>>
-		,
+		+ Slice<RangeTo<usize>>,
 	C: AsChar + Clone + Copy,
 	&'static str: FindToken<C>,
 	<I as InputIter>::IterElem: Clone,
 {
 	if recursion_level > opts.recursion_limit {
-		return Err(
-			nom::Err::Failure(
-				nom::error::VerboseError {
-					errors: vec![
-						(input, nom::error::VerboseErrorKind::Context("reached recursion limit")),
-					]
-				}
-			)
-		);
+		return Err(nom::Err::Failure(nom::error::VerboseError {
+			errors: vec![(
+				input,
+				nom::error::VerboseErrorKind::Context("reached recursion limit"),
+			)],
+		}));
 	}
 
-	or_op(recursion_level+1, input, opts)
+	or_op(recursion_level + 1, input, opts)
 }
 
 #[allow(unused_imports)]
@@ -720,10 +657,7 @@ mod tests {
 	use self::Node::{Function, Scalar};
 	use self::Op::*;
 
-	use nom::error::{
-		VerboseError,
-		VerboseErrorKind,
-	};
+	use nom::error::{VerboseError, VerboseErrorKind};
 
 	// cannot 'use self::Node::operator' for some reason
 	#[allow(non_upper_case_globals)]
@@ -768,13 +702,17 @@ mod tests {
 	}
 
 	fn scalar_single(input: &str, output: f32) {
-		assert_eq!(expression(0, cbs(input), Default::default()), Ok((cbs(""), Scalar(output))));
+		assert_eq!(
+			expression(0, cbs(input), Default::default()),
+			Ok((cbs(""), Scalar(output)))
+		);
 	}
 
 	#[test]
 	fn ops() {
 		assert_eq!(
-			expression(0,
+			expression(
+				0,
 				cbs("foo > bar != 0 and 15.5 < xyzzy"),
 				Default::default(),
 			),
@@ -793,7 +731,8 @@ mod tests {
 		);
 
 		assert_eq!(
-			expression(0,
+			expression(
+				0,
 				cbs("foo + bar - baz <= quux + xyzzy"),
 				Default::default(),
 			),
@@ -812,10 +751,7 @@ mod tests {
 		);
 
 		assert_eq!(
-			expression(0,
-				cbs("foo + bar % baz"),
-				Default::default(),
-			),
+			expression(0, cbs("foo + bar % baz"), Default::default(),),
 			Ok((
 				cbs(""),
 				operator(
@@ -827,10 +763,7 @@ mod tests {
 		);
 
 		assert_eq!(
-			expression(0,
-				cbs("x^y^z"),
-				Default::default(),
-			),
+			expression(0, cbs("x^y^z"), Default::default(),),
 			Ok((
 				cbs(""),
 				operator(
@@ -842,10 +775,7 @@ mod tests {
 		);
 
 		assert_eq!(
-			expression(0,
-				cbs("(a+b)*c"),
-				Default::default(),
-			),
+			expression(0, cbs("(a+b)*c"), Default::default(),),
 			Ok((
 				cbs(""),
 				operator(
@@ -860,7 +790,8 @@ mod tests {
 	#[test]
 	fn op_mods() {
 		assert_eq!(
-			expression(0,
+			expression(
+				0,
 				cbs("foo + ignoring (instance) bar / on (cluster) baz"),
 				Default::default(),
 			),
@@ -911,7 +842,8 @@ mod tests {
 		);
 
 		assert_eq!(
-			expression(0,
+			expression(
+				0,
 				cbs("node_cpu{cpu='cpu0'} > bool ignoring (cpu) node_cpu{cpu='cpu1'}"),
 				Default::default(),
 			),
@@ -936,10 +868,7 @@ mod tests {
 	#[test]
 	fn unary() {
 		assert_eq!(
-			expression(0,
-				cbs("a + -b"),
-				Default::default(),
-			),
+			expression(0, cbs("a + -b"), Default::default(),),
 			Ok((
 				cbs(""),
 				operator(vector("a"), Plus(None), negation(vector("b")),)
@@ -947,10 +876,7 @@ mod tests {
 		);
 
 		assert_eq!(
-			expression(0,
-				cbs("a ^ - 1 - b"),
-				Default::default(),
-			),
+			expression(0, cbs("a ^ - 1 - b"), Default::default(),),
 			Ok((
 				cbs(""),
 				operator(
@@ -962,10 +888,7 @@ mod tests {
 		);
 
 		assert_eq!(
-			expression(0,
-				cbs("a ^ - (1 - b)"),
-				Default::default(),
-			),
+			expression(0, cbs("a ^ - (1 - b)"), Default::default(),),
 			Ok((
 				cbs(""),
 				operator(
@@ -979,18 +902,12 @@ mod tests {
 		// yes, these are also valid
 
 		assert_eq!(
-			expression(0,
-				cbs("a +++++++ b"),
-				Default::default(),
-			),
+			expression(0, cbs("a +++++++ b"), Default::default(),),
 			Ok((cbs(""), operator(vector("a"), Plus(None), vector("b"),)))
 		);
 
 		assert_eq!(
-			expression(0,
-				cbs("a * --+-b"),
-				Default::default(),
-			),
+			expression(0, cbs("a * --+-b"), Default::default(),),
 			Ok((
 				cbs(""),
 				operator(
@@ -1005,7 +922,8 @@ mod tests {
 	#[test]
 	fn functions() {
 		assert_eq!(
-			expression(0,
+			expression(
+				0,
 				cbs("foo() + bar(baz) + quux(xyzzy, plough)"),
 				Default::default(),
 			),
@@ -1036,7 +954,8 @@ mod tests {
 		);
 
 		assert_eq!(
-			expression(0,
+			expression(
+				0,
 				cbs("round(rate(whatever [5m]) > 0, 0.2)"),
 				Default::default(),
 			),
@@ -1062,7 +981,8 @@ mod tests {
 		);
 
 		assert_eq!(
-			expression(0,
+			expression(
+				0,
 				cbs("label_replace(up, 'instance', '', 'instance', '.*')"),
 				Default::default(),
 			),
@@ -1086,7 +1006,8 @@ mod tests {
 	#[test]
 	fn agg_functions() {
 		assert_eq!(
-			expression(0,
+			expression(
+				0,
 				cbs("sum(foo) by (bar) * count(foo) without (bar)"),
 				Default::default(),
 			),
@@ -1115,7 +1036,8 @@ mod tests {
 		);
 
 		assert_eq!(
-			expression(0,
+			expression(
+				0,
 				cbs("sum by (bar) (foo) * count without (bar) (foo)"),
 				Default::default(),
 			),
@@ -1146,21 +1068,13 @@ mod tests {
 
 	#[test]
 	fn comments() {
-		let opts = ParserOptions::new()
-			.comments(true)
-			.build();
+		let opts = ParserOptions::new().comments(true).build();
 
-		assert_eq!(
-			ws_or_comment(opts)("# sfdjvdkfjvbh\n"),
-			Ok(("", ())),
-		);
+		assert_eq!(ws_or_comment(opts)("# sfdjvdkfjvbh\n"), Ok(("", ())),);
 
 		assert_eq!(
 			expression(0, cbs("foo # / bar\n/ baz"), opts),
-			Ok((
-				cbs(""),
-				operator(vector("foo"), Div(None), vector("baz"))
-			))
+			Ok((cbs(""), operator(vector("foo"), Div(None), vector("baz"))))
 		);
 
 		assert_eq!(
@@ -1181,9 +1095,7 @@ mod tests {
 
 	#[test]
 	fn recursion_limit() {
-		let opts = super::ParserOptions::new()
-			.recursion_limit(8)
-			.build();
+		let opts = super::ParserOptions::new().recursion_limit(8).build();
 
 		let mut op = String::new();
 		for _ in 1..=9 {
@@ -1193,9 +1105,7 @@ mod tests {
 		assert_eq!(
 			expression(0, format!("a {} b", op).as_str(), opts),
 			Err(nom::Err::Failure(VerboseError {
-				errors: vec![
-					(&" b"[..], VerboseErrorKind::Context("reached recursion limit")),
-				],
+				errors: vec![(" b", VerboseErrorKind::Context("reached recursion limit")),],
 			})),
 		);
 
@@ -1204,9 +1114,7 @@ mod tests {
 		assert_eq!(
 			expression(0, format!("a {} b", op).as_str(), opts),
 			Err(nom::Err::Failure(VerboseError {
-				errors: vec![
-					(&"+ b"[..], VerboseErrorKind::Context("reached recursion limit")),
-				],
+				errors: vec![("+ b", VerboseErrorKind::Context("reached recursion limit")),],
 			})),
 		);
 	}
@@ -1214,9 +1122,7 @@ mod tests {
 	// run this test with `cargo test stack_overflow -- --nocapture`
 	#[test]
 	fn stack_overflow() {
-		let opts = super::ParserOptions::new()
-			.recursion_limit(1024)
-			.build();
+		let opts = super::ParserOptions::new().recursion_limit(1024).build();
 
 		let mut op = String::new();
 		for _ in 1..256 {
