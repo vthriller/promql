@@ -9,6 +9,7 @@ use nom::{
 	InputTakeAtPosition,
 	Offset,
 	Slice,
+	ParseTo
 };
 use std::ops::{
 	Range,
@@ -302,6 +303,7 @@ where
 		+ Slice<Range<usize>>
 		+ Slice<RangeFrom<usize>>
 		+ Slice<RangeTo<usize>>
+		+ ParseTo<f32>
 		,
 	C: AsChar + Clone + Copy,
 	&'static str: FindToken<C>,
@@ -346,6 +348,7 @@ where
 		+ Slice<Range<usize>>
 		+ Slice<RangeFrom<usize>>
 		+ Slice<RangeTo<usize>>
+		+ ParseTo<f32>
 		,
 	C: AsChar + Clone + Copy,
 	&'static str: FindToken<C>,
@@ -384,6 +387,7 @@ where
 		+ Slice<Range<usize>>
 		+ Slice<RangeFrom<usize>>
 		+ Slice<RangeTo<usize>>
+		+ ParseTo<f32>
 		,
 	C: AsChar + Clone + Copy,
 	&'static str: FindToken<C>,
@@ -563,6 +567,7 @@ where
 		+ Slice<Range<usize>>
 		+ Slice<RangeFrom<usize>>
 		+ Slice<RangeTo<usize>>
+        + ParseTo<f32>
 		,
 	C: AsChar + Clone + Copy,
 	&'static str: FindToken<C>,
@@ -602,6 +607,7 @@ macro_rules! left_op {
 				+ Slice<Range<usize>>
 				+ Slice<RangeFrom<usize>>
 				+ Slice<RangeTo<usize>>
+				+ ParseTo<f32>
 				,
 			C: AsChar + Clone + Copy,
 			&'static str: FindToken<C>,
@@ -691,6 +697,7 @@ where
 		+ Slice<Range<usize>>
 		+ Slice<RangeFrom<usize>>
 		+ Slice<RangeTo<usize>>
+		+ ParseTo<f32>
 		,
 	C: AsChar + Clone + Copy,
 	&'static str: FindToken<C>,

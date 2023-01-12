@@ -155,6 +155,7 @@ where
 		+ nom::Slice<std::ops::Range<usize>>
 		+ nom::Slice<std::ops::RangeFrom<usize>>
 		+ nom::Slice<std::ops::RangeTo<usize>>
+		+ nom::ParseTo<f32>
 		,
 	C: nom::AsChar + Clone + Copy,
 	&'static str: nom::FindToken<C>,
