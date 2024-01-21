@@ -27,7 +27,7 @@ let ast = parse(query, opts).unwrap(); // or show user that their query is inval
 // now we can look for all sorts of things
 
 // AST can represent an operator
-if let Node::Operator { x, op: Op::And(op_mod), y } = ast {
+if let Node::Operator { op: Op::And(op_mod), args } = ast {
 	// operators can have modifiers
 	assert_eq!(op_mod, Some(OpMod {
 		action: OpModAction::Ignore,
@@ -36,7 +36,7 @@ if let Node::Operator { x, op: Op::And(op_mod), y } = ast {
 	}));
 
 	// aggregation functions like sum are represented as functions with optional modifiers (`by (label1, …)`/`without (…)`)
-	if let Node::Function { ref name, ref aggregation, ref args } = *x {
+	if let Node::Function { ref name, ref aggregation, ref args } = args[0] {
 		assert_eq!(*name, "sum".to_string());
 		assert_eq!(*aggregation, Some(AggregationMod {
 			action: AggregationAction::By,

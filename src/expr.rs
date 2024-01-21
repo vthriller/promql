@@ -134,14 +134,12 @@ pub struct AggregationMod {
 /// AST node.
 #[derive(Debug, PartialEq)]
 pub enum Node {
-	/// Operator: `a + ignoring (foo) b`
+	/// Chain of operators with similar mods: `a + ignoring (foo) b + ignoring (foo) c`
 	Operator {
-		/// First operand.
-		x: Box<Node>,
 		/// Operator itself.
 		op: Op,
-		/// Second operand.
-		y: Box<Node>,
+		/// Arguments.
+		args: Vec<Node>,
 	},
 	/// Time series vector.
 	Vector(Vector),
@@ -166,9 +164,8 @@ impl Node {
 
 	fn operator(x: Node, op: Op, y: Node) -> Node {
 		Node::Operator {
-			x: Box::new(x),
 			op,
-			y: Box::new(y),
+			args: vec![x, y],
 		}
 	}
 	fn negation(x: Node) -> Node {
