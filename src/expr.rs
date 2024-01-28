@@ -642,9 +642,15 @@ ops:  [Add]
 
 for all `ops` that satisfy `op_matcher()`
 */
-fn collapse_ops(args: &mut Vec<Node>, ops: &mut Vec<Op>, op_matcher: fn(&Op) -> bool) {
+fn collapse_ops(args: &mut Vec<Node>, ops: &mut Vec<Op>, rtl: bool, op_matcher: fn(&Op) -> bool) {
 	loop {
-		let i = match ops.iter().position(op_matcher) {
+		let mut i = ops.iter();
+		let i = if rtl {
+			i.rposition(op_matcher)
+		} else {
+			i.position(op_matcher)
+		};
+		let i = match i {
 			Some(i) => i,
 			// no ops match op_matcher(), nothing to do
 			None => break,
@@ -746,12 +752,12 @@ where
 	ops:  [+, *]
 	*/
 
-	//collapse_ops(&mut args, &mut ops, op_matcher!(Op::Pow));
-	collapse_ops(&mut args, &mut ops, op_matcher!(Op::Mul, Op::Div, Op::Mod));
-	collapse_ops(&mut args, &mut ops, op_matcher!(Op::Plus, Op::Minus));
-	collapse_ops(&mut args, &mut ops, op_matcher!(Op::Eq, Op::Ne, Op::Le, Op::Ge, Op::Lt, Op::Gt));
-	collapse_ops(&mut args, &mut ops, op_matcher!(Op::And, Op::Unless));
-	collapse_ops(&mut args, &mut ops, op_matcher!(Op::Or));
+	collapse_ops(&mut args, &mut ops, true, op_matcher!(Op::Pow));
+	collapse_ops(&mut args, &mut ops, false, op_matcher!(Op::Mul, Op::Div, Op::Mod));
+	collapse_ops(&mut args, &mut ops, false, op_matcher!(Op::Plus, Op::Minus));
+	collapse_ops(&mut args, &mut ops, false, op_matcher!(Op::Eq, Op::Ne, Op::Le, Op::Ge, Op::Lt, Op::Gt));
+	collapse_ops(&mut args, &mut ops, false, op_matcher!(Op::And, Op::Unless));
+	collapse_ops(&mut args, &mut ops, false, op_matcher!(Op::Or));
 
 	assert!(ops.is_empty(), "Leftover ops: {:?}", ops);
 	assert_eq!(args.len(), 1, "Leftover args: {:?}", args);
@@ -908,7 +914,6 @@ mod tests {
 			))
 		);
 
-		/*
 		assert_eq!(
 			expression(0,
 				"x^y^z",
@@ -923,7 +928,6 @@ mod tests {
 				)
 			))
 		);
-		*/
 
 		assert_eq!(
 			expression(0,
@@ -1030,7 +1034,6 @@ mod tests {
 			))
 		);
 
-		/*
 		assert_eq!(
 			expression(0,
 				"a ^ - 1 - b",
@@ -1060,7 +1063,6 @@ mod tests {
 				)
 			))
 		);
-		*/
 
 		// yes, these are also valid
 
