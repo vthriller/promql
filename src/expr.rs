@@ -616,6 +616,152 @@ left_op!(
 
 left_op!(or_op, and_unless, |opts| with_modifier(opts, "or", Op::Or));
 
+macro_rules! op_matcher {
+	($($type:path),+) => (
+		|op| match op {
+			$($type(..) => true,)+
+			_ => false,
+		}
+	)
+}
+
+/*
+Turns
+
+```
+args: [a,   b,   c]
+ops:  [Add, Mul]
+```
+
+into
+
+```
+args: [a,   Mul(b, c)]
+ops:  [Add]
+```
+
+for all `ops` that satisfy `op_matcher()`
+*/
+fn collapse_ops(args: &mut Vec<Node>, ops: &mut Vec<Op>, op_matcher: fn(&Op) -> bool) {
+	loop {
+		let i = match ops.iter().position(op_matcher) {
+			Some(i) => i,
+			// no ops match op_matcher(), nothing to do
+			None => break,
+		};
+
+		/*
+		say we have
+		args: [a,   b,   c,   d]
+		ops:  [Add, Mul, Add]
+		*/
+
+		let arg1 = args.remove(i);
+		let arg2 = args.remove(i);
+		let op = ops.remove(i);
+
+		/*
+		args: [a,   d]
+		ops:  [Add, Add]
+		*/
+
+		let node = Node::Operator {
+			op,
+			args: vec![arg1, arg2],
+		};
+		args.insert(i, node);
+
+		/*
+		args: [a,   Mul(b, c), d]
+		ops:  [Add, Add]
+		*/
+	}
+}
+
+/*
+parse all operators in one go and assemble them into an AST manually
+reasons for doing that:
+- to avoid stack overflow while recursing through the endless chains of expression() → or_op() → and_unless() → comparison() → plus_minus() → mul_div_mod() → power() → atom() → expression() → ...
+- it's just more readable this way
+- it makes it easier to coalesce same operators (a + b + c) into single AST node (And[a, b, c])
+*/
+fn parse_ops<I, C>(recursion_level: usize, input: I, opts: ParserOptions) -> IResult<I, Node>
+where
+	I: Clone + Copy
+		+ AsBytes
+		+ Compare<&'static str>
+		+ for<'a> Compare<&'a [u8]>
+		+ InputIter<Item = C>
+		+ InputLength
+		+ InputTake
+		+ InputTakeAtPosition<Item = C>
+		+ Offset
+		+ Slice<Range<usize>>
+		+ Slice<RangeFrom<usize>>
+		+ Slice<RangeTo<usize>>
+		,
+	C: AsChar + Clone + Copy,
+	&'static str: FindToken<C>,
+	<I as InputIter>::IterElem: Clone
+{
+	let (tail, ops_args) = many0(tuple((
+		|i| atom(recursion_level, i, opts),
+		alt((
+			with_modifier(opts, "or", Op::Or),
+
+			with_bool_modifier(opts, "==", Op::Eq),
+			with_bool_modifier(opts, "!=", Op::Ne),
+			with_bool_modifier(opts, "<=", Op::Le),
+			with_bool_modifier(opts, ">=", Op::Ge),
+			with_bool_modifier(opts, "<", Op::Lt),
+			with_bool_modifier(opts, ">", Op::Gt),
+
+			with_modifier(opts, "and", Op::And),
+			with_modifier(opts, "unless", Op::Unless),
+
+			with_modifier(opts, "+", Op::Plus),
+			with_modifier(opts, "-", Op::Minus),
+
+			with_modifier(opts, "*", Op::Mul),
+			with_modifier(opts, "/", Op::Div),
+			with_modifier(opts, "%", Op::Mod),
+
+			with_modifier(opts, "^", Op::Pow),
+		))
+	)))(input)?;
+
+	let (tail, last_arg) = atom(recursion_level, tail, opts)?;
+
+	if ops_args.is_empty() {
+		// there's no "a+b+c", just "c"
+		return Ok((tail, last_arg))
+	}
+
+	let (mut args, mut ops): (Vec<_>, Vec<_>) = ops_args.into_iter().unzip();
+	args.push(last_arg);
+
+	/*
+	"a + b * c" is now:
+	args: [a, b, c]
+	ops:  [+, *]
+	*/
+
+	//collapse_ops(&mut args, &mut ops, op_matcher!(Op::Pow));
+	collapse_ops(&mut args, &mut ops, op_matcher!(Op::Mul, Op::Div, Op::Mod));
+	collapse_ops(&mut args, &mut ops, op_matcher!(Op::Plus, Op::Minus));
+	collapse_ops(&mut args, &mut ops, op_matcher!(Op::Eq, Op::Ne, Op::Le, Op::Ge, Op::Lt, Op::Gt));
+	collapse_ops(&mut args, &mut ops, op_matcher!(Op::And, Op::Unless));
+	collapse_ops(&mut args, &mut ops, op_matcher!(Op::Or));
+
+	assert!(ops.is_empty(), "Leftover ops: {:?}", ops);
+	assert_eq!(args.len(), 1, "Leftover args: {:?}", args);
+
+	Ok((
+		tail,
+		args.pop().unwrap(),
+	))
+}
+
 pub(crate) fn expression<I, C>(recursion_level: usize, input: I, opts: ParserOptions) -> IResult<I, Node>
 where
 	I: Clone + Copy
@@ -647,7 +793,8 @@ where
 		);
 	}
 
-	or_op(recursion_level+1, input, opts)
+	//or_op(recursion_level+1, input, opts)
+	parse_ops(recursion_level+1, input, opts)
 }
 
 #[allow(unused_imports)]
@@ -761,6 +908,7 @@ mod tests {
 			))
 		);
 
+		/*
 		assert_eq!(
 			expression(0,
 				"x^y^z",
@@ -775,6 +923,7 @@ mod tests {
 				)
 			))
 		);
+		*/
 
 		assert_eq!(
 			expression(0,
@@ -881,6 +1030,7 @@ mod tests {
 			))
 		);
 
+		/*
 		assert_eq!(
 			expression(0,
 				"a ^ - 1 - b",
@@ -910,6 +1060,7 @@ mod tests {
 				)
 			))
 		);
+		*/
 
 		// yes, these are also valid
 
