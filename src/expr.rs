@@ -534,9 +534,22 @@ fn collapse_ops(args: &mut Vec<Node>, ops: &mut Vec<Op>, rtl: bool, op_matcher: 
 		ops:  [Add, Add]
 		*/
 
-		let node = Node::Operator {
-			op,
-			args: vec![arg1, arg2],
+		let node = match arg1 {
+			Node::Operator { op: lhs_op, mut args } if op == lhs_op => {
+				/*
+				a + on (x) b + on (x) c
+				we already have `Node::Operator` for the first `+`, so let's just extend args list instead of creating nested `Operator`s
+				*/
+				args.push(arg2);
+				Node::Operator {
+					op: lhs_op,
+					args,
+				}
+			},
+			_ => Node::Operator {
+				op,
+				args: vec![arg1, arg2],
+			}
 		};
 		args.insert(i, node);
 
@@ -968,27 +981,26 @@ mod tests {
 			),
 			Ok((
 				"",
-				operator(
-					operator(
+				Node::Operator {
+					op: Plus(None),
+					args: vec![
 						Function {
 							name: "foo".to_string(),
 							args: vec![],
 							aggregation: None,
 						},
-						Plus(None),
 						Function {
 							name: "bar".to_string(),
 							args: vec![vector("baz")],
 							aggregation: None,
 						},
-					),
-					Plus(None),
 					Function {
 						name: "quux".to_string(),
 						args: vec![vector("xyzzy"), vector("plough"),],
 						aggregation: None,
 					},
-				)
+					],
+				}
 			))
 		);
 
