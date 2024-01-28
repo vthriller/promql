@@ -160,14 +160,6 @@ pub enum Node {
 	Negation(Box<Node>),
 }
 impl Node {
-	// these functions are here primarily to avoid explicit mention of `Box::new()` in the code
-
-	fn operator(x: Node, op: Op, y: Node) -> Node {
-		Node::Operator {
-			op,
-			args: vec![x, y],
-		}
-	}
 	fn negation(x: Node) -> Node {
 		Node::Negation(Box::new(x))
 	}
@@ -690,9 +682,13 @@ mod tests {
 		VerboseErrorKind,
 	};
 
-	// cannot 'use self::Node::operator' for some reason
-	#[allow(non_upper_case_globals)]
-	const operator: fn(Node, Op, Node) -> Node = Node::operator;
+	fn operator(x: Node, op: Op, y: Node) -> Node {
+		Node::Operator {
+			op,
+			args: vec![x, y],
+		}
+	}
+
 	#[allow(non_upper_case_globals)]
 	const negation: fn(Node) -> Node = Node::negation;
 
