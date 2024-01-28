@@ -487,135 +487,6 @@ where
 	))(input)
 }
 
-// ^ is right-associative, so we can actually keep it simple and recursive
-fn power<I, C>(recursion_level: usize, input: I, opts: ParserOptions) -> IResult<I, Node>
-where
-	I: Clone + Copy
-		+ AsBytes
-		+ Compare<&'static str>
-		+ for<'a> Compare<&'a [u8]>
-		+ InputIter<Item = C>
-		+ InputLength
-		+ InputTake
-		+ InputTakeAtPosition<Item = C>
-		+ Offset
-		+ Slice<Range<usize>>
-		+ Slice<RangeFrom<usize>>
-		+ Slice<RangeTo<usize>>
-		,
-	C: AsChar + Clone + Copy,
-	&'static str: FindToken<C>,
-	<I as InputIter>::IterElem: Clone,
-{
-	surrounded_ws_or_comment(opts, map(
-		tuple((
-			|i| atom(recursion_level, i, opts),
-			opt(tuple((
-				with_modifier(opts, "^", Op::Pow),
-				|i| power(recursion_level, i, opts)
-			)))
-		)),
-		|(x, y)|
-			match y {
-				None => x,
-				Some((op, y)) => Node::operator(x, op, y),
-			}
-	))(input)
-}
-
-// foo op bar op baz → Node[Node[foo op bar] op baz]
-macro_rules! left_op {
-	// $next is the parser for operator that takes precenence, or any other kind of non-operator token sequence
-	($name:ident, $next:ident, $op:expr) => (
-		fn $name<I, C>(recursion_level: usize, input: I, opts: ParserOptions) -> IResult<I, Node>
-		where
-			I: Clone + Copy
-				+ AsBytes
-				+ Compare<&'static str>
-				+ for<'a> Compare<&'a [u8]>
-				+ InputIter<Item = C>
-				+ InputLength
-				+ InputTake
-				+ InputTakeAtPosition<Item = C>
-				+ Offset
-				+ Slice<Range<usize>>
-				+ Slice<RangeFrom<usize>>
-				+ Slice<RangeTo<usize>>
-				,
-			C: AsChar + Clone + Copy,
-			&'static str: FindToken<C>,
-			<I as InputIter>::IterElem: Clone,
-		{
-			surrounded_ws_or_comment(opts,
-				map(tuple((
-					|i| $next(recursion_level, i, opts),
-					many0(tuple((
-						$op(opts),
-						|i| $next(recursion_level, i, opts)
-					))),
-				)), |(x, ops)|
-					({
-						let mut x = x;
-						for (op, y) in ops {
-							x = Node::operator(x, op, y);
-						}
-						x
-					})
-				)
-			)(input)
-		}
-	);
-}
-
-left_op!(
-	mul_div_mod,
-	power,
-	|opts|
-	alt((
-		with_modifier(opts, "*", Op::Mul),
-		with_modifier(opts, "/", Op::Div),
-		with_modifier(opts, "%", Op::Mod),
-	))
-);
-
-left_op!(
-	plus_minus,
-	mul_div_mod,
-	|opts|
-	alt((
-		with_modifier(opts, "+", Op::Plus),
-		with_modifier(opts, "-", Op::Minus),
-	))
-);
-
-// if you thing this kind of operator chaining makes little to no sense, think again: it actually matches 'foo' that is both '> bar' and '!= baz'.
-// or, speaking another way: comparison operators are really just filters for values in a vector, and this is a chain of filters.
-left_op!(
-	comparison,
-	plus_minus,
-	|opts|
-	alt((
-		with_bool_modifier(opts, "==", Op::Eq),
-		with_bool_modifier(opts, "!=", Op::Ne),
-		with_bool_modifier(opts, "<=", Op::Le),
-		with_bool_modifier(opts, ">=", Op::Ge),
-		with_bool_modifier(opts, "<", Op::Lt),
-		with_bool_modifier(opts, ">", Op::Gt),
-	))
-);
-
-left_op!(
-	and_unless,
-	comparison,
-	|opts|
-	alt((
-		with_modifier(opts, "and", Op::And),
-		with_modifier(opts, "unless", Op::Unless),
-	))
-);
-
-left_op!(or_op, and_unless, |opts| with_modifier(opts, "or", Op::Or));
-
 macro_rules! op_matcher {
 	($($type:path),+) => (
 		|op| match op {
@@ -690,6 +561,9 @@ reasons for doing that:
 - to avoid stack overflow while recursing through the endless chains of expression() → or_op() → and_unless() → comparison() → plus_minus() → mul_div_mod() → power() → atom() → expression() → ...
 - it's just more readable this way
 - it makes it easier to coalesce same operators (a + b + c) into single AST node (And[a, b, c])
+
+this function accepts chained comparisons (`foo > bar != baz`), which are totally valid.
+you can see this as a chain of filters: first keep `> bar`, then process through `!= baz`
 */
 fn parse_ops<I, C>(recursion_level: usize, input: I, opts: ParserOptions) -> IResult<I, Node>
 where
@@ -799,7 +673,6 @@ where
 		);
 	}
 
-	//or_op(recursion_level+1, input, opts)
 	parse_ops(recursion_level+1, input, opts)
 }
 
