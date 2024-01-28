@@ -994,11 +994,11 @@ mod tests {
 							args: vec![vector("baz")],
 							aggregation: None,
 						},
-					Function {
-						name: "quux".to_string(),
-						args: vec![vector("xyzzy"), vector("plough"),],
-						aggregation: None,
-					},
+						Function {
+							name: "quux".to_string(),
+							args: vec![vector("xyzzy"), vector("plough"),],
+							aggregation: None,
+						},
 					],
 				}
 			))
