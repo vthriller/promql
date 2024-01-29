@@ -650,4 +650,21 @@ mod tests {
 			)))
 		);
 	}
+
+	// run this test with `cargo test stack_overflow -- --nocapture`
+	#[test]
+	fn stack_overflow() {
+		let mut op = String::new();
+		for _ in 1..10240 {
+			op.push('+');
+			std::dbg!(op.len());
+
+			use std::io::Write;
+			std::io::stdout().flush().unwrap();
+
+			let expr = format!("a {} b", op);
+			let _ = expression(cbs(expr.as_str()));
+		}
+	}
+
 }
