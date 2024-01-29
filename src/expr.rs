@@ -339,6 +339,7 @@ where
 
 	surrounded_ws_or_comment(opts,
 		alt((
+		alt((
 			map(
 				tag_no_case("NaN"),
 				|_| Node::Scalar(::std::f32::NAN)
@@ -347,6 +348,7 @@ where
 				float,
 				Node::Scalar
 			),
+		)),
 			// unary + does nothing
 			preceded(
 				char('+'),
