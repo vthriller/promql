@@ -302,44 +302,6 @@ where
 	)(input)
 }
 
-fn atom_nan<I, C>(input: I) -> IResult<I, Node>
-where
-	I: Clone + Copy
-		+ AsBytes
-		+ Compare<&'static str>
-		+ InputIter<Item = C>
-		+ InputLength
-		+ InputTake
-{
-			map(
-				tag_no_case("NaN"),
-				|_| Node::Scalar(::std::f32::NAN)
-			)(input) // XXX define Node::NaN instead?
-}
-
-fn atom_float<I, C>(input: I) -> IResult<I, Node>
-where
-	I: Clone + Copy
-		+ AsBytes
-		+ for<'a> Compare<&'a [u8]>
-		+ InputIter<Item = C>
-		+ InputLength
-		+ InputTake
-		+ InputTakeAtPosition<Item = C>
-		+ Offset
-		+ Slice<Range<usize>>
-		+ Slice<RangeFrom<usize>>
-		+ Slice<RangeTo<usize>>
-		,
-	C: AsChar + Copy,
-	<I as InputIter>::IterElem: Clone,
-{
-			map(
-				float,
-				Node::Scalar
-			)(input)
-}
-
 fn atom<I, C>(recursion_level: usize, input: I, opts: &ParserOptions) -> IResult<I, Node>
 where
 	I: Clone + Copy
@@ -373,8 +335,14 @@ where
 
 	surrounded_ws_or_comment(opts,
 		alt((
-			atom_nan,
-			atom_float,
+			map(
+				tag_no_case("NaN"),
+				|_| Node::Scalar(::std::f32::NAN)
+			), // XXX define Node::NaN instead?
+			map(
+				float,
+				Node::Scalar
+			),
 			// unary + does nothing
 			preceded(
 				char('+'),
