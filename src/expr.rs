@@ -339,17 +339,17 @@ where
 
 	surrounded_ws_or_comment(opts,
 		alt((
-		alt((
-			map(
-				tag_no_case("NaN"),
-				|_| Node::Scalar(::std::f32::NAN)
-			), // XXX define Node::NaN instead?
+			alt((
+				map(
+					tag_no_case("NaN"),
+					|_| Node::Scalar(::std::f32::NAN)
+				), // XXX define Node::NaN instead?
 
-			map(
-				float,
-				Node::Scalar
-			),
-		)),
+				map(
+					float,
+					Node::Scalar
+				),
+			)),
 
 			// unary + does nothing
 			preceded(
@@ -366,22 +366,22 @@ where
 				Node::negation
 			),
 
-		alt((
-			// function call is parsed before vector: the latter can actually consume function name as a vector, effectively rendering the rest of the expression invalid
-			|i| function(recursion_level, i, opts),
+			alt((
+				// function call is parsed before vector: the latter can actually consume function name as a vector, effectively rendering the rest of the expression invalid
+				|i| function(recursion_level, i, opts),
 
-			// FIXME? things like 'and' and 'group_left' are not supposed to parse as a vector: prometheus lexes them unambiguously
-			map(
-				|i| vector(i, opts),
-				Node::Vector
-			),
+				// FIXME? things like 'and' and 'group_left' are not supposed to parse as a vector: prometheus lexes them unambiguously
+				map(
+					|i| vector(i, opts),
+					Node::Vector
+				),
 
-			delimited(
-				char('('),
-				|i| expression(recursion_level, i, opts),
-				char(')')
-			)
-		))
+				delimited(
+					char('('),
+					|i| expression(recursion_level, i, opts),
+					char(')')
+				)
+			))
 		))
 	)(input)
 }
