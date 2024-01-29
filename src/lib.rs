@@ -112,7 +112,7 @@ use builder_pattern::Builder;
 #[derive(Clone, Copy, Builder)]
 pub struct ParserOptions {
 	/**
-	Allow periods in metric names (e.g. `threads.busy{instance="..."}`).
+	Allow dots in metric names (e.g. `threads.busy{instance="..."}`).
 
 	This option is usually used in systems that have metrics carried over from other monitoring systems like Graphite.
 	*/
