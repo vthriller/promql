@@ -256,13 +256,13 @@ where
 
 macro_rules! pair_permutations {
 	($p1:expr, $p2:expr $(,)?) => {
-	alt((
-		tuple(($p1, $p2)),
-		map(
-			tuple(($p2, $p1)),
-			|(o2, o1)| (o1, o2),
-		),
-	))
+		alt((
+			tuple(($p1, $p2)),
+			map(
+				tuple(($p2, $p1)),
+				|(o2, o1)| (o1, o2),
+			),
+		))
 	};
 }
 
