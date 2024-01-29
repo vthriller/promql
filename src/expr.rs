@@ -8,6 +8,7 @@ use nom::{
 	InputTake,
 	InputTakeAtPosition,
 	Offset,
+	ParseTo,
 	Slice,
 };
 use std::ops::{
@@ -233,6 +234,7 @@ where
 		+ Slice<Range<usize>>
 		+ Slice<RangeFrom<usize>>
 		+ Slice<RangeTo<usize>>
+		+ ParseTo<f32>
 		+ 'a
 		,
 	C: AsChar + Clone + Copy + 'a,
@@ -278,6 +280,7 @@ where
 		+ Slice<Range<usize>>
 		+ Slice<RangeFrom<usize>>
 		+ Slice<RangeTo<usize>>
+		+ ParseTo<f32>
 		,
 	C: AsChar + Clone + Copy,
 	&'static str: FindToken<C>,
@@ -316,6 +319,7 @@ where
 		+ Slice<Range<usize>>
 		+ Slice<RangeFrom<usize>>
 		+ Slice<RangeTo<usize>>
+		+ ParseTo<f32>
 		,
 	C: AsChar + Clone + Copy,
 	&'static str: FindToken<C>,
@@ -585,6 +589,7 @@ where
 		+ Slice<Range<usize>>
 		+ Slice<RangeFrom<usize>>
 		+ Slice<RangeTo<usize>>
+		+ ParseTo<f32>
 		,
 	C: AsChar + Clone + Copy,
 	&'static str: FindToken<C>,
@@ -662,6 +667,7 @@ where
 		+ Slice<Range<usize>>
 		+ Slice<RangeFrom<usize>>
 		+ Slice<RangeTo<usize>>
+		+ ParseTo<f32>
 		,
 	C: AsChar + Clone + Copy,
 	&'static str: FindToken<C>,
