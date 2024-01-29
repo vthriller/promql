@@ -54,6 +54,7 @@ use crate::utils::{
 
 /// PromQL operators
 #[derive(Debug, PartialEq)]
+#[cfg_attr(feature = "serializable", derive(serde_derive::Serialize))]
 pub enum Op {
 	/** `^` */
 	Pow(Option<OpMod>),
@@ -93,12 +94,14 @@ pub enum Op {
 }
 
 #[derive(Debug, PartialEq, Clone)]
+#[cfg_attr(feature = "serializable", derive(serde_derive::Serialize))]
 pub enum OpModAction {
 	RestrictTo,
 	Ignore,
 }
 /// Vector matching operator modifier (`on (…)`/`ignoring (…)`).
 #[derive(Debug, PartialEq)]
+#[cfg_attr(feature = "serializable", derive(serde_derive::Serialize))]
 pub struct OpMod {
 	/// Action applied to a list of vectors; whether `on (…)` or `ignored(…)` is used after the operator.
 	pub action: OpModAction,
@@ -109,23 +112,27 @@ pub struct OpMod {
 }
 
 #[derive(Debug, PartialEq, Clone)]
+#[cfg_attr(feature = "serializable", derive(serde_derive::Serialize))]
 pub enum OpGroupSide {
 	Left,
 	Right,
 }
 /// Vector grouping operator modifier (`group_left(…)`/`group_right(…)`).
 #[derive(Debug, PartialEq)]
+#[cfg_attr(feature = "serializable", derive(serde_derive::Serialize))]
 pub struct OpGroupMod {
 	pub side: OpGroupSide,
 	pub labels: Vec<String>,
 }
 
 #[derive(Debug, PartialEq, Clone)]
+#[cfg_attr(feature = "serializable", derive(serde_derive::Serialize))]
 pub enum AggregationAction {
 	Without,
 	By,
 }
 #[derive(Debug, PartialEq)]
+#[cfg_attr(feature = "serializable", derive(serde_derive::Serialize))]
 pub struct AggregationMod {
 	// Action applied to a list of vectors; whether `by (…)` or `without (…)` is used.
 	pub action: AggregationAction,
@@ -134,6 +141,7 @@ pub struct AggregationMod {
 
 /// AST node.
 #[derive(Debug, PartialEq)]
+#[cfg_attr(feature = "serializable", derive(serde_derive::Serialize))]
 pub enum Node {
 	/// Chain of operators with similar mods: `a + ignoring (foo) b + ignoring (foo) c`
 	Operator {

@@ -58,6 +58,7 @@ use crate::utils::{
 
 /// Label filter operators.
 #[derive(Debug, PartialEq, Clone)]
+#[cfg_attr(feature = "serializable", derive(serde_derive::Serialize))]
 pub enum LabelMatchOp {
 	/** `=`  */
 	Eq,
@@ -71,6 +72,7 @@ pub enum LabelMatchOp {
 
 /// Single label filter.
 #[derive(Debug, PartialEq)]
+#[cfg_attr(feature = "serializable", derive(serde_derive::Serialize))]
 pub struct LabelMatch {
 	pub name: String,
 	pub op: LabelMatchOp,
@@ -143,6 +145,7 @@ assert_eq!(
 ```
 */
 #[derive(Debug, PartialEq)]
+#[cfg_attr(feature = "serializable", derive(serde_derive::Serialize))]
 pub struct Vector {
 	/// Set of label filters
 	pub labels: Vec<LabelMatch>,

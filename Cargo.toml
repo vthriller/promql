@@ -10,3 +10,11 @@ repository = "https://github.com/vthriller/promql"
 quick-error = "2.0"
 nom = "7.0"
 builder-pattern = "0.3"
+
+# feature: serializable
+serde = { version = "1.0", optional = true }
+serde_derive = { version = "1.0", optional = true }
+
+[features]
+default = []
+serializable = ["serde", "serde_derive"]
