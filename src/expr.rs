@@ -165,7 +165,7 @@ impl Node {
 	}
 }
 
-fn label_list<I, C>(input: I, opts: ParserOptions) -> IResult<I, Vec<String>>
+fn label_list<I, C>(input: I, opts: &ParserOptions) -> IResult<I, Vec<String>>
 where
 	I: Clone
 		+ AsBytes
@@ -189,7 +189,7 @@ where
 	)(input)
 }
 
-fn function_aggregation<I, C>(input: I, opts: ParserOptions) -> IResult<I, AggregationMod>
+fn function_aggregation<I, C>(input: I, opts: &ParserOptions) -> IResult<I, AggregationMod>
 where
 	I: Clone
 		+ AsBytes
@@ -219,12 +219,12 @@ where
 }
 
 // it's up to the library user to decide whether argument list is valid or not
-fn function_args<I, C>(recursion_level: usize, opts: ParserOptions) -> impl FnMut(I) -> IResult<I, Vec<Node>>
+fn function_args<'a, I, C>(recursion_level: usize, opts: &'a ParserOptions) -> impl FnMut(I) -> IResult<I, Vec<Node>> + 'a
 where
 	I: Clone + Copy
 		+ AsBytes
 		+ Compare<&'static str>
-		+ for<'a> Compare<&'a [u8]>
+		+ for<'b> Compare<&'b [u8]>
 		+ InputIter<Item = C>
 		+ InputLength
 		+ InputTake
@@ -233,8 +233,9 @@ where
 		+ Slice<Range<usize>>
 		+ Slice<RangeFrom<usize>>
 		+ Slice<RangeTo<usize>>
+		+ 'a
 		,
-	C: AsChar + Clone + Copy,
+	C: AsChar + Clone + Copy + 'a,
 	&'static str: FindToken<C>,
 	<I as InputIter>::IterElem: Clone,
 {
@@ -263,7 +264,7 @@ macro_rules! pair_permutations {
 	};
 }
 
-fn function<I, C>(recursion_level: usize, input: I, opts: ParserOptions) -> IResult<I, Node>
+fn function<I, C>(recursion_level: usize, input: I, opts: &ParserOptions) -> IResult<I, Node>
 where
 	I: Clone + Copy
 		+ AsBytes
@@ -339,7 +340,7 @@ where
 			)(input)
 }
 
-fn atom<I, C>(recursion_level: usize, input: I, opts: ParserOptions) -> IResult<I, Node>
+fn atom<I, C>(recursion_level: usize, input: I, opts: &ParserOptions) -> IResult<I, Node>
 where
 	I: Clone + Copy
 		+ AsBytes
@@ -407,7 +408,7 @@ where
 	)(input)
 }
 
-fn with_modifier<I, C>(opts: ParserOptions, literal: &'static str, op: fn(Option<OpMod>) -> Op) -> impl FnMut(I) -> IResult<I, Op>
+fn with_modifier<'a, I, C>(opts: &'a ParserOptions, literal: &'static str, op: fn(Option<OpMod>) -> Op) -> impl FnMut(I) -> IResult<I, Op> + 'a
 where
 	I: Clone
 		+ AsBytes
@@ -420,6 +421,7 @@ where
 		+ Slice<Range<usize>>
 		+ Slice<RangeFrom<usize>>
 		+ Slice<RangeTo<usize>>
+		+ 'a
 		,
 	C: AsChar + Clone,
 	&'static str: FindToken<C>,
@@ -433,7 +435,7 @@ where
 	)
 }
 
-fn with_bool_modifier<'a, I, C, O: Fn(bool, Option<OpMod>) -> Op>(opts: ParserOptions, literal: &'static str, op: O) -> impl FnMut(I) -> IResult<I, Op>
+fn with_bool_modifier<'a, I, C, O: Fn(bool, Option<OpMod>) -> Op + 'a>(opts: &'a ParserOptions, literal: &'static str, op: O) -> impl FnMut(I) -> IResult<I, Op> + 'a
 where
 	I: Clone
 		+ AsBytes
@@ -446,6 +448,7 @@ where
 		+ Slice<Range<usize>>
 		+ Slice<RangeFrom<usize>>
 		+ Slice<RangeTo<usize>>
+		+ 'a
 		,
 	C: AsChar + Clone,
 	&'static str: FindToken<C>,
@@ -461,7 +464,7 @@ where
 	)
 }
 
-fn op_modifier<I, C>(input: I, opts: ParserOptions) -> IResult<I, OpMod>
+fn op_modifier<I, C>(input: I, opts: &ParserOptions) -> IResult<I, OpMod>
 where
 	I: Clone
 		+ AsBytes
@@ -600,7 +603,7 @@ reasons for doing that:
 this function accepts chained comparisons (`foo > bar != baz`), which are totally valid.
 you can see this as a chain of filters: first keep `> bar`, then process through `!= baz`
 */
-fn parse_ops<I, C>(recursion_level: usize, input: I, opts: ParserOptions) -> IResult<I, Node>
+fn parse_ops<I, C>(recursion_level: usize, input: I, opts: &ParserOptions) -> IResult<I, Node>
 where
 	I: Clone + Copy
 		+ AsBytes
@@ -677,7 +680,7 @@ where
 	))
 }
 
-pub(crate) fn expression<I, C>(recursion_level: usize, input: I, opts: ParserOptions) -> IResult<I, Node>
+pub(crate) fn expression<I, C>(recursion_level: usize, input: I, opts: &ParserOptions) -> IResult<I, Node>
 where
 	I: Clone + Copy
 		+ AsBytes
@@ -737,7 +740,7 @@ mod tests {
 
 	// vector parsing is already tested in `mod vec`, so use that parser instead of crafting lengthy structs all over the test functions
 	fn vector(expr: &str) -> Node {
-		match vec::vector(expr, ParserOptions::default()) {
+		match vec::vector(expr, &ParserOptions::default()) {
 			Ok(("", x)) => Node::Vector(x),
 			_ => panic!("failed to parse label correctly"),
 		}
@@ -768,7 +771,7 @@ mod tests {
 	}
 
 	fn scalar_single(input: &str, output: f32) {
-		assert_eq!(expression(0, input, Default::default()), Ok(("", Scalar(output))));
+		assert_eq!(expression(0, input, &Default::default()), Ok(("", Scalar(output))));
 	}
 
 	#[test]
@@ -776,7 +779,7 @@ mod tests {
 		assert_eq!(
 			expression(0,
 				"foo > bar != 0 and 15.5 < xyzzy",
-				Default::default(),
+				&Default::default(),
 			),
 			Ok((
 				"",
@@ -795,7 +798,7 @@ mod tests {
 		assert_eq!(
 			expression(0,
 				"foo + bar - baz <= quux + xyzzy",
-				Default::default(),
+				&Default::default(),
 			),
 			Ok((
 				"",
@@ -814,7 +817,7 @@ mod tests {
 		assert_eq!(
 			expression(0,
 				"foo + bar % baz",
-				Default::default(),
+				&Default::default(),
 			),
 			Ok((
 				"",
@@ -829,7 +832,7 @@ mod tests {
 		assert_eq!(
 			expression(0,
 				"x^y^z",
-				Default::default(),
+				&Default::default(),
 			),
 			Ok((
 				"",
@@ -844,7 +847,7 @@ mod tests {
 		assert_eq!(
 			expression(0,
 				"(a+b)*c",
-				Default::default(),
+				&Default::default(),
 			),
 			Ok((
 				"",
@@ -862,7 +865,7 @@ mod tests {
 		assert_eq!(
 			expression(0,
 				"foo + ignoring (instance) bar / on (cluster) baz",
-				Default::default(),
+				&Default::default(),
 			),
 			Ok((
 				"",
@@ -889,7 +892,7 @@ mod tests {
 		assert_eq!(
 			expression(0,
 				"foo + ignoring (instance) group_right bar / on (cluster, shmuster) group_left (job) baz",
-				Default::default(),
+				&Default::default(),
 			),
 			Ok(("", operator(
 				vector("foo"),
@@ -913,7 +916,7 @@ mod tests {
 		assert_eq!(
 			expression(0,
 				"node_cpu{cpu='cpu0'} > bool ignoring (cpu) node_cpu{cpu='cpu1'}",
-				Default::default(),
+				&Default::default(),
 			),
 			Ok((
 				"",
@@ -938,7 +941,7 @@ mod tests {
 		assert_eq!(
 			expression(0,
 				"a + -b",
-				Default::default(),
+				&Default::default(),
 			),
 			Ok((
 				"",
@@ -949,7 +952,7 @@ mod tests {
 		assert_eq!(
 			expression(0,
 				"a ^ - 1 - b",
-				Default::default(),
+				&Default::default(),
 			),
 			Ok((
 				"",
@@ -964,7 +967,7 @@ mod tests {
 		assert_eq!(
 			expression(0,
 				"a ^ - (1 - b)",
-				Default::default(),
+				&Default::default(),
 			),
 			Ok((
 				"",
@@ -981,7 +984,7 @@ mod tests {
 		assert_eq!(
 			expression(0,
 				"a +++++++ b",
-				Default::default(),
+				&Default::default(),
 			),
 			Ok(("", operator(vector("a"), Plus(None), vector("b"),)))
 		);
@@ -989,7 +992,7 @@ mod tests {
 		assert_eq!(
 			expression(0,
 				"a * --+-b",
-				Default::default(),
+				&Default::default(),
 			),
 			Ok((
 				"",
@@ -1007,7 +1010,7 @@ mod tests {
 		assert_eq!(
 			expression(0,
 				"foo() + bar(baz) + quux(xyzzy, plough)",
-				Default::default(),
+				&Default::default(),
 			),
 			Ok((
 				"",
@@ -1037,7 +1040,7 @@ mod tests {
 		assert_eq!(
 			expression(0,
 				"round(rate(whatever [5m]) > 0, 0.2)",
-				Default::default(),
+				&Default::default(),
 			),
 			Ok((
 				"",
@@ -1063,7 +1066,7 @@ mod tests {
 		assert_eq!(
 			expression(0,
 				"label_replace(up, 'instance', '', 'instance', '.*')",
-				Default::default(),
+				&Default::default(),
 			),
 			Ok((
 				"",
@@ -1087,7 +1090,7 @@ mod tests {
 		assert_eq!(
 			expression(0,
 				"sum(foo) by (bar) * count(foo) without (bar)",
-				Default::default(),
+				&Default::default(),
 			),
 			Ok((
 				"",
@@ -1116,7 +1119,7 @@ mod tests {
 		assert_eq!(
 			expression(0,
 				"sum by (bar) (foo) * count without (bar) (foo)",
-				Default::default(),
+				&Default::default(),
 			),
 			Ok((
 				"",
@@ -1152,7 +1155,7 @@ mod tests {
 			.build();
 
 		assert_eq!(
-			expression(0, "foo # / bar\n/ baz", opts),
+			expression(0, "foo # / bar\n/ baz", &opts),
 			Ok((
 				"",
 				operator(vector("foo"), Div(None), vector("baz"))
@@ -1160,7 +1163,7 @@ mod tests {
 		);
 
 		assert_eq!(
-			expression(0, "sum(foo) # by (bar)\nby (baz)", opts),
+			expression(0, "sum(foo) # by (bar)\nby (baz)", &opts),
 			Ok((
 				"",
 				Function {
@@ -1187,7 +1190,7 @@ mod tests {
 		}
 
 		assert_eq!(
-			expression(0, format!("a {} b", op).as_str(), opts),
+			expression(0, format!("a {} b", op).as_str(), &opts),
 			Err(nom::Err::Failure(VerboseError {
 				errors: vec![
 					(&" b"[..], VerboseErrorKind::Context("reached recursion limit")),
@@ -1198,7 +1201,7 @@ mod tests {
 		op.push('+');
 
 		assert_eq!(
-			expression(0, format!("a {} b", op).as_str(), opts),
+			expression(0, format!("a {} b", op).as_str(), &opts),
 			Err(nom::Err::Failure(VerboseError {
 				errors: vec![
 					(&"+ b"[..], VerboseErrorKind::Context("reached recursion limit")),
@@ -1222,7 +1225,7 @@ mod tests {
 			use std::io::Write;
 			std::io::stdout().flush().unwrap();
 
-			let _ = expression(0, format!("a {} b", op).as_str(), opts);
+			let _ = expression(0, format!("a {} b", op).as_str(), &opts);
 		}
 	}
 }

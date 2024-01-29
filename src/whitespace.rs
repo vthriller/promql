@@ -34,7 +34,7 @@ use crate::utils::{
 	value,
 };
 
-pub(crate) fn ws_or_comment<I, C>(opts: ParserOptions) -> impl FnMut(I) -> IResult<I, ()>
+pub(crate) fn ws_or_comment<'a, I, C>(opts: &'a ParserOptions) -> impl FnMut(I) -> IResult<I, ()> + 'a
 where
 	I: Clone
 		+ Compare<&'static str>
@@ -46,6 +46,7 @@ where
 		+ Slice<Range<usize>>
 		+ Slice<RangeFrom<usize>>
 		+ Slice<RangeTo<usize>>
+		+ 'a
 		,
 	C: AsChar + Clone,
 {
@@ -67,9 +68,9 @@ where
 	)
 }
 
-pub(crate) fn surrounded_ws_or_comment<I, C, O, P>(opts: ParserOptions, parser: P) -> impl FnMut(I) -> IResult<I, O>
+pub(crate) fn surrounded_ws_or_comment<'a, I, C, O, P>(opts: &'a ParserOptions, parser: P) -> impl FnMut(I) -> IResult<I, O> + 'a
 where
-	P: FnMut(I) -> IResult<I, O>,
+	P: FnMut(I) -> IResult<I, O> + 'a,
 	I: Clone
 		+ Compare<&'static str>
 		+ InputIter<Item = C>
@@ -80,7 +81,9 @@ where
 		+ Slice<Range<usize>>
 		+ Slice<RangeFrom<usize>>
 		+ Slice<RangeTo<usize>>
+		+ 'a
 		,
+	O: 'a,
 	C: AsChar + Clone,
 {
 	delimited(
@@ -110,7 +113,7 @@ mod tests {
 			.build();
 
 		assert_eq!(
-			ws_or_comment(opts)(src),
+			ws_or_comment(&opts)(src),
 			Ok(("", ())),
 		);
 
@@ -119,7 +122,7 @@ mod tests {
 			.build();
 
 		assert_eq!(
-			ws_or_comment(opts)(src),
+			ws_or_comment(&opts)(src),
 			Ok(("# whatever\n", ())),
 		);
 	}

@@ -77,7 +77,7 @@ pub struct LabelMatch {
 	pub value: Vec<u8>,
 }
 
-fn label_set<I, C>(input: I, opts: ParserOptions) -> IResult<I, Vec<LabelMatch>>
+fn label_set<I, C>(input: I, opts: &ParserOptions) -> IResult<I, Vec<LabelMatch>>
 where
 	I: Clone
 		+ AsBytes
@@ -128,7 +128,7 @@ use promql::LabelMatchOp::*; // Eq
 use nom::IResult;
 
 assert_eq!(
-	parse("foo{bar='baz'}".as_bytes(), Default::default()),
+	parse("foo{bar='baz'}".as_bytes(), &Default::default()),
 	Ok(Node::Vector(Vector {
 		labels: vec![
 			// this is the filter for the metric name 'foo'
@@ -152,7 +152,7 @@ pub struct Vector {
 	pub offset: Option<f32>,
 }
 
-fn instant_vec<I, C>(input: I, opts: ParserOptions) -> IResult<I, Vec<LabelMatch>>
+fn instant_vec<I, C>(input: I, opts: &ParserOptions) -> IResult<I, Vec<LabelMatch>>
 where
 	I: Clone + Copy
 		+ AsBytes
@@ -202,7 +202,7 @@ where
 // `max_duration` limits set of available suffixes, allowing us to forbid intervals like `30s5m`
 // not using vecs/slices to limit set of acceptable suffixes: they're expensive,
 // and we cannot build an alt() from them anyway (even recursive one, like alt(alt(), ...))
-fn range_literal_part<I, C>(input: I, opts: ParserOptions, max_duration: Option<f32>) -> IResult<I, (f32, f32)>
+fn range_literal_part<I, C>(input: I, opts: &ParserOptions, max_duration: Option<f32>) -> IResult<I, (f32, f32)>
 where
 	I: Clone
 		+ AsBytes
@@ -262,7 +262,7 @@ where
 	)(input)
 }
 
-fn range_compound_literal<I, C>(input: I, opts: ParserOptions, max_duration: Option<f32>) -> IResult<I, f32>
+fn range_compound_literal<I, C>(input: I, opts: &ParserOptions, max_duration: Option<f32>) -> IResult<I, f32>
 where
 	I: Clone + Copy
 		+ AsBytes
@@ -286,7 +286,7 @@ where
 		Ok((input, amount * duration + rest))
 }
 
-fn range_literal<I, C>(input: I, opts: ParserOptions) -> IResult<I, f32>
+fn range_literal<I, C>(input: I, opts: &ParserOptions) -> IResult<I, f32>
 where
 	I: Clone + Copy
 		+ AsBytes
@@ -311,7 +311,7 @@ where
 	}
 }
 
-pub(crate) fn vector<I, C>(input: I, opts: ParserOptions) -> IResult<I, Vector>
+pub(crate) fn vector<I, C>(input: I, opts: &ParserOptions) -> IResult<I, Vector>
 where
 	I: Clone + Copy
 		+ AsBytes
@@ -363,7 +363,7 @@ where
 // > The metric name … must match the regex [a-zA-Z_:][a-zA-Z0-9_:]*.
 // > Label names … must match the regex [a-zA-Z_][a-zA-Z0-9_]*. Label names beginning with __ are reserved for internal use.
 
-fn metric_name<I, C>(input: I, opts: ParserOptions) -> IResult<I, String>
+fn metric_name<I, C>(input: I, opts: &ParserOptions) -> IResult<I, String>
 where
 	I: Clone
 		+ AsBytes
@@ -447,7 +447,7 @@ mod tests {
 			assert_eq!(
 				vector(
 					q,
-					ParserOptions::new()
+					&ParserOptions::new()
 						.allow_periods(true)
 						.build(),
 				),
@@ -479,7 +479,7 @@ mod tests {
 			assert_eq!(
 				vector(
 					q,
-					ParserOptions::new()
+					&ParserOptions::new()
 						.allow_periods(false)
 						.build(),
 				),
@@ -506,7 +506,7 @@ mod tests {
 			.build();
 
 		assert_eq!(
-			vector("foo", opts),
+			vector("foo", &opts),
 			Ok((
 				"",
 				Vector {
@@ -526,7 +526,7 @@ mod tests {
 			"foo { }",
 		] {
 			assert_eq!(
-				vector(q, opts),
+				vector(q, &opts),
 				Ok((
 					"",
 					Vector {
@@ -549,7 +549,7 @@ mod tests {
 			assert_eq!(
 				vector(
 					q,
-					opts,
+					&opts,
 				),
 				Ok((
 					"",
@@ -588,7 +588,7 @@ mod tests {
 			"{ lorem =~ \"ipsum\" }",
 		] {
 			assert_eq!(
-				vector(q, opts),
+				vector(q, &opts),
 				Ok((
 					"",
 					Vector {
@@ -609,7 +609,7 @@ mod tests {
 			"{ }",
 		] {
 			assert_eq!(
-				vector(q, opts),
+				vector(q, &opts),
 				err(vec![
 					(q, VerboseErrorKind::Context("vector selector must contain label matchers or metric name")),
 				]),
@@ -626,12 +626,12 @@ mod tests {
 				.negative_offsets(negative_offsets)
 				.build();
 
-			modified_vectors(opts)
+			modified_vectors(&opts)
 		}
 		}
 	}
 
-	fn modified_vectors(opts: ParserOptions) {
+	fn modified_vectors(opts: &ParserOptions) {
 		modified_vectors_for_instant(
 			"foo",
 			|| {
@@ -711,7 +711,7 @@ mod tests {
 	fn modified_vectors_for_instant(
 		instant: &str,
 		labels: fn() -> Vec<LabelMatch>,
-		opts: ParserOptions,
+		opts: &ParserOptions,
 	) {
 		let v = |tail, range, offset| Ok((
 			tail,
@@ -781,7 +781,7 @@ mod tests {
 	fn modified_vectors_for_instant_concat_offset(
 		instant: &str,
 		labels: fn() -> Vec<LabelMatch>,
-		opts: ParserOptions,
+		opts: &ParserOptions,
 		should_parse_offset: bool,
 	) {
 		let v = |tail, range, offset| Ok((
@@ -847,7 +847,7 @@ mod tests {
 					.compound_intervals(compound_intervals)
 					.build();
 
-				let output = range_literal(src, opts);
+				let output = range_literal(src, &opts);
 				if let Some(value) = value {
 					let (tail, output) = output.unwrap(); // panics if not Ok()
 					assert_eq!(output, value,
@@ -868,7 +868,7 @@ mod tests {
 			.ms_duration(true)
 			.build();
 		assert_eq!(
-			range_literal("500ms", opts),
+			range_literal("500ms", &opts),
 			Ok(("", 0.5))
 		);
 
@@ -876,7 +876,7 @@ mod tests {
 			.ms_duration(false)
 			.build();
 		assert_eq!(
-			range_literal("500ms", opts),
+			range_literal("500ms", &opts),
 			Ok(("s", 500. * 60.))
 		);
 	}

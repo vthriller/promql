@@ -22,7 +22,7 @@ let query: &[u8] = br#"
 	and ignoring (instance)
 	sum(rate(some_queries{instance=~"localhost\\d+"} [5m])) > 100
 "#;
-let ast = parse(query, opts).unwrap(); // or show user that their query is invalid
+let ast = parse(query, &opts).unwrap(); // or show user that their query is invalid
 
 // now we can look for all sorts of things
 
@@ -152,7 +152,7 @@ impl Default for ParserOptions {
 }
 
 /// Parse expression string into an AST.
-pub fn parse<I, C>(e: I, opts: ParserOptions) -> Result<Node, Err<VerboseError<I>>>
+pub fn parse<I, C>(e: I, opts: &ParserOptions) -> Result<Node, Err<VerboseError<I>>>
 where
 	I: Clone + Copy
 		+ nom::AsBytes
@@ -188,7 +188,7 @@ mod tests {
 	#[test]
 	fn completeness() {
 		assert_eq!(
-			super::parse(&b"asdf hjkl"[..], Default::default()),
+			super::parse(&b"asdf hjkl"[..], &Default::default()),
 			err(vec![
 				(&b"hjkl"[..], VerboseErrorKind::Nom(ErrorKind::Eof)),
 			])
