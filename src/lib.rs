@@ -13,7 +13,7 @@ See [official documentation](https://prometheus.io/docs/prometheus/latest/queryi
 use promql::*;
 
 let opts = ParserOptions::new()
-	.allow_periods(false)
+	.allow_dots(false)
 	.build();
 
 // query can also be `&str`
@@ -117,7 +117,7 @@ pub struct ParserOptions {
 	This option is usually used in systems that have metrics carried over from other monitoring systems like Graphite.
 	*/
 	#[default(false)]
-	allow_periods: bool,
+	allow_dots: bool,
 
 	/// Allow decimal fractions in intervals (e.g. `offset 0.5d`)
 	#[default(false)]

@@ -381,7 +381,7 @@ where
 		recognize(tuple((
 			alt((alpha1, is_a("_:"))),
 			many0(alt((
-				alphanumeric1, is_a(if opts.allow_periods { "_:." } else { "_:" }),
+				alphanumeric1, is_a(if opts.allow_dots { "_:." } else { "_:" }),
 			))),
 		))),
 		|s: I| String::from_utf8(s.as_bytes().to_vec())
@@ -448,7 +448,7 @@ mod tests {
 				vector(
 					q,
 					&ParserOptions::new()
-						.allow_periods(true)
+						.allow_dots(true)
 						.build(),
 				),
 				Ok((
@@ -480,7 +480,7 @@ mod tests {
 				vector(
 					q,
 					&ParserOptions::new()
-						.allow_periods(false)
+						.allow_dots(false)
 						.build(),
 				),
 				Ok((
@@ -499,9 +499,9 @@ mod tests {
 		}
 	}
 
-	fn instant_vectors(allow_periods: bool) {
+	fn instant_vectors(allow_dots: bool) {
 		let opts = ParserOptions::new()
-			.allow_periods(allow_periods)
+			.allow_dots(allow_dots)
 			.comments(true)
 			.build();
 
@@ -619,10 +619,10 @@ mod tests {
 
 	#[test]
 	fn modified_vectors_permutations() {
-		for &allow_periods in &[true, false] {
+		for &allow_dots in &[true, false] {
 		for &negative_offsets in &[true, false] {
 			let opts = ParserOptions::new()
-				.allow_periods(allow_periods)
+				.allow_dots(allow_dots)
 				.negative_offsets(negative_offsets)
 				.build();
 
