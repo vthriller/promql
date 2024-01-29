@@ -364,6 +364,7 @@ where
 				Node::negation
 			)
 			,
+		alt((
 			// function call is parsed before vector: the latter can actually consume function name as a vector, effectively rendering the rest of the expression invalid
 			|i| function(recursion_level, i, opts)
 			,
@@ -378,6 +379,7 @@ where
 				|i| expression(recursion_level, i, opts),
 				char(')')
 			)
+		))
 		))
 	)(input)
 }
