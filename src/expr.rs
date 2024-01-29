@@ -337,6 +337,7 @@ where
 		);
 	}
 
+	// nested alt()s save us space on the stack, allowing deeper recursion
 	surrounded_ws_or_comment(opts,
 		alt((
 			alt((
